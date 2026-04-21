@@ -1,6 +1,8 @@
 const CONFIG = {
   query: 'in:inbox newer_than:7d -label:TRASH -label:SPAM',
   maxThreads: 100,
+  dryRun: true,
+  logSpreadsheetId: '',
   labels: {
     review: 'Review/Ambiguous',
     importantServices: 'Important/Services',

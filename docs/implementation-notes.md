@@ -20,12 +20,23 @@ Implemented a first real version of Phase 1 inbox calming.
 - phase 1 decision logging to `Phase1Log`
 - configurable max thread count
 
-### Known caveats
-- `SpreadsheetApp.getActiveSpreadsheet()` may not exist in some trigger contexts, so the logging path will likely need a dedicated configured spreadsheet id next
-- `Review/Ambiguous` will collect a fair amount of mail until rules get tuned further
-- sender/domain logic is intentionally conservative for important services and transactional mail
+## 2026-04-21 - Phase 1 safety upgrade
+
+Added safety and rollout controls for Phase 1.
+
+### Added
+- `CONFIG.dryRun`
+- explicit `CONFIG.logSpreadsheetId`
+- separate run entrypoints for dry-run and live mode
+- log mode column so dry-run and live results are distinguishable
+- removal of implicit active spreadsheet fallback
+
+### Why
+- safer rollout
+- predictable logging destination
+- easier testing before touching live mail
 
 ### Suggested next improvement after Phase 1 validation
-- add dry-run mode
-- add configured log spreadsheet id
 - expand sender/domain rules based on real false positives and false negatives
+- add optional sampling or sender filtering for narrower test runs
+- design phase 2 priority behavior in more detail

@@ -34,10 +34,29 @@ Reduce first-sight inbox clutter by labeling and archiving obvious low-priority 
 - newsletter, ad, and campaign pattern detection
 - Gmail `CATEGORY_PROMOTIONS` as a fallback signal for archiving ads
 
+## Safety features
+
+### Dry-run first
+Phase 1 now supports dry-run mode.
+
+When dry-run is enabled:
+- no labels are applied
+- nothing is archived
+- the intended decisions are logged
+
+This makes it possible to test classification safely before touching the live inbox.
+
+### Explicit log spreadsheet
+Logging now requires a configured spreadsheet id:
+- set `CONFIG.logSpreadsheetId`
+
+This is safer and more predictable than relying on an active spreadsheet context.
+
 ## Logging
 
 Phase 1 logs each processed thread with:
 - timestamp
+- mode (`dry-run` or `live`)
 - thread id
 - sender
 - subject
@@ -45,19 +64,29 @@ Phase 1 logs each processed thread with:
 - applied label
 - archived yes/no
 
-The current implementation writes to a sheet named `Phase1Log`.
+The implementation writes to a sheet named `Phase1Log` in the configured spreadsheet.
 
-## Entry point
+## Entry points
 
-Main function:
-- `processInboxFocusPhase1()`
+Main functions:
+- `processInboxFocusPhase1()` uses `CONFIG.dryRun`
+- `processInboxFocusPhase1DryRun()` forces dry-run mode
+- `processInboxFocusPhase1Live()` forces live mode
+
+## Recommended rollout
+
+1. Create a dedicated Google Sheet for logs
+2. Set `CONFIG.logSpreadsheetId`
+3. Run `processInboxFocusPhase1DryRun()` on a small inbox slice
+4. Review `Phase1Log`
+5. Tune false positives and false negatives
+6. Only then run `processInboxFocusPhase1Live()`
 
 ## Current limitations
 
 - pattern-based only, no AI yet
-- no dry-run mode yet
-- logging currently relies on Apps Script spreadsheet context and should be improved in a later iteration
 - review bucket may still be broad until more sender/domain rules are added
+- no built-in sampling controls yet beyond query and max thread count
 
 ## Success criteria
 
@@ -66,3 +95,4 @@ Phase 1 is considered successful when:
 - shipping, finance, calendar, and service mail remain visible
 - manual workflow labels are not disturbed
 - ambiguous mail is surfaced instead of silently hidden
+- dry-run review catches mistakes before live rollout

@@ -28,6 +28,7 @@ Core intent:
 - `docs/labels.md`
 - `docs/roadmap.md`
 - `docs/phase-1.md`
+- `docs/testing-phase-1.md`
 - `docs/implementation-notes.md`
 - `apps-script/` starter structure
 
@@ -35,6 +36,7 @@ Core intent:
 - phase 1 classifier implemented with concrete pattern families
 - phase 1 Gmail actions helper implemented
 - phase 1 logging implemented
+- phase 1 dry-run and live modes implemented
 - digest placeholder exists
 - AI placeholder exists
 - main phase 1 entrypoint exists
@@ -59,6 +61,8 @@ Core intent:
 - AI should be narrow, optional, and logged
 - No autonomous sending
 - Ambiguous mail should be reviewable, not silently hidden
+- Phase 1 should default to dry-run until validated
+- Logging should use an explicit spreadsheet id
 
 ## Progress log
 
@@ -67,14 +71,16 @@ Core intent:
 - added architecture, phases, labels, roadmap, and contribution docs
 - implemented first real version of Phase 1
 - documented Phase 1 behavior and implementation notes
+- added dry-run mode and explicit logging configuration
+- added Phase 1 testing guide
 
 ## Immediate next steps
 
 1. Validate Phase 1 in a real Gmail Apps Script environment
-2. Add dry-run mode for safer testing
-3. Replace logging fallback with explicit configured spreadsheet id
-4. Tune sender/domain rules from observed results
-5. Start design of Phase 2 priority system in more detail
+2. Tune sender/domain rules from observed results
+3. Add optional sampling or sender filtering for narrower tests
+4. Start design of Phase 2 priority system in more detail
+5. Decide which labels should be visible in the Gmail sidebar by default
 
 ## Open questions
 

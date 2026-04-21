@@ -6,7 +6,15 @@ function getOrCreateLabel_(name) {
 
 function applyDecision_(thread, decision) {
   if (!decision || decision.action === 'preserve') {
-    return { appliedLabel: null, archived: false };
+    return { appliedLabel: null, archived: false, mode: CONFIG.dryRun ? 'dry-run' : 'live' };
+  }
+
+  if (CONFIG.dryRun) {
+    return {
+      appliedLabel: decision.label || null,
+      archived: Boolean(decision.archive),
+      mode: 'dry-run'
+    };
   }
 
   if (decision.label) {
@@ -19,7 +27,8 @@ function applyDecision_(thread, decision) {
 
   return {
     appliedLabel: decision.label || null,
-    archived: Boolean(decision.archive)
+    archived: Boolean(decision.archive),
+    mode: 'live'
   };
 }
 
@@ -27,6 +36,7 @@ function logDecision_(rows, thread, decision, result) {
   const lastMessage = thread.getMessages()[thread.getMessageCount() - 1];
   rows.push([
     new Date(),
+    result.mode || '',
     thread.getId(),
     (lastMessage && lastMessage.getFrom()) || '',
     (lastMessage && lastMessage.getSubject()) || '',
@@ -45,13 +55,14 @@ function flushDecisionLog_(rows) {
 }
 
 function getOrCreatePhase1LogSheet_() {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.create('Gmail Focus Assistant Logs');
+  const spreadsheet = getLogSpreadsheet_();
   let sheet = spreadsheet.getSheetByName('Phase1Log');
 
   if (!sheet) {
     sheet = spreadsheet.insertSheet('Phase1Log');
-    sheet.getRange(1, 1, 1, 7).setValues([[
+    sheet.getRange(1, 1, 1, 8).setValues([[
       'Timestamp',
+      'Mode',
       'Thread ID',
       'From',
       'Subject',
@@ -62,4 +73,12 @@ function getOrCreatePhase1LogSheet_() {
   }
 
   return sheet;
+}
+
+function getLogSpreadsheet_() {
+  if (!CONFIG.logSpreadsheetId) {
+    throw new Error('CONFIG.logSpreadsheetId must be set before running Phase 1 logging.');
+  }
+
+  return SpreadsheetApp.openById(CONFIG.logSpreadsheetId);
 }
