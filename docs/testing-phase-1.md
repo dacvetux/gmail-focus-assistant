@@ -43,6 +43,11 @@ Use these config arrays:
 
 These are intended as practical tuning hooks while the rules mature.
 
+## Important validation note
+
+After the 2026-04-22 tuning pass, structural classification should be judged mainly from sender + subject behavior.
+If you still see finance, shipping, calendar, or opportunity false positives, they are much more likely to be real pattern problems now rather than accidental body-text collisions.
+
 ## Going live
 
 Only after dry-run results look good:

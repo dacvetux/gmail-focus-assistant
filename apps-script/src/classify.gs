@@ -3,54 +3,54 @@ function classifyThread_(thread) {
   const lastMessage = thread.getMessages()[thread.getMessageCount() - 1];
   const from = ((lastMessage && lastMessage.getFrom()) || '').toLowerCase();
   const subject = ((lastMessage && lastMessage.getSubject()) || '').toLowerCase();
-  const snippet = ((lastMessage && lastMessage.getPlainBody()) || '').slice(0, 2000).toLowerCase();
-  const haystack = `${from}\n${subject}\n${snippet}`;
+  const subjectHaystack = `${from}\n${subject}`;
+  const workflowHaystack = `${from}\n${subject}\n${((lastMessage && lastMessage.getPlainBody()) || '').slice(0, 1200).toLowerCase()}`;
 
   if (hasAnyLabel_(labels, CONFIG.preserveLabels) || hasAnyLabel_(labels, CONFIG.preserveSystemLabels)) {
     return buildDecision_('preserve', null, false, 'preserve label present', null);
   }
 
-  if (containsAny_(haystack, CONFIG.forceReviewSenders)) {
+  if (containsAny_(subjectHaystack, CONFIG.forceReviewSenders)) {
     return buildDecision_('label', CONFIG.labels.review, false, 'forced review sender override', CONFIG.labels.fyi);
   }
 
-  if (containsAny_(haystack, CONFIG.forceImportantSenders)) {
-    return buildDecision_('label', CONFIG.labels.importantServices, false, 'forced important sender override', inferWorkflowLabel_(haystack) || CONFIG.labels.fyi);
+  if (containsAny_(subjectHaystack, CONFIG.forceImportantSenders)) {
+    return buildDecision_('label', CONFIG.labels.importantServices, false, 'forced important sender override', inferWorkflowLabel_(workflowHaystack) || CONFIG.labels.notification);
   }
 
-  if (containsAny_(haystack, CONFIG.forceCommercialSenders)) {
-    return buildDecision_('label', CONFIG.labels.commercialAds, true, 'forced commercial sender override', null);
+  if (containsAny_(subjectHaystack, CONFIG.forceCommercialSenders)) {
+    return classifyForcedCommercial_(subjectHaystack);
   }
 
-  if (matchesAny_(haystack, CONFIG.financePatterns)) {
+  if (matchesAny_(subjectHaystack, CONFIG.financePatterns)) {
     return buildDecision_('label', CONFIG.labels.importantFinance, false, 'finance pattern', CONFIG.labels.notification);
   }
 
-  if (matchesAny_(haystack, CONFIG.shippingPatterns)) {
+  if (matchesAny_(subjectHaystack, CONFIG.shippingPatterns)) {
     return buildDecision_('label', CONFIG.labels.importantShipping, false, 'shipping pattern', CONFIG.labels.notification);
   }
 
-  if (matchesAny_(haystack, CONFIG.calendarPatterns)) {
+  if (matchesAny_(subjectHaystack, CONFIG.calendarPatterns)) {
     return buildDecision_('label', CONFIG.labels.importantCalendar, false, 'calendar pattern', CONFIG.labels.toRespond);
   }
 
-  if (matchesAny_(haystack, CONFIG.opportunityPatterns)) {
+  if (matchesAny_(subjectHaystack, CONFIG.opportunityPatterns) || isOpportunitySender_(from)) {
     return buildDecision_('label', CONFIG.labels.importantOpportunities, false, 'opportunity pattern', CONFIG.labels.fyi);
   }
 
-  if (containsAny_(haystack, CONFIG.neverArchiveSenders)) {
-    return buildDecision_('label', CONFIG.labels.importantServices, false, 'important sender/domain', inferWorkflowLabel_(haystack));
+  if (containsAny_(subjectHaystack, CONFIG.neverArchiveSenders)) {
+    return buildDecision_('label', CONFIG.labels.importantServices, false, 'important sender/domain', inferWorkflowLabel_(workflowHaystack) || CONFIG.labels.notification);
   }
 
-  if (matchesAny_(haystack, CONFIG.newsletterPatterns)) {
+  if (matchesAny_(subjectHaystack, CONFIG.newsletterPatterns)) {
     return buildDecision_('label', CONFIG.labels.commercialNewsletters, true, 'newsletter pattern', null);
   }
 
-  if (matchesAny_(haystack, CONFIG.adPatterns)) {
+  if (matchesAny_(subjectHaystack, CONFIG.adPatterns)) {
     return buildDecision_('label', CONFIG.labels.commercialAds, true, 'ad pattern', null);
   }
 
-  if (matchesAny_(haystack, CONFIG.campaignPatterns)) {
+  if (matchesAny_(subjectHaystack, CONFIG.campaignPatterns)) {
     return buildDecision_('label', CONFIG.labels.commercialCampaigns, true, 'campaign pattern', null);
   }
 
@@ -58,7 +58,7 @@ function classifyThread_(thread) {
     return buildDecision_('label', CONFIG.labels.commercialAds, true, 'gmail promotions category fallback', null);
   }
 
-  return buildDecision_('label', CONFIG.labels.review, false, 'no confident rule match', inferWorkflowLabel_(haystack) || CONFIG.labels.fyi);
+  return buildDecision_('label', CONFIG.labels.review, false, 'no confident rule match', inferWorkflowLabel_(workflowHaystack) || CONFIG.labels.fyi);
 }
 
 function inferWorkflowLabel_(haystack) {
@@ -75,6 +75,30 @@ function inferWorkflowLabel_(haystack) {
   }
 
   return null;
+}
+
+function classifyForcedCommercial_(subjectHaystack) {
+  if (matchesAny_(subjectHaystack, CONFIG.campaignPatterns)) {
+    return buildDecision_('label', CONFIG.labels.commercialCampaigns, true, 'forced commercial sender override', null);
+  }
+
+  if (matchesAny_(subjectHaystack, CONFIG.adPatterns)) {
+    return buildDecision_('label', CONFIG.labels.commercialAds, true, 'forced commercial sender override', null);
+  }
+
+  return buildDecision_('label', CONFIG.labels.commercialNewsletters, true, 'forced commercial sender override', null);
+}
+
+function isOpportunitySender_(from) {
+  return [
+    'jobs@mail.xing.com',
+    'jobalerts-noreply@linkedin.com',
+    'news@email.experteer.com',
+    'news@email.experteer.com',
+    'experteer',
+    'recruit',
+    'headhunter'
+  ].some(snippet => from.includes(snippet));
 }
 
 function buildDecision_(action, label, archive, reason, workflowLabel) {

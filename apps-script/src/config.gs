@@ -7,9 +7,24 @@ const CONFIG = {
   debugSampleThreads: [],
   debugSenderIncludes: [],
   debugSubjectIncludes: [],
-  forceImportantSenders: [],
-  forceCommercialSenders: [],
-  forceReviewSenders: [],
+  forceImportantSenders: [
+    'accounts.google.com',
+    'status.incident.io'
+  ],
+  forceCommercialSenders: [
+    'qwertee.com',
+    'steampowered.com',
+    'stackcommerce.com',
+    'mail.telecompaper.com',
+    'substack.com',
+    'tldrnewsletter.com',
+    'members.netflix.com',
+    'bandsintown.com',
+    'ticketmaster.'
+  ],
+  forceReviewSenders: [
+    'newsletters-noreply@linkedin.com'
+  ],
   labels: {
     toRespond: '1: to respond',
     fyi: '2: FYI',
@@ -102,7 +117,9 @@ const CONFIG = {
     /account alert/i,
     /verification code/i,
     /one-time code/i,
-    /otp/i
+    /otp/i,
+    /varnostno opozorilo/i,
+    /račun google/i
   ],
   neverArchiveSenders: [
     'incident.io',
@@ -117,39 +134,46 @@ const CONFIG = {
   ],
   financePatterns: [
     /invoice/i,
-    /payment/i,
     /receipt/i,
-    /statement/i,
-    /bill\b/i,
-    /order confirmation/i
+    /payment received/i,
+    /payment failed/i,
+    /statement available/i,
+    /order confirmation/i,
+    /bank declined/i,
+    /billing statement/i
   ],
   shippingPatterns: [
-    /tracking/i,
-    /shipped/i,
+    /tracking number/i,
+    /shipment update/i,
+    /out for delivery/i,
     /delivered/i,
     /customs/i,
-    /package/i,
-    /shipment/i,
-    /parcel/i
+    /parcel/i,
+    /package .* delivery/i,
+    /in your country\/region/i,
+    /delivery update/i
   ],
   calendarPatterns: [
-    /calendar/i,
-    /invitation/i,
-    /invite/i,
-    /meeting update/i,
+    /invitation:/i,
     /accepted:/i,
     /declined:/i,
-    /tentative:/i
+    /tentative:/i,
+    /calendar invite/i,
+    /meeting update/i,
+    /bewerbungsgespräch/i
   ],
   opportunityPatterns: [
     /job alert/i,
-    /jobs?/i,
-    /career/i,
-    /opportunit/i,
-    /recruit/i,
-    /cv/i,
+    /headhunter/i,
+    /interview/i,
+    /application/i,
+    /candidate/i,
+    /recruiter/i,
+    /recruiting/i,
+    /career step/i,
     /position/i,
-    /apply/i
+    /bewerbungsgespräch/i,
+    /companies are looking for candidates/i
   ],
   newsletterPatterns: [
     /substack/i,
@@ -160,7 +184,8 @@ const CONFIG = {
     /tldr/i,
     /reuters/i,
     /telecompaper/i,
-    /economist/i
+    /economist/i,
+    /tee-mail/i
   ],
   adPatterns: [
     /sale/i,
@@ -173,7 +198,8 @@ const CONFIG = {
     /% off/i,
     /free shipping/i,
     /wishlist is now on sale/i,
-    /last chance/i
+    /last chance/i,
+    /clearance/i
   ],
   campaignPatterns: [
     /bandsintown/i,
@@ -185,6 +211,7 @@ const CONFIG = {
     /launch/i,
     /new single/i,
     /screening/i,
-    /tickets? available/i
+    /tickets? available/i,
+    /live video/i
   ]
 };
