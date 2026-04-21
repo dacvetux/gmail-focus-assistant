@@ -16,10 +16,12 @@ Status: implemented first working version on 2026-04-21
 - apply structural and workflow labels together
 
 ## Phase 3, safe daily briefing
+Status: initial implementation started on 2026-04-21
 - morning digest of important new mail
 - response-needed threads
 - shipping, finance, and calendar changes
 - optional evening digest of unresolved items
+- digest log for review and tuning
 
 ## Phase 4, selective AI classification
 - only process ambiguous mail with AI

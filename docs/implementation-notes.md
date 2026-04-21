@@ -52,7 +52,30 @@ Implemented the first version of the workflow priority system.
 - workflow inference is intentionally simple and pattern-driven
 - this should be good enough for a first pass, but will need tuning from real inbox results
 
-### Suggested next improvement after Phase 2 validation
-- tune workflow inference using observed false positives and false negatives
-- define which workflow labels should be surfaced most prominently in the Gmail sidebar
-- design Phase 3 digest output around the new workflow labels
+## 2026-04-21 - Validation and tuning support
+
+Added practical validation and tuning hooks for Phases 1 and 2.
+
+### Added
+- `validatePhases1And2DryRun()`
+- debug narrowing filters for thread ids, sender fragments, and subject fragments
+- force override lists for important, commercial, and review senders
+
+### Why
+- faster iteration during dry-run validation
+- easier false-positive correction without waiting for a larger redesign
+
+## 2026-04-21 - Phase 3 initial implementation
+
+Started the first working version of daily briefing.
+
+### Added
+- `generateMorningDigest()`
+- `generateEveningDigest()`
+- simple sectioned digest based on workflow labels
+- `DigestLog` for digest run tracking
+- optional digest email sending when not in dry-run mode and recipient is configured
+
+### Current tradeoff
+- digest formatting is intentionally simple and text-first for now
+- good enough to validate the briefing workflow before adding ranking and richer summaries

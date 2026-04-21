@@ -29,6 +29,7 @@ Core intent:
 - `docs/roadmap.md`
 - `docs/phase-1.md`
 - `docs/phase-2.md`
+- `docs/phase-3.md`
 - `docs/testing-phase-1.md`
 - `docs/implementation-notes.md`
 - `apps-script/` starter structure
@@ -39,8 +40,8 @@ Core intent:
 - phase 1 logging implemented
 - phase 1 dry-run and live modes implemented
 - phase 2 workflow priority labeling implemented
-- digest placeholder exists
-- AI placeholder exists
+- validation and tuning controls added for dry-run review
+- phase 3 initial digest generation implemented
 - main phase entrypoints exist
 
 ## Planned phases
@@ -66,6 +67,8 @@ Core intent:
 - Phase 1 should default to dry-run until validated
 - Logging should use an explicit spreadsheet id
 - Structural labels and workflow labels should both exist in Phase 2
+- Validation should support narrow inbox slices and sender-level overrides
+- Phase 3 should start with a simple text digest before richer summarization
 
 ## Progress log
 
@@ -78,14 +81,16 @@ Core intent:
 - added Phase 1 testing guide
 - implemented first real version of Phase 2
 - documented workflow-priority label model
+- added validation helpers and false-positive tuning controls
+- started Phase 3 daily briefing implementation
 
 ## Immediate next steps
 
-1. Validate Phases 1 and 2 in a real Gmail Apps Script environment
-2. Tune workflow inference from observed results
-3. Add optional sampling or sender filtering for narrower tests
-4. Start design of Phase 3 daily briefing
-5. Decide which labels should be visible in the Gmail sidebar by default
+1. Run real Apps Script dry-run validation for Phases 1 and 2
+2. tune sender and workflow false positives from DecisionLog output
+3. validate the first digest output from Phase 3
+4. improve digest ranking and section selection
+5. decide which labels should be visible in the Gmail sidebar by default
 
 ## Open questions
 

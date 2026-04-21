@@ -10,6 +10,18 @@ function classifyThread_(thread) {
     return buildDecision_('preserve', null, false, 'preserve label present', null);
   }
 
+  if (containsAny_(haystack, CONFIG.forceReviewSenders)) {
+    return buildDecision_('label', CONFIG.labels.review, false, 'forced review sender override', CONFIG.labels.fyi);
+  }
+
+  if (containsAny_(haystack, CONFIG.forceImportantSenders)) {
+    return buildDecision_('label', CONFIG.labels.importantServices, false, 'forced important sender override', inferWorkflowLabel_(haystack) || CONFIG.labels.fyi);
+  }
+
+  if (containsAny_(haystack, CONFIG.forceCommercialSenders)) {
+    return buildDecision_('label', CONFIG.labels.commercialAds, true, 'forced commercial sender override', null);
+  }
+
   if (matchesAny_(haystack, CONFIG.financePatterns)) {
     return buildDecision_('label', CONFIG.labels.importantFinance, false, 'finance pattern', CONFIG.labels.notification);
   }
@@ -80,7 +92,7 @@ function matchesAny_(text, patterns) {
 }
 
 function containsAny_(text, snippets) {
-  return snippets.some(snippet => text.includes(snippet));
+  return snippets.some(snippet => text && text.includes(snippet));
 }
 
 function hasAnyLabel_(labels, expected) {

@@ -65,12 +65,12 @@ function logDecision_(rows, thread, decision, result) {
 function flushDecisionLog_(rows) {
   if (!rows.length) return;
 
-  const sheet = getOrCreatePhaseLogSheet_();
+  const sheet = getOrCreateDecisionLogSheet_();
   const startRow = sheet.getLastRow() + 1;
   sheet.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
 }
 
-function getOrCreatePhaseLogSheet_() {
+function getOrCreateDecisionLogSheet_() {
   const spreadsheet = getLogSpreadsheet_();
   let sheet = spreadsheet.getSheetByName('DecisionLog');
 
@@ -89,6 +89,31 @@ function getOrCreatePhaseLogSheet_() {
   }
 
   return sheet;
+}
+
+function getOrCreateDigestLogSheet_() {
+  const spreadsheet = getLogSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName('DigestLog');
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('DigestLog');
+    sheet.getRange(1, 1, 1, 5).setValues([[
+      'Timestamp',
+      'Digest Type',
+      'Mode',
+      'Summary',
+      'Item Count'
+    ]]);
+  }
+
+  return sheet;
+}
+
+function logDigestRun_(digestType, mode, summary, itemCount) {
+  const sheet = getOrCreateDigestLogSheet_();
+  const row = [[new Date(), digestType, mode, summary, itemCount]];
+  const startRow = sheet.getLastRow() + 1;
+  sheet.getRange(startRow, 1, 1, row[0].length).setValues(row);
 }
 
 function getLogSpreadsheet_() {

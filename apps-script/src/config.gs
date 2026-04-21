@@ -3,6 +3,13 @@ const CONFIG = {
   maxThreads: 100,
   dryRun: true,
   logSpreadsheetId: '',
+  digestRecipient: '',
+  debugSampleThreads: [],
+  debugSenderIncludes: [],
+  debugSubjectIncludes: [],
+  forceImportantSenders: [],
+  forceCommercialSenders: [],
+  forceReviewSenders: [],
   labels: {
     toRespond: '1: to respond',
     fyi: '2: FYI',
