@@ -1,10 +1,12 @@
 # Build Phases
 
 ## Phase 1, calm the inbox
+Status: implemented first working version on 2026-04-21
 - classify obvious promos, newsletters, and campaigns
 - auto-archive low-priority commercial mail
 - keep transactional, personal, finance, shipping, calendar, and important alerts visible
 - preserve manual labels and workflow labels
+- log decisions for review and tuning
 
 ## Phase 2, create a priority system
 - add labels for action, FYI, notifications, important services, finance, shipping, calendar, opportunities, and ambiguous review

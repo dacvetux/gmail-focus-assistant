@@ -17,6 +17,7 @@ Core intent:
 
 ### Repository
 - Local repo created at `projects/gmail-focus-assistant`
+- GitHub repo created and pushed: `https://github.com/dacvetux/gmail-focus-assistant`
 - Initial scaffold committed
 - Initial commit: `471ccc2` - `Initial scaffold for Gmail Focus Assistant`
 
@@ -25,11 +26,15 @@ Core intent:
 - `docs/architecture.md`
 - `docs/phases.md`
 - `docs/labels.md`
+- `docs/roadmap.md`
+- `docs/phase-1.md`
+- `docs/implementation-notes.md`
 - `apps-script/` starter structure
 
 ### Current code state
-- starter phase 1 classifier exists
-- starter Gmail actions helper exists
+- phase 1 classifier implemented with concrete pattern families
+- phase 1 Gmail actions helper implemented
+- phase 1 logging implemented
 - digest placeholder exists
 - AI placeholder exists
 - main phase 1 entrypoint exists
@@ -53,30 +58,23 @@ Core intent:
 - Personal and manual workflow labels must override automation
 - AI should be narrow, optional, and logged
 - No autonomous sending
+- Ambiguous mail should be reviewable, not silently hidden
+
+## Progress log
+
+### 2026-04-21
+- created local repo and GitHub repo
+- added architecture, phases, labels, roadmap, and contribution docs
+- implemented first real version of Phase 1
+- documented Phase 1 behavior and implementation notes
 
 ## Immediate next steps
 
-1. Add GitHub-ready repo hygiene
-   - `.gitignore`
-   - license
-   - roadmap / contribution notes
-
-2. Expand phase 1 classifier
-   - more sender/domain rules
-   - preserve important categories and manual labels
-   - logging of decisions
-
-3. Design phase 2 labels in more detail
-   - exact visible vs hidden behavior
-   - review bucket policy
-
-4. Add digest specification for phase 3
-   - morning briefing format
-   - optional evening unresolved-items digest
-
-5. Create publishing path
-   - create GitHub remote
-   - push repo
+1. Validate Phase 1 in a real Gmail Apps Script environment
+2. Add dry-run mode for safer testing
+3. Replace logging fallback with explicit configured spreadsheet id
+4. Tune sender/domain rules from observed results
+5. Start design of Phase 2 priority system in more detail
 
 ## Open questions
 
@@ -85,6 +83,7 @@ Core intent:
 - Should LinkedIn/XING digests be archived immediately or routed to FYI?
 - Should calendar invites and updates get their own label or rely on existing workflow labels?
 - What level of AI use feels acceptable for privacy and cost?
+- Should commercial labels remain visible in the sidebar or be hidden after rollout?
 
 ## Notes for future work
 
@@ -93,3 +92,4 @@ Core intent:
 - Keep logs and examples of false positives / false negatives
 - Avoid hidden complexity early
 - Bias toward explainable automation
+- Add safety features before scaling automation scope

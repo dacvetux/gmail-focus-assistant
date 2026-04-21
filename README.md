@@ -42,6 +42,13 @@ This project is intentionally **not** a black-box full-AI email agent. It uses:
 
 See `docs/roadmap.md` for the phased build direction.
 
+## Current implementation
+
+Phase 1 now has a first working rules-first implementation. See:
+- `docs/phase-1.md`
+- `docs/implementation-notes.md`
+- `PROJECT_MEMORY.md`
+
 ## License
 
 MIT, see `LICENSE`.

@@ -5,29 +5,57 @@ function classifyThread_(thread) {
   const subject = ((lastMessage && lastMessage.getSubject()) || '').toLowerCase();
   const haystack = `${from} ${subject}`;
 
-  if (labels.some(name => CONFIG.preserveLabels.includes(name))) {
+  if (hasAnyLabel_(labels, CONFIG.preserveLabels) || hasAnyLabel_(labels, CONFIG.preserveSystemLabels)) {
     return { action: 'preserve', reason: 'preserve label present' };
   }
 
-  if (/substack|newsletter|digest|tldr|reuters/.test(haystack)) {
-    return { action: 'label', label: CONFIG.labels.commercialNewsletters, archive: true, reason: 'newsletter pattern' };
-  }
-
-  if (/sale|discount|deal|% off|shop now|wishlist is now on sale/.test(haystack)) {
-    return { action: 'label', label: CONFIG.labels.commercialAds, archive: true, reason: 'ad pattern' };
-  }
-
-  if (/bandsintown|ticketmaster|netflix|event|tour|launch/.test(haystack)) {
-    return { action: 'label', label: CONFIG.labels.commercialCampaigns, archive: true, reason: 'campaign pattern' };
-  }
-
-  if (/invoice|payment|receipt|statement|bill/.test(haystack)) {
+  if (matchesAny_(haystack, CONFIG.financePatterns)) {
     return { action: 'label', label: CONFIG.labels.importantFinance, archive: false, reason: 'finance pattern' };
   }
 
-  if (/tracking|shipped|delivered|customs|package/.test(haystack)) {
+  if (matchesAny_(haystack, CONFIG.shippingPatterns)) {
     return { action: 'label', label: CONFIG.labels.importantShipping, archive: false, reason: 'shipping pattern' };
   }
 
-  return { action: 'review', label: CONFIG.labels.review, archive: false, reason: 'no confident rule match' };
+  if (matchesAny_(haystack, CONFIG.calendarPatterns)) {
+    return { action: 'label', label: CONFIG.labels.importantCalendar, archive: false, reason: 'calendar pattern' };
+  }
+
+  if (matchesAny_(haystack, CONFIG.opportunityPatterns)) {
+    return { action: 'label', label: CONFIG.labels.importantOpportunities, archive: false, reason: 'opportunity pattern' };
+  }
+
+  if (containsAny_(haystack, CONFIG.neverArchiveSenders)) {
+    return { action: 'label', label: CONFIG.labels.importantServices, archive: false, reason: 'important sender/domain' };
+  }
+
+  if (matchesAny_(haystack, CONFIG.newsletterPatterns)) {
+    return { action: 'label', label: CONFIG.labels.commercialNewsletters, archive: true, reason: 'newsletter pattern' };
+  }
+
+  if (matchesAny_(haystack, CONFIG.adPatterns)) {
+    return { action: 'label', label: CONFIG.labels.commercialAds, archive: true, reason: 'ad pattern' };
+  }
+
+  if (matchesAny_(haystack, CONFIG.campaignPatterns)) {
+    return { action: 'label', label: CONFIG.labels.commercialCampaigns, archive: true, reason: 'campaign pattern' };
+  }
+
+  if (labels.includes('CATEGORY_PROMOTIONS')) {
+    return { action: 'label', label: CONFIG.labels.commercialAds, archive: true, reason: 'gmail promotions category fallback' };
+  }
+
+  return { action: 'label', label: CONFIG.labels.review, archive: false, reason: 'no confident rule match' };
+}
+
+function matchesAny_(text, patterns) {
+  return patterns.some(pattern => pattern.test(text));
+}
+
+function containsAny_(text, snippets) {
+  return snippets.some(snippet => text.includes(snippet));
+}
+
+function hasAnyLabel_(labels, expected) {
+  return expected.some(name => labels.includes(name));
 }
