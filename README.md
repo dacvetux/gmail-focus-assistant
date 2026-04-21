@@ -36,6 +36,15 @@ This project is intentionally **not** a black-box full-AI email agent. It uses:
 - `docs/` project docs and design notes
 - `apps-script/` Google Apps Script source
 - `scripts/` local helper scripts
+- `PROJECT_MEMORY.md` ongoing project state and decisions
+
+## Roadmap
+
+See `docs/roadmap.md` for the phased build direction.
+
+## License
+
+MIT, see `LICENSE`.
 
 ## Status
 

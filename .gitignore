@@ -1,0 +1,27 @@
+# macOS / Linux
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Local secrets and overrides
+.env
+.env.*
+*.local
+secrets/
+credentials/
+
+# Apps Script local tooling
+.clasp.json
+node_modules/
+
+# Temporary files
+tmp/
+.tmp/
