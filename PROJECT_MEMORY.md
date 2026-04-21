@@ -28,6 +28,7 @@ Core intent:
 - `docs/labels.md`
 - `docs/roadmap.md`
 - `docs/phase-1.md`
+- `docs/phase-2.md`
 - `docs/testing-phase-1.md`
 - `docs/implementation-notes.md`
 - `apps-script/` starter structure
@@ -37,9 +38,10 @@ Core intent:
 - phase 1 Gmail actions helper implemented
 - phase 1 logging implemented
 - phase 1 dry-run and live modes implemented
+- phase 2 workflow priority labeling implemented
 - digest placeholder exists
 - AI placeholder exists
-- main phase 1 entrypoint exists
+- main phase entrypoints exist
 
 ## Planned phases
 
@@ -63,6 +65,7 @@ Core intent:
 - Ambiguous mail should be reviewable, not silently hidden
 - Phase 1 should default to dry-run until validated
 - Logging should use an explicit spreadsheet id
+- Structural labels and workflow labels should both exist in Phase 2
 
 ## Progress log
 
@@ -73,13 +76,15 @@ Core intent:
 - documented Phase 1 behavior and implementation notes
 - added dry-run mode and explicit logging configuration
 - added Phase 1 testing guide
+- implemented first real version of Phase 2
+- documented workflow-priority label model
 
 ## Immediate next steps
 
-1. Validate Phase 1 in a real Gmail Apps Script environment
-2. Tune sender/domain rules from observed results
+1. Validate Phases 1 and 2 in a real Gmail Apps Script environment
+2. Tune workflow inference from observed results
 3. Add optional sampling or sender filtering for narrower tests
-4. Start design of Phase 2 priority system in more detail
+4. Start design of Phase 3 daily briefing
 5. Decide which labels should be visible in the Gmail sidebar by default
 
 ## Open questions

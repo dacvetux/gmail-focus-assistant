@@ -44,8 +44,9 @@ See `docs/roadmap.md` for the phased build direction.
 
 ## Current implementation
 
-Phase 1 now has a first working rules-first implementation plus safer rollout controls. See:
+Phases 1 and 2 now have first working rules-first implementations plus safer rollout controls. See:
 - `docs/phase-1.md`
+- `docs/phase-2.md`
 - `docs/testing-phase-1.md`
 - `docs/implementation-notes.md`
 - `PROJECT_MEMORY.md`

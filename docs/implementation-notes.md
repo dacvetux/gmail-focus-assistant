@@ -36,7 +36,23 @@ Added safety and rollout controls for Phase 1.
 - predictable logging destination
 - easier testing before touching live mail
 
-### Suggested next improvement after Phase 1 validation
-- expand sender/domain rules based on real false positives and false negatives
-- add optional sampling or sender filtering for narrower test runs
-- design phase 2 priority behavior in more detail
+## 2026-04-21 - Phase 2 implementation
+
+Implemented the first version of the workflow priority system.
+
+### Added
+- workflow labels in config: `1: to respond`, `2: FYI`, `3: notification`
+- response, FYI, and notification pattern groups
+- structural plus workflow dual-label decisions
+- managed decision-label cleanup during live runs
+- shared `DecisionLog` sheet for later phases
+- Phase 2 run entrypoints
+
+### Current tradeoff
+- workflow inference is intentionally simple and pattern-driven
+- this should be good enough for a first pass, but will need tuning from real inbox results
+
+### Suggested next improvement after Phase 2 validation
+- tune workflow inference using observed false positives and false negatives
+- define which workflow labels should be surfaced most prominently in the Gmail sidebar
+- design Phase 3 digest output around the new workflow labels

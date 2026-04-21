@@ -1,25 +1,46 @@
 function processInboxFocusPhase1() {
-  return processInboxFocusPhase1WithOptions_({
+  return processInboxFocusWithOptions_({
     dryRun: CONFIG.dryRun,
     maxThreads: CONFIG.maxThreads
   });
 }
 
 function processInboxFocusPhase1DryRun() {
-  return processInboxFocusPhase1WithOptions_({
+  return processInboxFocusWithOptions_({
     dryRun: true,
     maxThreads: CONFIG.maxThreads
   });
 }
 
 function processInboxFocusPhase1Live() {
-  return processInboxFocusPhase1WithOptions_({
+  return processInboxFocusWithOptions_({
     dryRun: false,
     maxThreads: CONFIG.maxThreads
   });
 }
 
-function processInboxFocusPhase1WithOptions_(options) {
+function processInboxFocusPhase2() {
+  return processInboxFocusWithOptions_({
+    dryRun: CONFIG.dryRun,
+    maxThreads: CONFIG.maxThreads
+  });
+}
+
+function processInboxFocusPhase2DryRun() {
+  return processInboxFocusWithOptions_({
+    dryRun: true,
+    maxThreads: CONFIG.maxThreads
+  });
+}
+
+function processInboxFocusPhase2Live() {
+  return processInboxFocusWithOptions_({
+    dryRun: false,
+    maxThreads: CONFIG.maxThreads
+  });
+}
+
+function processInboxFocusWithOptions_(options) {
   const threads = GmailApp.search(CONFIG.query, 0, options.maxThreads || CONFIG.maxThreads);
   const logRows = [];
   const previousDryRun = CONFIG.dryRun;

@@ -23,5 +23,8 @@
 ## Principles
 - personal and manual labels override automation
 - important labels stay visible
+- workflow labels shape triage priority
 - commercial labels are usually archived after application
 - ambiguous items should be reviewable, not hidden blindly
+- structural labels describe what the mail is
+- workflow labels describe what the human should do with it

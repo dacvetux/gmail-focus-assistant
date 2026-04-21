@@ -3,49 +3,76 @@ function classifyThread_(thread) {
   const lastMessage = thread.getMessages()[thread.getMessageCount() - 1];
   const from = ((lastMessage && lastMessage.getFrom()) || '').toLowerCase();
   const subject = ((lastMessage && lastMessage.getSubject()) || '').toLowerCase();
-  const haystack = `${from} ${subject}`;
+  const snippet = ((lastMessage && lastMessage.getPlainBody()) || '').slice(0, 2000).toLowerCase();
+  const haystack = `${from}\n${subject}\n${snippet}`;
 
   if (hasAnyLabel_(labels, CONFIG.preserveLabels) || hasAnyLabel_(labels, CONFIG.preserveSystemLabels)) {
-    return { action: 'preserve', reason: 'preserve label present' };
+    return buildDecision_('preserve', null, false, 'preserve label present', null);
   }
 
   if (matchesAny_(haystack, CONFIG.financePatterns)) {
-    return { action: 'label', label: CONFIG.labels.importantFinance, archive: false, reason: 'finance pattern' };
+    return buildDecision_('label', CONFIG.labels.importantFinance, false, 'finance pattern', CONFIG.labels.notification);
   }
 
   if (matchesAny_(haystack, CONFIG.shippingPatterns)) {
-    return { action: 'label', label: CONFIG.labels.importantShipping, archive: false, reason: 'shipping pattern' };
+    return buildDecision_('label', CONFIG.labels.importantShipping, false, 'shipping pattern', CONFIG.labels.notification);
   }
 
   if (matchesAny_(haystack, CONFIG.calendarPatterns)) {
-    return { action: 'label', label: CONFIG.labels.importantCalendar, archive: false, reason: 'calendar pattern' };
+    return buildDecision_('label', CONFIG.labels.importantCalendar, false, 'calendar pattern', CONFIG.labels.toRespond);
   }
 
   if (matchesAny_(haystack, CONFIG.opportunityPatterns)) {
-    return { action: 'label', label: CONFIG.labels.importantOpportunities, archive: false, reason: 'opportunity pattern' };
+    return buildDecision_('label', CONFIG.labels.importantOpportunities, false, 'opportunity pattern', CONFIG.labels.fyi);
   }
 
   if (containsAny_(haystack, CONFIG.neverArchiveSenders)) {
-    return { action: 'label', label: CONFIG.labels.importantServices, archive: false, reason: 'important sender/domain' };
+    return buildDecision_('label', CONFIG.labels.importantServices, false, 'important sender/domain', inferWorkflowLabel_(haystack));
   }
 
   if (matchesAny_(haystack, CONFIG.newsletterPatterns)) {
-    return { action: 'label', label: CONFIG.labels.commercialNewsletters, archive: true, reason: 'newsletter pattern' };
+    return buildDecision_('label', CONFIG.labels.commercialNewsletters, true, 'newsletter pattern', null);
   }
 
   if (matchesAny_(haystack, CONFIG.adPatterns)) {
-    return { action: 'label', label: CONFIG.labels.commercialAds, archive: true, reason: 'ad pattern' };
+    return buildDecision_('label', CONFIG.labels.commercialAds, true, 'ad pattern', null);
   }
 
   if (matchesAny_(haystack, CONFIG.campaignPatterns)) {
-    return { action: 'label', label: CONFIG.labels.commercialCampaigns, archive: true, reason: 'campaign pattern' };
+    return buildDecision_('label', CONFIG.labels.commercialCampaigns, true, 'campaign pattern', null);
   }
 
   if (labels.includes('CATEGORY_PROMOTIONS')) {
-    return { action: 'label', label: CONFIG.labels.commercialAds, archive: true, reason: 'gmail promotions category fallback' };
+    return buildDecision_('label', CONFIG.labels.commercialAds, true, 'gmail promotions category fallback', null);
   }
 
-  return { action: 'label', label: CONFIG.labels.review, archive: false, reason: 'no confident rule match' };
+  return buildDecision_('label', CONFIG.labels.review, false, 'no confident rule match', inferWorkflowLabel_(haystack) || CONFIG.labels.fyi);
+}
+
+function inferWorkflowLabel_(haystack) {
+  if (matchesAny_(haystack, CONFIG.responsePatterns)) {
+    return CONFIG.labels.toRespond;
+  }
+
+  if (matchesAny_(haystack, CONFIG.notificationPatterns)) {
+    return CONFIG.labels.notification;
+  }
+
+  if (matchesAny_(haystack, CONFIG.fyiPatterns)) {
+    return CONFIG.labels.fyi;
+  }
+
+  return null;
+}
+
+function buildDecision_(action, label, archive, reason, workflowLabel) {
+  return {
+    action: action,
+    label: label,
+    archive: archive,
+    reason: reason,
+    workflowLabel: workflowLabel || null
+  };
 }
 
 function matchesAny_(text, patterns) {

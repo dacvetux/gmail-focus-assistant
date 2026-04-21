@@ -9,8 +9,11 @@ Status: implemented first working version on 2026-04-21
 - log decisions for review and tuning
 
 ## Phase 2, create a priority system
+Status: implemented first working version on 2026-04-21
 - add labels for action, FYI, notifications, important services, finance, shipping, calendar, opportunities, and ambiguous review
 - separate see-now from see-later mail
+- infer workflow labels from message content
+- apply structural and workflow labels together
 
 ## Phase 3, safe daily briefing
 - morning digest of important new mail
