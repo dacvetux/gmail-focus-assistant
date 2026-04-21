@@ -32,13 +32,18 @@ const CONFIG = {
   ],
   forceReviewSenders: [
     'newsletters-noreply@linkedin.com',
-    'developers.google.com'
+    'developers.google.com',
+    'googledev-noreply@google.com'
   ],
   forceShippingSenders: [
     'post.at',
     'meinesendung@post.at',
     'amazon.de',
     'notice.aliexpress.com'
+  ],
+  forceCalendarSenders: [
+    'alenka.iskra@gmail.com',
+    'sporocanje02@lopolis.si'
   ],
   labels: {
     toRespond: '1: to respond',
@@ -142,8 +147,6 @@ const CONFIG = {
     'nlb.si',
     'paypal.com',
     'github.com',
-    'google.com',
-    'gmail.com',
     'qmedis.eu'
   ],
   financePatterns: [
@@ -177,7 +180,10 @@ const CONFIG = {
     /declined:/i,
     /tentative:/i,
     /calendar invite/i,
-    /meeting update/i
+    /meeting update/i,
+    /povabilo/i,
+    /dogodki/i,
+    /prijava na predmete/i
   ],
   opportunityPatterns: [
     /job alert/i,
@@ -198,6 +204,11 @@ const CONFIG = {
     /candidate/i,
     /role/i,
     /position/i
+  ],
+  opportunityFyiSenders: [
+    'jobs@mail.xing.com',
+    'jobalerts-noreply@linkedin.com',
+    'news@email.experteer.com'
   ],
   newsletterPatterns: [
     /substack/i,

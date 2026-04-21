@@ -89,15 +89,16 @@ Core intent:
 - documented deployment and first-run checklist
 - reviewed first dry-run results and applied a major false-positive tuning pass
 - applied a second tuning pass for shipping overrides, opportunity invites, and remaining commercial clutter
+- applied a final light tuning pass plus Phase 3 digest refinement
 
 ## Immediate next steps
 
 1. Set `CONFIG.logSpreadsheetId` in the deployed Apps Script project
 2. rerun real Apps Script dry-run validation for Phases 1 and 2 after the 2026-04-22 tuning pass
 3. review remaining sender and workflow false positives from DecisionLog output after the second tuning pass
-4. validate the first digest output from Phase 3
-5. improve digest ranking and section selection
-6. decide which labels should be visible in the Gmail sidebar by default
+4. validate the refined digest output from Phase 3
+5. decide which labels should be visible in the Gmail sidebar by default
+6. decide whether any remaining review-bucket senders should get special-case handling
 
 ## Open questions
 

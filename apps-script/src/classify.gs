@@ -18,6 +18,10 @@ function classifyThread_(thread) {
     return buildDecision_('label', CONFIG.labels.importantServices, false, 'forced important sender override', inferWorkflowLabel_(workflowHaystack) || CONFIG.labels.notification);
   }
 
+  if (containsAny_(subjectHaystack, CONFIG.forceCalendarSenders) || matchesAny_(subjectHaystack, CONFIG.calendarPatterns)) {
+    return buildDecision_('label', CONFIG.labels.importantCalendar, false, containsAny_(subjectHaystack, CONFIG.forceCalendarSenders) ? 'forced calendar sender override' : 'calendar pattern', CONFIG.labels.toRespond);
+  }
+
   if (containsAny_(subjectHaystack, CONFIG.forceShippingSenders) || matchesAny_(subjectHaystack, CONFIG.shippingPatterns)) {
     return buildDecision_('label', CONFIG.labels.importantShipping, false, containsAny_(subjectHaystack, CONFIG.forceShippingSenders) ? 'forced shipping sender override' : 'shipping pattern', CONFIG.labels.notification);
   }
@@ -30,16 +34,12 @@ function classifyThread_(thread) {
     return buildDecision_('label', CONFIG.labels.importantFinance, false, 'finance pattern', CONFIG.labels.notification);
   }
 
-  if (matchesAny_(subjectHaystack, CONFIG.opportunityResponsePatterns) || isOpportunitySender_(from)) {
-    return buildDecision_('label', CONFIG.labels.importantOpportunities, false, 'opportunity pattern', CONFIG.labels.toRespond);
+  if (matchesAny_(subjectHaystack, CONFIG.opportunityResponsePatterns)) {
+    return buildDecision_('label', CONFIG.labels.importantOpportunities, false, 'opportunity response pattern', CONFIG.labels.toRespond);
   }
 
-  if (matchesAny_(subjectHaystack, CONFIG.calendarPatterns)) {
-    return buildDecision_('label', CONFIG.labels.importantCalendar, false, 'calendar pattern', CONFIG.labels.toRespond);
-  }
-
-  if (matchesAny_(subjectHaystack, CONFIG.opportunityPatterns)) {
-    return buildDecision_('label', CONFIG.labels.importantOpportunities, false, 'opportunity pattern', CONFIG.labels.fyi);
+  if (isOpportunitySender_(from) || matchesAny_(subjectHaystack, CONFIG.opportunityPatterns)) {
+    return buildDecision_('label', CONFIG.labels.importantOpportunities, false, 'opportunity pattern', inferOpportunityWorkflowLabel_(from));
   }
 
   if (containsAny_(subjectHaystack, CONFIG.neverArchiveSenders)) {
@@ -79,6 +79,14 @@ function inferWorkflowLabel_(haystack) {
   }
 
   return null;
+}
+
+function inferOpportunityWorkflowLabel_(from) {
+  if (containsAny_(from, CONFIG.opportunityFyiSenders)) {
+    return CONFIG.labels.fyi;
+  }
+
+  return CONFIG.labels.toRespond;
 }
 
 function classifyForcedCommercial_(subjectHaystack) {
