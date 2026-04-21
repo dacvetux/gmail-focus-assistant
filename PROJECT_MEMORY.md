@@ -31,6 +31,8 @@ Core intent:
 - `docs/phase-2.md`
 - `docs/phase-3.md`
 - `docs/testing-phase-1.md`
+- `docs/deployment.md`
+- `docs/first-run-checklist.md`
 - `docs/implementation-notes.md`
 - `apps-script/` starter structure
 
@@ -83,14 +85,17 @@ Core intent:
 - documented workflow-priority label model
 - added validation helpers and false-positive tuning controls
 - started Phase 3 daily briefing implementation
+- deployed the Apps Script project with clasp
+- documented deployment and first-run checklist
 
 ## Immediate next steps
 
-1. Run real Apps Script dry-run validation for Phases 1 and 2
-2. tune sender and workflow false positives from DecisionLog output
-3. validate the first digest output from Phase 3
-4. improve digest ranking and section selection
-5. decide which labels should be visible in the Gmail sidebar by default
+1. Set `CONFIG.logSpreadsheetId` in the deployed Apps Script project
+2. Run real Apps Script dry-run validation for Phases 1 and 2
+3. tune sender and workflow false positives from DecisionLog output
+4. validate the first digest output from Phase 3
+5. improve digest ranking and section selection
+6. decide which labels should be visible in the Gmail sidebar by default
 
 ## Open questions
 

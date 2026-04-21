@@ -49,6 +49,8 @@ Phases 1 and 2 now have first working rules-first implementations plus safer rol
 - `docs/phase-2.md`
 - `docs/phase-3.md`
 - `docs/testing-phase-1.md`
+- `docs/deployment.md`
+- `docs/first-run-checklist.md`
 - `docs/implementation-notes.md`
 - `PROJECT_MEMORY.md`
 
