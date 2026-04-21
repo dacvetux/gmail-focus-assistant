@@ -20,10 +20,25 @@ const CONFIG = {
     'tldrnewsletter.com',
     'members.netflix.com',
     'bandsintown.com',
-    'ticketmaster.'
+    'ticketmaster.',
+    'intotheam.com',
+    'milkandhoneyprague.club',
+    'news.hervis.si',
+    'mail.loyaltyteam.com',
+    'news.euroleague.net',
+    'maap.cc',
+    'zdravo.si',
+    'ml.spartan.com'
   ],
   forceReviewSenders: [
-    'newsletters-noreply@linkedin.com'
+    'newsletters-noreply@linkedin.com',
+    'developers.google.com'
+  ],
+  forceShippingSenders: [
+    'post.at',
+    'meinesendung@post.at',
+    'amazon.de',
+    'notice.aliexpress.com'
   ],
   labels: {
     toRespond: '1: to respond',
@@ -123,7 +138,6 @@ const CONFIG = {
   ],
   neverArchiveSenders: [
     'incident.io',
-    'post.at',
     'ezdrav.si',
     'nlb.si',
     'paypal.com',
@@ -151,7 +165,11 @@ const CONFIG = {
     /parcel/i,
     /package .* delivery/i,
     /in your country\/region/i,
-    /delivery update/i
+    /delivery update/i,
+    /delivery attempted/i,
+    /in zustellung/i,
+    /sendung/i,
+    /paket/i
   ],
   calendarPatterns: [
     /invitation:/i,
@@ -159,8 +177,7 @@ const CONFIG = {
     /declined:/i,
     /tentative:/i,
     /calendar invite/i,
-    /meeting update/i,
-    /bewerbungsgespräch/i
+    /meeting update/i
   ],
   opportunityPatterns: [
     /job alert/i,
@@ -172,8 +189,15 @@ const CONFIG = {
     /recruiting/i,
     /career step/i,
     /position/i,
-    /bewerbungsgespräch/i,
     /companies are looking for candidates/i
+  ],
+  opportunityResponsePatterns: [
+    /bewerbungsgespräch/i,
+    /interview/i,
+    /application/i,
+    /candidate/i,
+    /role/i,
+    /position/i
   ],
   newsletterPatterns: [
     /substack/i,
@@ -199,7 +223,8 @@ const CONFIG = {
     /free shipping/i,
     /wishlist is now on sale/i,
     /last chance/i,
-    /clearance/i
+    /clearance/i,
+    /popust/i
   ],
   campaignPatterns: [
     /bandsintown/i,
@@ -212,6 +237,8 @@ const CONFIG = {
     /new single/i,
     /screening/i,
     /tickets? available/i,
-    /live video/i
+    /live video/i,
+    /races are filling up/i,
+    /you'?re missing the start/i
   ]
 };

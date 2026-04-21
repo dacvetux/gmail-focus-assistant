@@ -18,6 +18,10 @@ function classifyThread_(thread) {
     return buildDecision_('label', CONFIG.labels.importantServices, false, 'forced important sender override', inferWorkflowLabel_(workflowHaystack) || CONFIG.labels.notification);
   }
 
+  if (containsAny_(subjectHaystack, CONFIG.forceShippingSenders) || matchesAny_(subjectHaystack, CONFIG.shippingPatterns)) {
+    return buildDecision_('label', CONFIG.labels.importantShipping, false, containsAny_(subjectHaystack, CONFIG.forceShippingSenders) ? 'forced shipping sender override' : 'shipping pattern', CONFIG.labels.notification);
+  }
+
   if (containsAny_(subjectHaystack, CONFIG.forceCommercialSenders)) {
     return classifyForcedCommercial_(subjectHaystack);
   }
@@ -26,15 +30,15 @@ function classifyThread_(thread) {
     return buildDecision_('label', CONFIG.labels.importantFinance, false, 'finance pattern', CONFIG.labels.notification);
   }
 
-  if (matchesAny_(subjectHaystack, CONFIG.shippingPatterns)) {
-    return buildDecision_('label', CONFIG.labels.importantShipping, false, 'shipping pattern', CONFIG.labels.notification);
+  if (matchesAny_(subjectHaystack, CONFIG.opportunityResponsePatterns) || isOpportunitySender_(from)) {
+    return buildDecision_('label', CONFIG.labels.importantOpportunities, false, 'opportunity pattern', CONFIG.labels.toRespond);
   }
 
   if (matchesAny_(subjectHaystack, CONFIG.calendarPatterns)) {
     return buildDecision_('label', CONFIG.labels.importantCalendar, false, 'calendar pattern', CONFIG.labels.toRespond);
   }
 
-  if (matchesAny_(subjectHaystack, CONFIG.opportunityPatterns) || isOpportunitySender_(from)) {
+  if (matchesAny_(subjectHaystack, CONFIG.opportunityPatterns)) {
     return buildDecision_('label', CONFIG.labels.importantOpportunities, false, 'opportunity pattern', CONFIG.labels.fyi);
   }
 
@@ -94,10 +98,10 @@ function isOpportunitySender_(from) {
     'jobs@mail.xing.com',
     'jobalerts-noreply@linkedin.com',
     'news@email.experteer.com',
-    'news@email.experteer.com',
     'experteer',
     'recruit',
-    'headhunter'
+    'headhunter',
+    'a1.at'
   ].some(snippet => from.includes(snippet));
 }
 
