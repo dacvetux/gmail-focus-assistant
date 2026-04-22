@@ -35,9 +35,9 @@ function classifyWithAI_(thread) {
     const raw = callGeminiJson_(prompt);
     const parsed = JSON.parse(raw);
     const structuralLabel = sanitizeAiStructuralLabel_(parsed.structuralLabel);
-    const workflowLabel = sanitizeAiWorkflowLabel_(parsed.workflowLabel);
+    const workflowLabel = normalizeAiWorkflowLabel_(structuralLabel, parsed.workflowLabel);
     const archive = Boolean(parsed.archive) && isCommercialLabel_(structuralLabel);
-    const confidence = typeof parsed.confidence === 'number' ? parsed.confidence : null;
+    const confidence = normalizeAiConfidence_(parsed.confidence);
     const reason = parsed.reason ? String(parsed.reason).slice(0, 240) : 'ai classification';
 
     return {
@@ -117,6 +117,25 @@ function sanitizeAiStructuralLabel_(value) {
 function sanitizeAiWorkflowLabel_(value) {
   const allowed = [CONFIG.labels.toRespond, CONFIG.labels.fyi, CONFIG.labels.notification];
   return allowed.includes(value) ? value : CONFIG.labels.fyi;
+}
+
+function normalizeAiWorkflowLabel_(structuralLabel, value) {
+  if (isCommercialLabel_(structuralLabel)) {
+    return null;
+  }
+
+  return sanitizeAiWorkflowLabel_(value);
+}
+
+function normalizeAiConfidence_(value) {
+  const confidence = Number(value);
+  if (Number.isNaN(confidence)) {
+    return null;
+  }
+
+  if (confidence < 0) return 0;
+  if (confidence > 1) return 1;
+  return confidence;
 }
 
 function isCommercialLabel_(label) {

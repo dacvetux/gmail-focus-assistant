@@ -12,6 +12,7 @@ Phase 4 is intentionally narrow.
 - AI output is logged
 - AI suggestions must map back into the existing structural and workflow labels
 - archive is only allowed for clearly commercial results
+- commercial AI results should normally not receive workflow labels
 - if AI fails or is uncertain, the thread stays `Review/Ambiguous`
 - start in dry-run first
 
@@ -24,6 +25,7 @@ It:
 - asks Gemini for a JSON classification
 - constrains output to existing labels only
 - records AI confidence in `DecisionLog`
+- suppresses workflow labels for commercial classifications
 - limits how many ambiguous threads can reach AI in one run
 
 ## Entry points

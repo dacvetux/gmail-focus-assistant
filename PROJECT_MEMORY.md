@@ -99,6 +99,7 @@ Core intent:
 - pushed updated Apps Script code to the deployed project with clasp
 - started Phase 4 with a narrow Gemini-based classifier for ambiguous mail only
 - added AI confidence logging and dedicated Phase 4 dry-run/live entrypoints
+- tightened Phase 4 so AI-classified commercial mail no longer gets workflow labels by default
 
 ## Immediate next steps
 
