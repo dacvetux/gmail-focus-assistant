@@ -27,6 +27,18 @@ function generateDraftReplies_(options) {
     }
   });
 
+  if (!rows.length) {
+    rows.push([
+      new Date(),
+      options.dryRun ? 'dry-run' : 'live',
+      '',
+      '',
+      '',
+      'No candidate threads found for draft generation.',
+      'no'
+    ]);
+  }
+
   flushDraftLog_(rows);
 
   return {
@@ -61,9 +73,8 @@ function buildDraftForThread_(thread, options) {
     const normalizedBody = normalizeDraftBody_(draftBody);
 
     if (!options.dryRun) {
-      GmailApp.createDraft(thread.getMessages()[0].getFrom(), `Re: ${stripRePrefix_(subject)}`, normalizedBody, {
-        threadId: thread.getId()
-      });
+      const replyTo = extractReplyAddress_(lastMessage);
+      GmailApp.createDraft(replyTo, `Re: ${stripRePrefix_(subject)}`, normalizedBody);
     }
 
     return {
@@ -139,6 +150,14 @@ function normalizeDraftBody_(text) {
 
 function stripRePrefix_(subject) {
   return String(subject || '').replace(/^\s*re:\s*/i, '').trim() || '(no subject)';
+}
+
+function extractReplyAddress_(message) {
+  const replyTo = (message && (message.getReplyTo && message.getReplyTo())) || '';
+  const from = (message && message.getFrom && message.getFrom()) || '';
+  const source = replyTo || from;
+  const match = source.match(/<([^>]+)>/);
+  return match ? match[1] : source.replace(/^[^\s<]+\s*/, '').trim();
 }
 
 function getOrCreateDraftLogSheet_() {

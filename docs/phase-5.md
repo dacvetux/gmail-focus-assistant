@@ -23,6 +23,7 @@ It:
 - sends the latest message context to Gemini
 - generates a plain-text reply draft
 - logs the generated draft text
+- logs an explicit no-candidates row when nothing matched
 - can run in dry-run mode before creating Gmail drafts
 
 ## Entry points
