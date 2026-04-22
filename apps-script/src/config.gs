@@ -317,14 +317,23 @@ const CONFIG = {
   draftExcludedSenders: [
     'jobalerts-noreply@linkedin.com',
     'jobs@mail.xing.com',
-    'news@email.experteer.com'
+    'news@email.experteer.com',
+    'm1.email.samsung.com',
+    'ifttt.com',
+    'ollama.com',
+    'maribox.si'
   ],
   draftExcludedSubjectPatterns: [
     /job alert/i,
     /job-e?mpfehl/i,
     /companies are looking for candidates/i,
     /headhunters want to see your profile/i,
-    /great companies are looking for candidates/i
+    /great companies are looking for candidates/i,
+    /free trial/i,
+    /voucher/i,
+    /premieri/i,
+    /new model/i,
+    /product update/i
   ],
   draftRetryableStatusCodes: [429, 500, 503]
 };

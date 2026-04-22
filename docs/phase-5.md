@@ -35,8 +35,8 @@ It:
 ## Current tradeoffs
 
 - uses only bounded context from the latest message, not full-thread reasoning
-- candidate selection is heuristic and may still include some threads that are informational rather than truly reply-worthy
-- current exclusions intentionally avoid many bulk opportunity digests because those are usually poor reply candidates
+- candidate selection is heuristic and may still miss some useful reply candidates while staying conservative
+- current exclusions intentionally avoid many bulk opportunity digests and known non-human promotional senders because those are usually poor reply candidates
 - does not yet tailor tone by sender relationship
 - draft quality will need review and tuning
 

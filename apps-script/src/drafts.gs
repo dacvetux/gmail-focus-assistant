@@ -67,30 +67,47 @@ function prioritizeDraftCandidateThreads_(threads) {
 
 function getDraftCandidateScore_(thread) {
   const labels = thread.getLabels().map(label => label.getName());
-  const decision = classifyThread_(thread);
   const managedLabels = new Set(labels);
+  const decision = classifyThread_(thread);
   const lastMessage = thread.getMessages()[thread.getMessageCount() - 1];
-  const haystack = `${(lastMessage && lastMessage.getFrom()) || ''}\n${(lastMessage && lastMessage.getSubject()) || ''}`.toLowerCase();
+  const from = ((lastMessage && lastMessage.getFrom()) || '').toLowerCase();
+  const subject = ((lastMessage && lastMessage.getSubject()) || '').toLowerCase();
+  const haystack = `${from}\n${subject}`;
   let score = 0;
 
   if (containsAny_(haystack, CONFIG.draftExcludedSenders) || matchesAny_(haystack, CONFIG.draftExcludedSubjectPatterns)) {
     return -100;
   }
 
-  if (managedLabels.has(CONFIG.labels.toRespond)) score += 10;
-  if (managedLabels.has(CONFIG.labels.importantCalendar)) score += 5;
-  if (managedLabels.has(CONFIG.labels.importantServices)) score += 4;
-  if (managedLabels.has(CONFIG.labels.review)) score += 2;
-  if (managedLabels.has(CONFIG.labels.importantOpportunities)) score -= 2;
+  if (isCommercialLabel_(decision.label)) {
+    return -100;
+  }
 
-  if (decision.workflowLabel === CONFIG.labels.toRespond) score += 8;
-  if (decision.label === CONFIG.labels.importantCalendar) score += 5;
-  if (decision.label === CONFIG.labels.importantServices) score += 4;
+  if (decision.workflowLabel === CONFIG.labels.notification) {
+    return -20;
+  }
+
+  const looksHumanish = !/no-reply|noreply|newsletter|notifications?/.test(from);
+  const explicitlyActionable = managedLabels.has(CONFIG.labels.toRespond) || decision.workflowLabel === CONFIG.labels.toRespond;
+  const importantActionable = decision.label === CONFIG.labels.importantCalendar || decision.label === CONFIG.labels.importantServices;
+
+  if (!explicitlyActionable && !importantActionable && !looksHumanish) {
+    return -50;
+  }
+
+  if (managedLabels.has(CONFIG.labels.toRespond)) score += 12;
+  if (managedLabels.has(CONFIG.labels.importantCalendar)) score += 6;
+  if (managedLabels.has(CONFIG.labels.importantServices)) score += 5;
+  if (managedLabels.has(CONFIG.labels.review)) score += 1;
+
+  if (decision.workflowLabel === CONFIG.labels.toRespond) score += 10;
+  if (decision.label === CONFIG.labels.importantCalendar) score += 6;
+  if (decision.label === CONFIG.labels.importantServices) score += 5;
   if (decision.label === CONFIG.labels.review) score += 1;
-  if (decision.label === CONFIG.labels.importantOpportunities) score -= 3;
+  if (decision.label === CONFIG.labels.importantOpportunities) score -= 5;
 
-  if (isCommercialLabel_(decision.label)) score -= 100;
-  if (decision.workflowLabel === CONFIG.labels.notification) score -= 4;
+  if (looksHumanish) score += 4;
+  if (/reply|respond|confirm|available|consent|approve|meet|schedule/.test(subject)) score += 4;
 
   return score;
 }
