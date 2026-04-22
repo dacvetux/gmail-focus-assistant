@@ -6,7 +6,7 @@ const CONFIG = {
   enableAiForReview: true,
   logSpreadsheetId: '1F2ZNpYVwNqa0-pOuVavJDEf6LahtLNryyoaXYA13EwA',
   digestRecipient: '',
-  debugSampleThreads: [],
+  debugSampleThreads: ['19db437c601fdf1b'],
   debugSenderIncludes: [],
   debugSubjectIncludes: [],
   forceImportantSenders: [
