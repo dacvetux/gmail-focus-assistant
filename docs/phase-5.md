@@ -22,7 +22,7 @@ It:
 - searches a recent inbox pool rather than relying on a single label match
 - prioritizes likely reply candidates using labels plus current classifier output
 - sends the latest message context to Gemini
-- can fall back across multiple draft-generation models on transient failures
+- uses a newer flash-first draft model stack with fallback to lighter flash models on transient failures
 - generates a plain-text reply draft
 - logs the generated draft text
 - logs an explicit no-candidates row when nothing matched
@@ -41,6 +41,7 @@ It:
 - does not yet tailor tone by sender relationship
 - draft quality will need review and tuning
 - model availability can still affect results, though fallback reduces single-model fragility
+- preview model behavior may shift over time, so Phase 7 should revisit the chosen draft stack periodically
 
 ## What to validate next
 
