@@ -16,6 +16,12 @@ Phase 4 is intentionally narrow.
 - if AI fails or is uncertain, the thread stays `Review/Ambiguous`
 - start in dry-run first
 
+## Status
+
+Implemented and validated for v1 on 2026-04-22.
+
+The current operating posture is intentionally narrow and conservative.
+
 ## First implementation
 
 The first working version is log-first and conservative.
@@ -52,9 +58,16 @@ AI can suggest:
 - prompt quality matters a lot for borderline newsletters versus genuinely useful FYI mail
 - live mode is still only as good as the surrounding review and logging discipline
 
-## What to validate next
+## Validation result
 
-- whether AI reduces the review bucket meaningfully
-- whether it incorrectly upgrades newsletters into important buckets
-- whether archive suggestions are conservative enough
-- whether the logged reasons are actually useful for prompt tuning
+The first validation pass showed that:
+- AI correctly reclassified obvious commercial mail out of the review bucket
+- commercial AI results were cleaned up so they no longer carry workflow labels by default
+- at least one previously ambiguous administrative message was upgraded into a sensible actionable important bucket
+- no obvious dangerous upgrades were observed in the reviewed sample
+
+## Remaining caveats
+
+- confidence is still model-reported, not calibrated
+- prompt tuning may still improve borderline newsletter versus useful FYI decisions
+- future refinement belongs in Phase 7 continuous tuning rather than blocking Phase 4 closure

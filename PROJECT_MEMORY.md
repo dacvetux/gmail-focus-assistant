@@ -44,7 +44,7 @@ Core intent:
 - phase 2 workflow priority labeling implemented
 - validation and tuning controls added for dry-run review
 - phase 3 digest generation implemented and refined from live log review
-- phase 4 first safe AI review implementation added for ambiguous mail
+- phase 4 selective AI review implemented and validated for ambiguous mail
 - main phase entrypoints exist
 
 ## Planned phases
@@ -100,15 +100,14 @@ Core intent:
 - started Phase 4 with a narrow Gemini-based classifier for ambiguous mail only
 - added AI confidence logging and dedicated Phase 4 dry-run/live entrypoints
 - tightened Phase 4 so AI-classified commercial mail no longer gets workflow labels by default
+- validated Phase 4 output and accepted it as complete for v1 with a narrow operational scope
 
 ## Immediate next steps
 
-1. set `GEMINI_API_KEY` in Apps Script Script Properties for Phase 4 testing
-2. run `processInboxFocusPhase4AiReviewDryRun()` on a limited sample
-3. review AI suggestions, confidence, and false upgrades in `DecisionLog`
-4. do one more LinkedIn/newsletter tuning pass if AI still inherits too much review noise
-5. decide which labels should be visible in the Gmail sidebar by default
-6. decide whether Phase 4 should remain log-only for a while before broader live use
+1. begin Phase 5 draft assistant design in a narrow draft-only mode
+2. decide which labels should be visible in the Gmail sidebar by default
+3. decide whether any opportunity or review flows should trigger draft suggestions automatically or only on demand
+4. keep Phase 4 improvements in the Phase 7 tuning bucket rather than reopening it now
 
 ## Open questions
 

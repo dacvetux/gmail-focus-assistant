@@ -44,10 +44,11 @@ See `docs/roadmap.md` for the phased build direction.
 
 ## Current implementation
 
-Phases 1 and 2 now have first working rules-first implementations plus safer rollout controls, and Phase 3 has an initial digest implementation. See:
+Phases 1 through 4 now have working v1 implementations, with Phase 4 kept intentionally narrow and conservative. See:
 - `docs/phase-1.md`
 - `docs/phase-2.md`
 - `docs/phase-3.md`
+- `docs/phase-4.md`
 - `docs/testing-phase-1.md`
 - `docs/deployment.md`
 - `docs/first-run-checklist.md`
@@ -60,4 +61,4 @@ MIT, see `LICENSE`.
 
 ## Status
 
-Scaffold created. Architecture and implementation docs are included. Code is starter-level and intended to be expanded phase by phase.
+Phases 1 through 4 are implemented in a usable v1 form. The current focus can move to Phase 5, draft assistance, while further refinements continue under Phase 7 tuning.
