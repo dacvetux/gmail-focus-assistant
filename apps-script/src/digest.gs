@@ -16,21 +16,16 @@ function generateEveningDigest() {
 
 function generateDigest_(options) {
   const mode = options.dryRun ? 'dry-run' : 'live';
-  const toRespond = GmailApp.search(`label:"${CONFIG.labels.toRespond}" ${options.query}`, 0, 20);
-  const notifications = GmailApp.search(`label:"${CONFIG.labels.notification}" ${options.query}`, 0, 20);
-  const shipping = GmailApp.search(`label:"${CONFIG.labels.importantShipping}" ${options.query}`, 0, 20);
-  const finance = GmailApp.search(`label:"${CONFIG.labels.importantFinance}" ${options.query}`, 0, 20);
-  const opportunities = GmailApp.search(`label:"${CONFIG.labels.importantOpportunities}" ${options.query}`, 0, 20);
-  const review = GmailApp.search(`label:"${CONFIG.labels.review}" ${options.query}`, 0, 20);
+  const sections = buildDigestSections_(options.query);
+  const renderedSections = [
+    renderDigestSection_('Needs response', sections.toRespond),
+    renderDigestSection_('Important notifications', sections.notifications),
+    renderDigestSection_('Opportunities', sections.opportunities),
+    renderDigestSection_('Review later', sections.review)
+  ];
 
-  const sections = [];
-  sections.push(renderDigestSection_('Needs response', prioritizeThreads_(toRespond)));
-  sections.push(renderDigestSection_('Important notifications', prioritizeThreads_(notifications.concat(shipping, finance))));
-  sections.push(renderDigestSection_('Opportunities', prioritizeThreads_(opportunities)));
-  sections.push(renderDigestSection_('Review later', prioritizeThreads_(review)));
-
-  const summary = sections.filter(Boolean).join('\n\n').trim() || 'No notable items.';
-  const itemCount = toRespond.length + notifications.length + shipping.length + finance.length + opportunities.length + review.length;
+  const summary = renderedSections.filter(Boolean).join('\n\n').trim() || 'No notable items.';
+  const itemCount = sections.toRespond.length + sections.notifications.length + sections.opportunities.length + sections.review.length;
 
   logDigestRun_(options.type, mode, summary, itemCount);
 
@@ -47,6 +42,59 @@ function generateDigest_(options) {
     mode: mode,
     itemCount: itemCount,
     summary: summary
+  };
+}
+
+function buildDigestSections_(query) {
+  const limit = CONFIG.digestSearchPool || 120;
+  const candidates = GmailApp.search(`${CONFIG.query} ${query}`, 0, limit);
+  const seen = new Set();
+  const sections = {
+    toRespond: [],
+    notifications: [],
+    opportunities: [],
+    review: []
+  };
+
+  candidates.forEach(thread => {
+    const decision = classifyThread_(thread);
+    if (decision.action !== 'label') return;
+
+    const id = thread.getId();
+    if (seen.has(id)) return;
+    seen.add(id);
+
+    if (decision.workflowLabel === CONFIG.labels.toRespond) {
+      sections.toRespond.push(thread);
+      return;
+    }
+
+    if (
+      decision.label === CONFIG.labels.importantShipping ||
+      decision.label === CONFIG.labels.importantFinance ||
+      decision.label === CONFIG.labels.importantServices ||
+      decision.label === CONFIG.labels.importantCalendar ||
+      decision.workflowLabel === CONFIG.labels.notification
+    ) {
+      sections.notifications.push(thread);
+      return;
+    }
+
+    if (decision.label === CONFIG.labels.importantOpportunities) {
+      sections.opportunities.push(thread);
+      return;
+    }
+
+    if (decision.label === CONFIG.labels.review) {
+      sections.review.push(thread);
+    }
+  });
+
+  return {
+    toRespond: prioritizeThreads_(sections.toRespond),
+    notifications: prioritizeThreads_(sections.notifications),
+    opportunities: prioritizeThreads_(sections.opportunities),
+    review: prioritizeThreads_(sections.review)
   };
 }
 
@@ -78,14 +126,26 @@ function getThreadSortKey_(thread) {
 function renderDigestSection_(title, threads) {
   if (!threads || !threads.length) return '';
 
-  const lines = threads.slice(0, 8).map(thread => {
+  const lines = threads.slice(0, CONFIG.digestThreadLimitPerSection || 8).map(thread => {
     const lastMessage = thread.getMessages()[thread.getMessageCount() - 1];
-    const from = (lastMessage && lastMessage.getFrom()) || 'Unknown sender';
+    const from = compactSender_((lastMessage && lastMessage.getFrom()) || 'Unknown sender');
     const subject = (lastMessage && lastMessage.getSubject()) || '(No subject)';
     return `- ${from}: ${subject}`;
   });
 
-  return `${title}\n${lines.join('\n')}`;
+  const hiddenCount = Math.max(0, threads.length - lines.length);
+  if (hiddenCount > 0) {
+    lines.push(`- … and ${hiddenCount} more`);
+  }
+
+  return `${title} (${threads.length})\n${lines.join('\n')}`;
+}
+
+function compactSender_(from) {
+  return from
+    .replace(/\s*<[^>]+>/, '')
+    .replace(/^"|"$/g, '')
+    .trim();
 }
 
 function capitalize_(value) {

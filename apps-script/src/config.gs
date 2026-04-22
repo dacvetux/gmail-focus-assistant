@@ -28,12 +28,24 @@ const CONFIG = {
     'news.euroleague.net',
     'maap.cc',
     'zdravo.si',
-    'ml.spartan.com'
+    'ml.spartan.com',
+    'booking.com',
+    'kompas-shop.si',
+    'news@mail.xing.com',
+    'karriere.at',
+    'uk-umg.com',
+    'drclark.si',
+    'mailchimpapp.com',
+    'kickstarter.com',
+    'notifications-noreply@linkedin.com',
+    'mailrobot@mail.xing.com'
   ],
   forceReviewSenders: [
     'newsletters-noreply@linkedin.com',
     'developers.google.com',
-    'googledev-noreply@google.com'
+    'googledev-noreply@google.com',
+    'ifttt.com',
+    'ollama.com'
   ],
   forceShippingSenders: [
     'post.at',
@@ -187,6 +199,9 @@ const CONFIG = {
   ],
   opportunityPatterns: [
     /job alert/i,
+    /job-e?mpfehl/i,
+    /apply to .* role/i,
+    /actively recruiting/i,
     /headhunter/i,
     /interview/i,
     /application/i,
@@ -195,6 +210,7 @@ const CONFIG = {
     /recruiting/i,
     /career step/i,
     /position/i,
+    /role\b/i,
     /companies are looking for candidates/i
   ],
   opportunityResponsePatterns: [
@@ -220,7 +236,14 @@ const CONFIG = {
     /reuters/i,
     /telecompaper/i,
     /economist/i,
-    /tee-mail/i
+    /tee-mail/i,
+    /project update/i,
+    /job-e?mpfehl/i,
+    /daily/i,
+    /academy/i,
+    /build better/i,
+    /your posts got .* impressions/i,
+    /birthday today/i
   ],
   adPatterns: [
     /sale/i,
@@ -235,6 +258,8 @@ const CONFIG = {
     /wishlist is now on sale/i,
     /last chance/i,
     /clearance/i,
+    /save up to/i,
+    /danes poštnine ni/i,
     /popust/i
   ],
   campaignPatterns: [
@@ -250,6 +275,11 @@ const CONFIG = {
     /tickets? available/i,
     /live video/i,
     /races are filling up/i,
-    /you'?re missing the start/i
-  ]
+    /you'?re missing the start/i,
+    /speaker/i,
+    /superbloom/i
+  ],
+  digestThreadLimitPerSection: 8,
+  digestLookbackDays: 3,
+  digestSearchPool: 120
 };

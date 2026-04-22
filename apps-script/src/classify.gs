@@ -39,7 +39,7 @@ function classifyThread_(thread) {
   }
 
   if (isOpportunitySender_(from) || matchesAny_(subjectHaystack, CONFIG.opportunityPatterns)) {
-    return buildDecision_('label', CONFIG.labels.importantOpportunities, false, 'opportunity pattern', inferOpportunityWorkflowLabel_(from));
+    return buildDecision_('label', CONFIG.labels.importantOpportunities, false, 'opportunity pattern', inferOpportunityWorkflowLabel_(from, subjectHaystack));
   }
 
   if (containsAny_(subjectHaystack, CONFIG.neverArchiveSenders)) {
@@ -81,7 +81,11 @@ function inferWorkflowLabel_(haystack) {
   return null;
 }
 
-function inferOpportunityWorkflowLabel_(from) {
+function inferOpportunityWorkflowLabel_(from, subjectHaystack) {
+  if (matchesAny_(subjectHaystack, CONFIG.opportunityResponsePatterns)) {
+    return CONFIG.labels.toRespond;
+  }
+
   if (containsAny_(from, CONFIG.opportunityFyiSenders)) {
     return CONFIG.labels.fyi;
   }
@@ -104,8 +108,10 @@ function classifyForcedCommercial_(subjectHaystack) {
 function isOpportunitySender_(from) {
   return [
     'jobs@mail.xing.com',
+    'jobs-noreply@linkedin.com',
     'jobalerts-noreply@linkedin.com',
     'news@email.experteer.com',
+    'job.karriere.at',
     'experteer',
     'recruit',
     'headhunter',
