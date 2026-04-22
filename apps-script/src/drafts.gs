@@ -118,6 +118,7 @@ function buildDraftForThread_(thread, options) {
   const subject = (lastMessage && lastMessage.getSubject()) || '';
   const subjectHaystack = `${from}\n${subject}`.toLowerCase();
   const body = ((lastMessage && lastMessage.getPlainBody()) || '').slice(0, CONFIG.draftMaxBodyChars || 4000);
+  const draftMode = getDraftGenerationMode_(thread);
 
   if (containsAny_(subjectHaystack, CONFIG.draftExcludedSenders) || matchesAny_(subjectHaystack, CONFIG.draftExcludedSubjectPatterns)) {
     return {
@@ -134,24 +135,11 @@ function buildDraftForThread_(thread, options) {
     };
   }
 
-  const prompt = [
-    CONFIG.draftInstructions,
-    '',
-    'Write a reply draft to the latest email in this thread only if a reply is genuinely appropriate.',
-    'Keep it concise unless the email clearly needs more detail.',
-    'If the sender is asking a question, answer only from the provided context.',
-    'If the thread looks like scheduling or coordination, propose a simple next step.',
-    'If no reply is genuinely needed, return exactly: NO_DRAFT.',
-    '',
-    `From: ${from}`,
-    `Subject: ${subject}`,
-    'Latest email body:',
-    body
-  ].join('\n');
+  const prompt = buildDraftPrompt_(from, subject, body, draftMode);
 
   try {
     const draftBody = callDraftModelText_(prompt).trim();
-    if (draftBody === 'NO_DRAFT') {
+    if (draftMode === 'optional' && draftBody === 'NO_DRAFT') {
       return {
         created: false,
         logRow: [
@@ -199,6 +187,50 @@ function buildDraftForThread_(thread, options) {
       ]
     };
   }
+}
+
+function buildDraftPrompt_(from, subject, body, draftMode) {
+  const lines = [
+    CONFIG.draftInstructions,
+    '',
+    'Keep it concise unless the email clearly needs more detail.',
+    'If the sender is asking a question, answer only from the provided context.',
+    'If the thread looks like scheduling or coordination, propose a simple next step.'
+  ];
+
+  if (draftMode === 'required') {
+    lines.push('A reply is clearly needed. Write the best draft reply now.');
+  } else {
+    lines.push('Write a reply draft to the latest email in this thread only if a reply is genuinely appropriate.');
+    lines.push('If no reply is genuinely needed, return exactly: NO_DRAFT.');
+  }
+
+  lines.push(
+    '',
+    `From: ${from}`,
+    `Subject: ${subject}`,
+    'Latest email body:',
+    body
+  );
+
+  return lines.join('\n');
+}
+
+function getDraftGenerationMode_(thread) {
+  const labels = thread.getLabels().map(label => label.getName());
+  const managedLabels = new Set(labels);
+  const decision = classifyThread_(thread);
+
+  if (
+    managedLabels.has(CONFIG.labels.toRespond) ||
+    decision.workflowLabel === CONFIG.labels.toRespond ||
+    (decision.label === CONFIG.labels.importantServices && decision.workflowLabel === CONFIG.labels.toRespond) ||
+    (decision.label === CONFIG.labels.importantCalendar && decision.workflowLabel === CONFIG.labels.toRespond)
+  ) {
+    return 'required';
+  }
+
+  return 'optional';
 }
 
 function callDraftModelText_(prompt) {

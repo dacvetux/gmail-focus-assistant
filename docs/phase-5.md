@@ -23,6 +23,8 @@ It:
 - prioritizes likely reply candidates using labels plus current classifier output
 - sends the latest message context to Gemini
 - uses a newer flash-first draft model stack with fallback to lighter flash models on transient failures
+- force-generates drafts for high-confidence actionable threads
+- allows `NO_DRAFT` only for more borderline candidates
 - generates a plain-text reply draft
 - logs the generated draft text
 - logs an explicit no-candidates row when nothing matched
