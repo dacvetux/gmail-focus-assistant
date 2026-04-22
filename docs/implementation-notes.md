@@ -124,3 +124,20 @@ Started the first draft-only reply assistant.
 
 ### Current tradeoff
 - first version uses only bounded latest-message context, so some replies may be too generic or miss longer-thread nuance
+
+## 2026-04-22 - Phase 5 tuning passes
+
+Phase 5 required several same-day tuning passes after dry-run validation.
+
+### Added or changed
+- explicit no-candidate logging in `DraftLog`
+- broader then later stricter candidate gating
+- sender and subject exclusions for job alerts, promos, and other poor draft targets
+- retry and fallback handling for transient Gemini draft-model failures
+- newer flash/lite draft model stack
+- forced draft generation for strongly actionable threads
+- final strict gate limited to strongly actionable threads only
+- debug-targeted dry-run entrypoint for validating one known good thread without reopening the broad gate
+
+### Current tradeoff
+- Phase 5 structure is now much safer and more predictable, but it still needs one successful end-to-end validation on a real actionable thread before it should be treated as stable

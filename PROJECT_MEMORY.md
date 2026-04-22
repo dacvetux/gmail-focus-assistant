@@ -103,13 +103,22 @@ Core intent:
 - added AI confidence logging and dedicated Phase 4 dry-run/live entrypoints
 - tightened Phase 4 so AI-classified commercial mail no longer gets workflow labels by default
 - validated Phase 4 output and accepted it as complete for v1 with a narrow operational scope
+- documented Phase 4 completion and pushed that state to GitHub
+- started Phase 5 as a draft-only assistant with `DraftLog` logging and Gemini-backed draft generation
+- set `CONFIG.logSpreadsheetId` to the main Gmail Focus Assistant log sheet in code
+- iteratively tightened Phase 5 after dry-run logs showed noisy bulk newsletters, promos, and job alerts entering the draft flow
+- added sender and subject exclusions, stricter actionable gating, retry/fallback model handling, and a newer flash/lite model stack for drafts
+- simplified Phase 5 to a strict gate that only admits strongly actionable threads
+- added a debug dry-run path that can bypass the strict gate for explicitly filtered test threads
+- set a Phase 5 debug thread filter for focused validation on thread `19db437c601fdf1b`
+- ended the day with Phase 4 closed for v1 and Phase 5 structurally implemented, but still waiting on successful end-to-end validation of one genuinely useful draft
 
 ## Immediate next steps
 
-1. rerun `generateDraftRepliesPhase5DryRun()` and inspect `DraftLog`
-2. validate whether the new strict Phase 5 gate now limits candidates to genuinely actionable threads
-3. use the new Phase 5 debug dry-run path on a known good thread to verify draft quality end-to-end
-4. review whether some reply-worthy threads are now being missed because they are not labeled strongly enough yet
+1. run `generateDraftRepliesPhase5DebugDryRun()` for the configured debug thread and inspect `DraftLog`
+2. confirm whether Phase 5 can produce one genuinely useful draft end-to-end on a known good actionable thread
+3. if the targeted draft looks good, decide whether to keep strict gating or widen slightly
+4. if the targeted draft still fails or skips, tune the draft prompt/control flow before broadening eligibility
 5. decide whether Phase 5 should stay strict and label-driven or become on-demand only
 
 ## Open questions

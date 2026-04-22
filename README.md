@@ -62,4 +62,4 @@ MIT, see `LICENSE`.
 
 ## Status
 
-Phases 1 through 4 are implemented in a usable v1 form. Phase 5 is now started in a narrow draft-only mode, while further refinements continue under Phase 7 tuning.
+Phases 1 through 4 are implemented in a usable v1 form. Phase 5 is structurally implemented in a strict draft-only mode and is awaiting one successful targeted end-to-end draft validation before it can be considered stable.
