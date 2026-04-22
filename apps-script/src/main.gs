@@ -69,6 +69,10 @@ function generateDraftRepliesPhase5DryRun() {
   return generateDraftRepliesDryRun();
 }
 
+function generateDraftRepliesPhase5DebugDryRun() {
+  return generateDraftRepliesDebugDryRun();
+}
+
 function generateDraftRepliesPhase5Live() {
   return generateDraftRepliesLive();
 }

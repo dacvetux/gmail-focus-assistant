@@ -35,6 +35,7 @@ It:
 ## Entry points
 
 - `generateDraftRepliesPhase5DryRun()`
+- `generateDraftRepliesPhase5DebugDryRun()`
 - `generateDraftRepliesPhase5Live()`
 
 ## Current tradeoffs
@@ -51,5 +52,6 @@ It:
 
 - whether the selected threads are actually good draft candidates
 - whether generated drafts are concise and useful
-- whether the current sender/subject exclusions remove too many useful opportunities or just the noisy digests
-- whether draft generation should stay heuristic-driven or move to on-demand only
+- whether the current strict gate is too narrow for everyday usefulness
+- whether targeted debug validation on a known good thread produces a genuinely usable draft
+- whether draft generation should stay strict and label-driven or move to on-demand only

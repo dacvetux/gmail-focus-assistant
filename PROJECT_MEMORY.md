@@ -108,9 +108,9 @@ Core intent:
 
 1. rerun `generateDraftRepliesPhase5DryRun()` and inspect `DraftLog`
 2. validate whether the new strict Phase 5 gate now limits candidates to genuinely actionable threads
-3. review whether some reply-worthy threads are now being missed because they are not labeled strongly enough yet
-4. decide whether Phase 5 should stay strict and label-driven or become on-demand only
-5. decide which labels should be visible in the Gmail sidebar by default
+3. use the new Phase 5 debug dry-run path on a known good thread to verify draft quality end-to-end
+4. review whether some reply-worthy threads are now being missed because they are not labeled strongly enough yet
+5. decide whether Phase 5 should stay strict and label-driven or become on-demand only
 
 ## Open questions
 

@@ -5,6 +5,14 @@ function generateDraftRepliesDryRun() {
   });
 }
 
+function generateDraftRepliesDebugDryRun() {
+  return generateDraftReplies_({
+    dryRun: true,
+    maxThreads: CONFIG.draftDailyLimit || 10,
+    allowDebugBypass: true
+  });
+}
+
 function generateDraftRepliesLive() {
   return generateDraftReplies_({
     dryRun: false,
@@ -53,7 +61,12 @@ function selectDraftCandidateThreads_(options) {
   const pool = GmailApp.search(baseQuery, 0, Math.max(60, maxThreads * 8));
 
   return dedupeThreads_(pool)
-    .filter(thread => isStrictDraftCandidate_(thread))
+    .filter(thread => {
+      if (options.allowDebugBypass && hasDebugFilters_() && threadMatchesDebugFilters_(thread)) {
+        return true;
+      }
+      return isStrictDraftCandidate_(thread);
+    })
     .filter(thread => threadMatchesDebugFilters_(thread))
     .sort((a, b) => getThreadSortKey_(b) - getThreadSortKey_(a))
     .slice(0, maxThreads);
