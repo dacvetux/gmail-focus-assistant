@@ -19,7 +19,8 @@ Phase 5 is draft-only.
 The first working version is intentionally narrow.
 
 It:
-- searches recent threads labeled `1: to respond`
+- searches a recent inbox pool rather than relying on a single label match
+- prioritizes likely reply candidates using labels plus current classifier output
 - sends the latest message context to Gemini
 - generates a plain-text reply draft
 - logs the generated draft text
@@ -34,7 +35,7 @@ It:
 ## Current tradeoffs
 
 - uses only bounded context from the latest message, not full-thread reasoning
-- does not yet distinguish between human reply-needed mail and labels that were applied too broadly
+- candidate selection is heuristic and may still include some threads that are informational rather than truly reply-worthy
 - does not yet tailor tone by sender relationship
 - draft quality will need review and tuning
 

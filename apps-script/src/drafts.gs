@@ -13,9 +13,7 @@ function generateDraftRepliesLive() {
 }
 
 function generateDraftReplies_(options) {
-  const threads = GmailApp.search(CONFIG.draftSearchQuery, 0, options.maxThreads || CONFIG.draftDailyLimit || 10)
-    .filter(thread => threadMatchesDebugFilters_(thread));
-
+  const threads = selectDraftCandidateThreads_(options);
   const rows = [];
   let createdCount = 0;
 
@@ -46,6 +44,48 @@ function generateDraftReplies_(options) {
     createdDrafts: createdCount,
     mode: options.dryRun ? 'dry-run' : 'live'
   };
+}
+
+function selectDraftCandidateThreads_(options) {
+  const lookbackDays = CONFIG.draftSearchLookbackDays || 14;
+  const maxThreads = options.maxThreads || CONFIG.draftDailyLimit || 10;
+  const baseQuery = `in:inbox newer_than:${lookbackDays}d -in:drafts -label:TRASH -label:SPAM`;
+  const pool = GmailApp.search(baseQuery, 0, Math.max(60, maxThreads * 8));
+
+  return prioritizeDraftCandidateThreads_(pool)
+    .filter(thread => threadMatchesDebugFilters_(thread))
+    .slice(0, maxThreads);
+}
+
+function prioritizeDraftCandidateThreads_(threads) {
+  return dedupeThreads_(threads)
+    .map(thread => ({ thread: thread, score: getDraftCandidateScore_(thread) }))
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score || getThreadSortKey_(b.thread) - getThreadSortKey_(a.thread))
+    .map(item => item.thread);
+}
+
+function getDraftCandidateScore_(thread) {
+  const labels = thread.getLabels().map(label => label.getName());
+  const decision = classifyThread_(thread);
+  const managedLabels = new Set(labels);
+  let score = 0;
+
+  if (managedLabels.has(CONFIG.labels.toRespond)) score += 10;
+  if (managedLabels.has(CONFIG.labels.importantCalendar)) score += 4;
+  if (managedLabels.has(CONFIG.labels.importantServices)) score += 3;
+  if (managedLabels.has(CONFIG.labels.importantOpportunities)) score += 2;
+  if (managedLabels.has(CONFIG.labels.review)) score += 1;
+
+  if (decision.workflowLabel === CONFIG.labels.toRespond) score += 8;
+  if (decision.label === CONFIG.labels.importantCalendar) score += 4;
+  if (decision.label === CONFIG.labels.importantServices) score += 3;
+  if (decision.label === CONFIG.labels.importantOpportunities) score += 2;
+
+  if (isCommercialLabel_(decision.label)) score -= 100;
+  if (decision.workflowLabel === CONFIG.labels.notification) score -= 3;
+
+  return score;
 }
 
 function buildDraftForThread_(thread, options) {

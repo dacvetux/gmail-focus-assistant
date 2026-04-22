@@ -105,10 +105,10 @@ Core intent:
 
 ## Immediate next steps
 
-1. run `generateDraftRepliesPhase5DryRun()` and inspect `DraftLog`
-2. validate whether `1: to respond` is a clean enough source label for draft generation
+1. rerun `generateDraftRepliesPhase5DryRun()` and inspect `DraftLog`
+2. validate whether the broader heuristic candidate selection produces genuinely reply-worthy threads
 3. decide which thread types should be excluded from automatic draft creation
-4. decide whether Phase 5 should stay label-driven or become on-demand only
+4. decide whether Phase 5 should stay heuristic/label-driven or become on-demand only
 5. decide which labels should be visible in the Gmail sidebar by default
 
 ## Open questions

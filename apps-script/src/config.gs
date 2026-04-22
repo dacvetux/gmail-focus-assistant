@@ -297,7 +297,14 @@ const CONFIG = {
   draftModel: 'gemini-2.5-flash',
   draftMaxBodyChars: 4000,
   draftDailyLimit: 10,
-  draftSearchQuery: 'label:"1: to respond" newer_than:7d -in:drafts',
+  draftSearchLookbackDays: 14,
+  draftSourceLabels: [
+    '1: to respond',
+    'Important/Calendar',
+    'Important/Services',
+    'Important/Opportunities',
+    'Review/Ambiguous'
+  ],
   draftInstructions: [
     'Write concise, professional, human email replies.',
     'Do not invent facts.',
