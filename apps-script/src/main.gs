@@ -65,6 +65,14 @@ function processInboxFocusPhase4AiReviewLive() {
   });
 }
 
+function generateDraftRepliesPhase5DryRun() {
+  return generateDraftRepliesDryRun();
+}
+
+function generateDraftRepliesPhase5Live() {
+  return generateDraftRepliesLive();
+}
+
 function processInboxFocusWithOptions_(options) {
   const threads = selectThreadsForProcessing_(options);
   const logRows = [];

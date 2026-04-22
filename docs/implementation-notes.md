@@ -103,3 +103,24 @@ Extended the rules and digest using real dry-run logs, then added a first safe A
 
 ### Current tradeoff
 - AI classification is useful for reducing ambiguity, but still needs prompt tuning and review before it should be trusted broadly in live mode
+
+## 2026-04-22 - Phase 5 first implementation
+
+Started the first draft-only reply assistant.
+
+### Added
+- `drafts.gs` for reply-draft generation
+- `generateDraftRepliesPhase5DryRun()`
+- `generateDraftRepliesPhase5Live()`
+- `DraftLog` sheet for draft review
+- narrow source query focused on `1: to respond`
+- bounded latest-message context for draft generation
+
+### Safety model
+- no auto-send
+- dry-run available before creating Gmail drafts
+- every generated draft is logged
+- prompts instruct the model not to invent facts or over-claim actions
+
+### Current tradeoff
+- first version uses only bounded latest-message context, so some replies may be too generic or miss longer-thread nuance

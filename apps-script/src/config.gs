@@ -293,5 +293,17 @@ const CONFIG = {
   digestSearchPool: 120,
   aiModel: 'gemini-2.5-flash',
   aiMaxBodyChars: 2500,
-  aiDailyLimit: 15
+  aiDailyLimit: 15,
+  draftModel: 'gemini-2.5-flash',
+  draftMaxBodyChars: 4000,
+  draftDailyLimit: 10,
+  draftSearchQuery: 'label:"1: to respond" newer_than:7d -in:drafts',
+  draftInstructions: [
+    'Write concise, professional, human email replies.',
+    'Do not invent facts.',
+    'If context is incomplete, keep the reply short and provisional.',
+    'Never claim an action was completed unless the thread says so.',
+    'Do not mention AI.',
+    'Output plain text only.'
+  ].join(' ')
 };

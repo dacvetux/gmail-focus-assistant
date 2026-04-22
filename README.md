@@ -44,11 +44,12 @@ See `docs/roadmap.md` for the phased build direction.
 
 ## Current implementation
 
-Phases 1 through 4 now have working v1 implementations, with Phase 4 kept intentionally narrow and conservative. See:
+Phases 1 through 4 now have working v1 implementations, with Phase 4 kept intentionally narrow and conservative, and Phase 5 started in a draft-only mode. See:
 - `docs/phase-1.md`
 - `docs/phase-2.md`
 - `docs/phase-3.md`
 - `docs/phase-4.md`
+- `docs/phase-5.md`
 - `docs/testing-phase-1.md`
 - `docs/deployment.md`
 - `docs/first-run-checklist.md`
@@ -61,4 +62,4 @@ MIT, see `LICENSE`.
 
 ## Status
 
-Phases 1 through 4 are implemented in a usable v1 form. The current focus can move to Phase 5, draft assistance, while further refinements continue under Phase 7 tuning.
+Phases 1 through 4 are implemented in a usable v1 form. Phase 5 is now started in a narrow draft-only mode, while further refinements continue under Phase 7 tuning.

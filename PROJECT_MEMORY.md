@@ -45,6 +45,7 @@ Core intent:
 - validation and tuning controls added for dry-run review
 - phase 3 digest generation implemented and refined from live log review
 - phase 4 selective AI review implemented and validated for ambiguous mail
+- phase 5 first narrow draft-only implementation added for `1: to respond` threads
 - main phase entrypoints exist
 
 ## Planned phases
@@ -104,10 +105,11 @@ Core intent:
 
 ## Immediate next steps
 
-1. begin Phase 5 draft assistant design in a narrow draft-only mode
-2. decide which labels should be visible in the Gmail sidebar by default
-3. decide whether any opportunity or review flows should trigger draft suggestions automatically or only on demand
-4. keep Phase 4 improvements in the Phase 7 tuning bucket rather than reopening it now
+1. run `generateDraftRepliesPhase5DryRun()` and inspect `DraftLog`
+2. validate whether `1: to respond` is a clean enough source label for draft generation
+3. decide which thread types should be excluded from automatic draft creation
+4. decide whether Phase 5 should stay label-driven or become on-demand only
+5. decide which labels should be visible in the Gmail sidebar by default
 
 ## Open questions
 

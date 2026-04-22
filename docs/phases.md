@@ -31,8 +31,10 @@ Status: implemented and validated for v1 on 2026-04-22
 - keep the operational scope narrow and conservative
 
 ## Phase 5, draft assistant
+Status: first safe implementation started on 2026-04-22
 - generate draft replies for selected labels or on-demand
 - never auto-send
+- start with a narrow draft-only flow for `1: to respond`
 
 ## Phase 6, follow-up memory
 - detect sent mail awaiting reply
