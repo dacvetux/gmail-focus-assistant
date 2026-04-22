@@ -4,7 +4,7 @@ const CONFIG = {
   dryRun: true,
   aiDryRun: true,
   enableAiForReview: true,
-  logSpreadsheetId: '',
+  logSpreadsheetId: '1F2ZNpYVwNqa0-pOuVavJDEf6LahtLNryyoaXYA13EwA',
   digestRecipient: '',
   debugSampleThreads: [],
   debugSenderIncludes: [],

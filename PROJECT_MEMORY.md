@@ -46,6 +46,7 @@ Core intent:
 - phase 3 digest generation implemented and refined from live log review
 - phase 4 selective AI review implemented and validated for ambiguous mail
 - phase 5 first narrow draft-only implementation added for `1: to respond` threads
+- `CONFIG.logSpreadsheetId` is now set to the main Gmail Focus Assistant log sheet
 - main phase entrypoints exist
 
 ## Planned phases
