@@ -69,21 +69,28 @@ function getDraftCandidateScore_(thread) {
   const labels = thread.getLabels().map(label => label.getName());
   const decision = classifyThread_(thread);
   const managedLabels = new Set(labels);
+  const lastMessage = thread.getMessages()[thread.getMessageCount() - 1];
+  const haystack = `${(lastMessage && lastMessage.getFrom()) || ''}\n${(lastMessage && lastMessage.getSubject()) || ''}`.toLowerCase();
   let score = 0;
 
+  if (containsAny_(haystack, CONFIG.draftExcludedSenders) || matchesAny_(haystack, CONFIG.draftExcludedSubjectPatterns)) {
+    return -100;
+  }
+
   if (managedLabels.has(CONFIG.labels.toRespond)) score += 10;
-  if (managedLabels.has(CONFIG.labels.importantCalendar)) score += 4;
-  if (managedLabels.has(CONFIG.labels.importantServices)) score += 3;
-  if (managedLabels.has(CONFIG.labels.importantOpportunities)) score += 2;
-  if (managedLabels.has(CONFIG.labels.review)) score += 1;
+  if (managedLabels.has(CONFIG.labels.importantCalendar)) score += 5;
+  if (managedLabels.has(CONFIG.labels.importantServices)) score += 4;
+  if (managedLabels.has(CONFIG.labels.review)) score += 2;
+  if (managedLabels.has(CONFIG.labels.importantOpportunities)) score -= 2;
 
   if (decision.workflowLabel === CONFIG.labels.toRespond) score += 8;
-  if (decision.label === CONFIG.labels.importantCalendar) score += 4;
-  if (decision.label === CONFIG.labels.importantServices) score += 3;
-  if (decision.label === CONFIG.labels.importantOpportunities) score += 2;
+  if (decision.label === CONFIG.labels.importantCalendar) score += 5;
+  if (decision.label === CONFIG.labels.importantServices) score += 4;
+  if (decision.label === CONFIG.labels.review) score += 1;
+  if (decision.label === CONFIG.labels.importantOpportunities) score -= 3;
 
   if (isCommercialLabel_(decision.label)) score -= 100;
-  if (decision.workflowLabel === CONFIG.labels.notification) score -= 3;
+  if (decision.workflowLabel === CONFIG.labels.notification) score -= 4;
 
   return score;
 }
@@ -92,15 +99,32 @@ function buildDraftForThread_(thread, options) {
   const lastMessage = thread.getMessages()[thread.getMessageCount() - 1];
   const from = (lastMessage && lastMessage.getFrom()) || '';
   const subject = (lastMessage && lastMessage.getSubject()) || '';
+  const subjectHaystack = `${from}\n${subject}`.toLowerCase();
   const body = ((lastMessage && lastMessage.getPlainBody()) || '').slice(0, CONFIG.draftMaxBodyChars || 4000);
+
+  if (containsAny_(subjectHaystack, CONFIG.draftExcludedSenders) || matchesAny_(subjectHaystack, CONFIG.draftExcludedSubjectPatterns)) {
+    return {
+      created: false,
+      logRow: [
+        new Date(),
+        options.dryRun ? 'dry-run' : 'live',
+        thread.getId(),
+        from,
+        subject,
+        'SKIPPED: excluded sender or subject pattern for draft generation.',
+        'no'
+      ]
+    };
+  }
 
   const prompt = [
     CONFIG.draftInstructions,
     '',
-    'Write a reply draft to the latest email in this thread.',
+    'Write a reply draft to the latest email in this thread only if a reply is genuinely appropriate.',
     'Keep it concise unless the email clearly needs more detail.',
     'If the sender is asking a question, answer only from the provided context.',
-    'If the thread looks like a scheduling or coordination email, propose a simple next step.',
+    'If the thread looks like scheduling or coordination, propose a simple next step.',
+    'If no reply is genuinely needed, return exactly: NO_DRAFT.',
     '',
     `From: ${from}`,
     `Subject: ${subject}`,
@@ -110,6 +134,21 @@ function buildDraftForThread_(thread, options) {
 
   try {
     const draftBody = callDraftModelText_(prompt).trim();
+    if (draftBody === 'NO_DRAFT') {
+      return {
+        created: false,
+        logRow: [
+          new Date(),
+          options.dryRun ? 'dry-run' : 'live',
+          thread.getId(),
+          from,
+          subject,
+          'SKIPPED: model determined no reply draft is appropriate.',
+          'no'
+        ]
+      };
+    }
+
     const normalizedBody = normalizeDraftBody_(draftBody);
 
     if (!options.dryRun) {
@@ -149,39 +188,50 @@ function callDraftModelText_(prompt) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!apiKey) throw new Error('missing GEMINI_API_KEY');
 
-  const response = UrlFetchApp.fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${CONFIG.draftModel}:generateContent?key=${apiKey}`,
-    {
-      method: 'post',
-      contentType: 'application/json',
-      muteHttpExceptions: true,
-      payload: JSON.stringify({
-        generationConfig: {
-          temperature: 0.3,
-          responseMimeType: 'text/plain'
-        },
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: prompt }]
-          }
-        ]
-      })
-    }
-  );
+  let lastError = null;
 
-  const code = response.getResponseCode();
-  const text = response.getContentText();
-  if (code < 200 || code >= 300) {
-    throw new Error(`draft model http ${code}: ${text.slice(0, 300)}`);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = UrlFetchApp.fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${CONFIG.draftModel}:generateContent?key=${apiKey}`,
+      {
+        method: 'post',
+        contentType: 'application/json',
+        muteHttpExceptions: true,
+        payload: JSON.stringify({
+          generationConfig: {
+            temperature: 0.2,
+            responseMimeType: 'text/plain'
+          },
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: prompt }]
+            }
+          ]
+        })
+      }
+    );
+
+    const code = response.getResponseCode();
+    const text = response.getContentText();
+    if (code >= 200 && code < 300) {
+      const payload = JSON.parse(text);
+      const candidate = payload.candidates && payload.candidates[0];
+      const parts = candidate && candidate.content && candidate.content.parts;
+      const result = parts && parts.map(part => part.text || '').join('').trim();
+      if (!result) throw new Error('empty draft response');
+      return result;
+    }
+
+    lastError = new Error(`draft model http ${code}: ${text.slice(0, 300)}`);
+    if (!CONFIG.draftRetryableStatusCodes.includes(code) || attempt === 1) {
+      throw lastError;
+    }
+
+    Utilities.sleep(1500);
   }
 
-  const payload = JSON.parse(text);
-  const candidate = payload.candidates && payload.candidates[0];
-  const parts = candidate && candidate.content && candidate.content.parts;
-  const result = parts && parts.map(part => part.text || '').join('').trim();
-  if (!result) throw new Error('empty draft response');
-  return result;
+  throw lastError || new Error('unknown draft model error');
 }
 
 function normalizeDraftBody_(text) {

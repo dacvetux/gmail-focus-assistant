@@ -36,6 +36,7 @@ It:
 
 - uses only bounded context from the latest message, not full-thread reasoning
 - candidate selection is heuristic and may still include some threads that are informational rather than truly reply-worthy
+- current exclusions intentionally avoid many bulk opportunity digests because those are usually poor reply candidates
 - does not yet tailor tone by sender relationship
 - draft quality will need review and tuning
 
@@ -43,5 +44,5 @@ It:
 
 - whether the selected threads are actually good draft candidates
 - whether generated drafts are concise and useful
-- whether any thread types should be excluded from automatic draft generation
-- whether draft generation should stay label-driven or move to on-demand only
+- whether the current sender/subject exclusions remove too many useful opportunities or just the noisy digests
+- whether draft generation should stay heuristic-driven or move to on-demand only

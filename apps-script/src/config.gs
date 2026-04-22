@@ -311,6 +311,20 @@ const CONFIG = {
     'If context is incomplete, keep the reply short and provisional.',
     'Never claim an action was completed unless the thread says so.',
     'Do not mention AI.',
+    'If the message is a digest, newsletter, job alert, or broadcast that does not reasonably need a reply, return exactly: NO_DRAFT.',
     'Output plain text only.'
-  ].join(' ')
+  ].join(' '),
+  draftExcludedSenders: [
+    'jobalerts-noreply@linkedin.com',
+    'jobs@mail.xing.com',
+    'news@email.experteer.com'
+  ],
+  draftExcludedSubjectPatterns: [
+    /job alert/i,
+    /job-e?mpfehl/i,
+    /companies are looking for candidates/i,
+    /headhunters want to see your profile/i,
+    /great companies are looking for candidates/i
+  ],
+  draftRetryableStatusCodes: [429, 500, 503]
 };
