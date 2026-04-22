@@ -43,7 +43,8 @@ Core intent:
 - phase 1 dry-run and live modes implemented
 - phase 2 workflow priority labeling implemented
 - validation and tuning controls added for dry-run review
-- phase 3 initial digest generation implemented
+- phase 3 digest generation implemented and refined from live log review
+- phase 4 first safe AI review implementation added for ambiguous mail
 - main phase entrypoints exist
 
 ## Planned phases
@@ -91,14 +92,22 @@ Core intent:
 - applied a second tuning pass for shipping overrides, opportunity invites, and remaining commercial clutter
 - applied a final light tuning pass plus Phase 3 digest refinement
 
+### 2026-04-22
+- reviewed real DecisionLog and DigestLog output from the log spreadsheet
+- reduced obvious commercial mail leaking into the review bucket
+- improved digest generation so dry-run summaries no longer depend only on pre-labeled Gmail threads
+- pushed updated Apps Script code to the deployed project with clasp
+- started Phase 4 with a narrow Gemini-based classifier for ambiguous mail only
+- added AI confidence logging and dedicated Phase 4 dry-run/live entrypoints
+
 ## Immediate next steps
 
-1. Set `CONFIG.logSpreadsheetId` in the deployed Apps Script project
-2. rerun real Apps Script dry-run validation for Phases 1 and 2 after the 2026-04-22 tuning pass
-3. review remaining sender and workflow false positives from DecisionLog output after the second tuning pass
-4. validate the refined digest output from Phase 3
+1. set `GEMINI_API_KEY` in Apps Script Script Properties for Phase 4 testing
+2. run `processInboxFocusPhase4AiReviewDryRun()` on a limited sample
+3. review AI suggestions, confidence, and false upgrades in `DecisionLog`
+4. do one more LinkedIn/newsletter tuning pass if AI still inherits too much review noise
 5. decide which labels should be visible in the Gmail sidebar by default
-6. decide whether any remaining review-bucket senders should get special-case handling
+6. decide whether Phase 4 should remain log-only for a while before broader live use
 
 ## Open questions
 

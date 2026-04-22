@@ -2,6 +2,8 @@ const CONFIG = {
   query: 'in:inbox newer_than:7d -label:TRASH -label:SPAM',
   maxThreads: 100,
   dryRun: true,
+  aiDryRun: true,
+  enableAiForReview: true,
   logSpreadsheetId: '',
   digestRecipient: '',
   debugSampleThreads: [],
@@ -38,10 +40,12 @@ const CONFIG = {
     'mailchimpapp.com',
     'kickstarter.com',
     'notifications-noreply@linkedin.com',
-    'mailrobot@mail.xing.com'
+    'mailrobot@mail.xing.com',
+    'ns.nl',
+    'diem25.org',
+    'shared1.ccsend.com'
   ],
   forceReviewSenders: [
-    'newsletters-noreply@linkedin.com',
     'developers.google.com',
     'googledev-noreply@google.com',
     'ifttt.com',
@@ -243,7 +247,12 @@ const CONFIG = {
     /academy/i,
     /build better/i,
     /your posts got .* impressions/i,
-    /birthday today/i
+    /birthday today/i,
+    /resistance beyond borders/i,
+    /quiet hiring/i,
+    /techcrunch daily/i,
+    /latest insights/i,
+    /meivakantie/i
   ],
   adPatterns: [
     /sale/i,
@@ -281,5 +290,8 @@ const CONFIG = {
   ],
   digestThreadLimitPerSection: 8,
   digestLookbackDays: 3,
-  digestSearchPool: 120
+  digestSearchPool: 120,
+  aiModel: 'gemini-2.5-flash',
+  aiMaxBodyChars: 2500,
+  aiDailyLimit: 15
 };

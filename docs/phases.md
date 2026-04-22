@@ -24,9 +24,11 @@ Status: initial implementation started on 2026-04-21
 - digest log for review and tuning
 
 ## Phase 4, selective AI classification
+Status: first safe implementation started on 2026-04-22
 - only process ambiguous mail with AI
-- classify as important, review, no action, or draft candidate
-- log decisions for review
+- constrain AI output back into the existing structural and workflow labels
+- log confidence and reasons for review
+- start in dry-run first before any broader live use
 
 ## Phase 5, draft assistant
 - generate draft replies for selected labels or on-demand

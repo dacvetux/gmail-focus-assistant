@@ -79,3 +79,27 @@ Started the first working version of daily briefing.
 ### Current tradeoff
 - digest formatting is intentionally simple and text-first for now
 - good enough to validate the briefing workflow before adding ranking and richer summaries
+
+## 2026-04-22 - Additional tuning and Phase 4 first implementation
+
+Extended the rules and digest using real dry-run logs, then added a first safe AI review layer.
+
+### Added
+- extra commercial sender overrides for recurring review-bucket leaks
+- stronger newsletter/ad/campaign patterns for missed commercial mail
+- broader opportunity sender and subject coverage
+- digest generation based on a candidate inbox pool plus fresh classification, not only pre-labeled threads
+- section counts and cleaner sender display in digest output
+- first Phase 4 AI review implementation in `ai.gs`
+- AI confidence logging in `DecisionLog`
+- dedicated Phase 4 dry-run and live entrypoints
+
+### Safety model
+- AI only runs for rule-based `Review/Ambiguous` threads
+- AI output is constrained back into existing labels
+- fallback keeps mail in review if the AI call fails or returns invalid output
+- archive suggestions are only honored for commercial labels
+- per-run AI volume is limited
+
+### Current tradeoff
+- AI classification is useful for reducing ambiguity, but still needs prompt tuning and review before it should be trusted broadly in live mode

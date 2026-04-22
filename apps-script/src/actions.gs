@@ -58,7 +58,8 @@ function logDecision_(rows, thread, decision, result) {
     (lastMessage && lastMessage.getSubject()) || '',
     decision.reason || '',
     (result.appliedLabels || []).join(', '),
-    result.archived ? 'yes' : 'no'
+    result.archived ? 'yes' : 'no',
+    decision.aiConfidence === null || decision.aiConfidence === undefined ? '' : decision.aiConfidence
   ]);
 }
 
@@ -76,7 +77,7 @@ function getOrCreateDecisionLogSheet_() {
 
   if (!sheet) {
     sheet = spreadsheet.insertSheet('DecisionLog');
-    sheet.getRange(1, 1, 1, 8).setValues([[
+    sheet.getRange(1, 1, 1, 9).setValues([[
       'Timestamp',
       'Mode',
       'Thread ID',
@@ -84,7 +85,8 @@ function getOrCreateDecisionLogSheet_() {
       'Subject',
       'Reason',
       'Applied Labels',
-      'Archived'
+      'Archived',
+      'AI Confidence'
     ]]);
   }
 

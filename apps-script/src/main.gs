@@ -48,6 +48,23 @@ function validatePhases1And2DryRun() {
   });
 }
 
+function processInboxFocusPhase4AiReviewDryRun() {
+  return processInboxFocusWithOptions_({
+    dryRun: true,
+    maxThreads: CONFIG.maxThreads,
+    validationMode: true,
+    enableAiReview: true
+  });
+}
+
+function processInboxFocusPhase4AiReviewLive() {
+  return processInboxFocusWithOptions_({
+    dryRun: false,
+    maxThreads: CONFIG.maxThreads,
+    enableAiReview: true
+  });
+}
+
 function processInboxFocusWithOptions_(options) {
   const threads = selectThreadsForProcessing_(options);
   const logRows = [];
@@ -56,8 +73,25 @@ function processInboxFocusWithOptions_(options) {
   CONFIG.dryRun = Boolean(options.dryRun);
 
   try {
+    let aiCount = 0;
+
     for (const thread of threads) {
-      const decision = classifyThread_(thread);
+      let decision = classifyThread_(thread);
+
+      if (
+        options.enableAiReview &&
+        CONFIG.enableAiForReview &&
+        decision.action === 'label' &&
+        decision.label === CONFIG.labels.review &&
+        aiCount < (CONFIG.aiDailyLimit || 15)
+      ) {
+        const aiDecision = classifyWithAI_(thread);
+        if (aiDecision) {
+          decision = aiDecision;
+        }
+        aiCount += 1;
+      }
+
       const result = applyDecision_(thread, decision);
       logDecision_(logRows, thread, decision, result);
     }
