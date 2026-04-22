@@ -295,6 +295,10 @@ const CONFIG = {
   aiMaxBodyChars: 2500,
   aiDailyLimit: 15,
   draftModel: 'gemini-2.5-flash',
+  draftFallbackModels: [
+    'gemini-2.0-flash',
+    'gemini-1.5-flash'
+  ],
   draftMaxBodyChars: 4000,
   draftDailyLimit: 10,
   draftSearchLookbackDays: 14,

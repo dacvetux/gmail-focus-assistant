@@ -22,6 +22,7 @@ It:
 - searches a recent inbox pool rather than relying on a single label match
 - prioritizes likely reply candidates using labels plus current classifier output
 - sends the latest message context to Gemini
+- can fall back across multiple draft-generation models on transient failures
 - generates a plain-text reply draft
 - logs the generated draft text
 - logs an explicit no-candidates row when nothing matched
@@ -39,6 +40,7 @@ It:
 - current exclusions intentionally avoid many bulk opportunity digests and known non-human promotional senders because those are usually poor reply candidates
 - does not yet tailor tone by sender relationship
 - draft quality will need review and tuning
+- model availability can still affect results, though fallback reduces single-model fragility
 
 ## What to validate next
 

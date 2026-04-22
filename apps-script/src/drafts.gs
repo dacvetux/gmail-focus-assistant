@@ -205,47 +205,50 @@ function callDraftModelText_(prompt) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!apiKey) throw new Error('missing GEMINI_API_KEY');
 
+  const models = [CONFIG.draftModel].concat(CONFIG.draftFallbackModels || []).filter(Boolean);
   let lastError = null;
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const response = UrlFetchApp.fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${CONFIG.draftModel}:generateContent?key=${apiKey}`,
-      {
-        method: 'post',
-        contentType: 'application/json',
-        muteHttpExceptions: true,
-        payload: JSON.stringify({
-          generationConfig: {
-            temperature: 0.2,
-            responseMimeType: 'text/plain'
-          },
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: prompt }]
-            }
-          ]
-        })
+  for (const model of models) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = UrlFetchApp.fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'post',
+          contentType: 'application/json',
+          muteHttpExceptions: true,
+          payload: JSON.stringify({
+            generationConfig: {
+              temperature: 0.2,
+              responseMimeType: 'text/plain'
+            },
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: prompt }]
+              }
+            ]
+          })
+        }
+      );
+
+      const code = response.getResponseCode();
+      const text = response.getContentText();
+      if (code >= 200 && code < 300) {
+        const payload = JSON.parse(text);
+        const candidate = payload.candidates && payload.candidates[0];
+        const parts = candidate && candidate.content && candidate.content.parts;
+        const result = parts && parts.map(part => part.text || '').join('').trim();
+        if (!result) throw new Error('empty draft response');
+        return result;
       }
-    );
 
-    const code = response.getResponseCode();
-    const text = response.getContentText();
-    if (code >= 200 && code < 300) {
-      const payload = JSON.parse(text);
-      const candidate = payload.candidates && payload.candidates[0];
-      const parts = candidate && candidate.content && candidate.content.parts;
-      const result = parts && parts.map(part => part.text || '').join('').trim();
-      if (!result) throw new Error('empty draft response');
-      return result;
+      lastError = new Error(`draft model ${model} http ${code}: ${text.slice(0, 300)}`);
+      if (!CONFIG.draftRetryableStatusCodes.includes(code) || attempt === 1) {
+        break;
+      }
+
+      Utilities.sleep(1500);
     }
-
-    lastError = new Error(`draft model http ${code}: ${text.slice(0, 300)}`);
-    if (!CONFIG.draftRetryableStatusCodes.includes(code) || attempt === 1) {
-      throw lastError;
-    }
-
-    Utilities.sleep(1500);
   }
 
   throw lastError || new Error('unknown draft model error');
