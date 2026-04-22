@@ -52,20 +52,14 @@ function selectDraftCandidateThreads_(options) {
   const baseQuery = `in:inbox newer_than:${lookbackDays}d -in:drafts -label:TRASH -label:SPAM`;
   const pool = GmailApp.search(baseQuery, 0, Math.max(60, maxThreads * 8));
 
-  return prioritizeDraftCandidateThreads_(pool)
+  return dedupeThreads_(pool)
+    .filter(thread => isStrictDraftCandidate_(thread))
     .filter(thread => threadMatchesDebugFilters_(thread))
+    .sort((a, b) => getThreadSortKey_(b) - getThreadSortKey_(a))
     .slice(0, maxThreads);
 }
 
-function prioritizeDraftCandidateThreads_(threads) {
-  return dedupeThreads_(threads)
-    .map(thread => ({ thread: thread, score: getDraftCandidateScore_(thread) }))
-    .filter(item => item.score > 0)
-    .sort((a, b) => b.score - a.score || getThreadSortKey_(b.thread) - getThreadSortKey_(a.thread))
-    .map(item => item.thread);
-}
-
-function getDraftCandidateScore_(thread) {
+function isStrictDraftCandidate_(thread) {
   const labels = thread.getLabels().map(label => label.getName());
   const managedLabels = new Set(labels);
   const decision = classifyThread_(thread);
@@ -73,43 +67,32 @@ function getDraftCandidateScore_(thread) {
   const from = ((lastMessage && lastMessage.getFrom()) || '').toLowerCase();
   const subject = ((lastMessage && lastMessage.getSubject()) || '').toLowerCase();
   const haystack = `${from}\n${subject}`;
-  let score = 0;
 
   if (containsAny_(haystack, CONFIG.draftExcludedSenders) || matchesAny_(haystack, CONFIG.draftExcludedSubjectPatterns)) {
-    return -100;
+    return false;
   }
 
   if (isCommercialLabel_(decision.label)) {
-    return -100;
+    return false;
   }
 
   if (decision.workflowLabel === CONFIG.labels.notification) {
-    return -20;
+    return false;
   }
 
-  const looksHumanish = !/no-reply|noreply|newsletter|notifications?/.test(from);
-  const explicitlyActionable = managedLabels.has(CONFIG.labels.toRespond) || decision.workflowLabel === CONFIG.labels.toRespond;
-  const importantActionable = decision.label === CONFIG.labels.importantCalendar || decision.label === CONFIG.labels.importantServices;
-
-  if (!explicitlyActionable && !importantActionable && !looksHumanish) {
-    return -50;
+  if (managedLabels.has(CONFIG.labels.toRespond)) {
+    return true;
   }
 
-  if (managedLabels.has(CONFIG.labels.toRespond)) score += 12;
-  if (managedLabels.has(CONFIG.labels.importantCalendar)) score += 6;
-  if (managedLabels.has(CONFIG.labels.importantServices)) score += 5;
-  if (managedLabels.has(CONFIG.labels.review)) score += 1;
+  if (decision.label === CONFIG.labels.importantCalendar && decision.workflowLabel === CONFIG.labels.toRespond) {
+    return true;
+  }
 
-  if (decision.workflowLabel === CONFIG.labels.toRespond) score += 10;
-  if (decision.label === CONFIG.labels.importantCalendar) score += 6;
-  if (decision.label === CONFIG.labels.importantServices) score += 5;
-  if (decision.label === CONFIG.labels.review) score += 1;
-  if (decision.label === CONFIG.labels.importantOpportunities) score -= 5;
+  if (decision.label === CONFIG.labels.importantServices && decision.workflowLabel === CONFIG.labels.toRespond) {
+    return true;
+  }
 
-  if (looksHumanish) score += 4;
-  if (/reply|respond|confirm|available|consent|approve|meet|schedule/.test(subject)) score += 4;
-
-  return score;
+  return false;
 }
 
 function buildDraftForThread_(thread, options) {

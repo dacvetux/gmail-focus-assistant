@@ -19,12 +19,14 @@ Phase 5 is draft-only.
 The first working version is intentionally narrow.
 
 It:
-- searches a recent inbox pool rather than relying on a single label match
-- prioritizes likely reply candidates using labels plus current classifier output
+- searches a recent inbox pool, but only admits threads that pass a strict actionable gate
+- allows draft generation for:
+  - threads already labeled `1: to respond`
+  - `Important/Calendar` plus `1: to respond`
+  - `Important/Services` plus `1: to respond`
 - sends the latest message context to Gemini
 - uses a newer flash-first draft model stack with fallback to lighter flash models on transient failures
-- force-generates drafts for high-confidence actionable threads
-- allows `NO_DRAFT` only for more borderline candidates
+- force-generates drafts for those strongly actionable threads
 - generates a plain-text reply draft
 - logs the generated draft text
 - logs an explicit no-candidates row when nothing matched
@@ -38,7 +40,7 @@ It:
 ## Current tradeoffs
 
 - uses only bounded context from the latest message, not full-thread reasoning
-- candidate selection is heuristic and may still miss some useful reply candidates while staying conservative
+- strict gating is intentionally conservative and may miss some reply-worthy threads that are not yet labeled strongly enough
 - current exclusions intentionally avoid many bulk opportunity digests and known non-human promotional senders because those are usually poor reply candidates
 - does not yet tailor tone by sender relationship
 - draft quality will need review and tuning

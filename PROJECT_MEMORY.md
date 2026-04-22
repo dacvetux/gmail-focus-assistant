@@ -107,9 +107,9 @@ Core intent:
 ## Immediate next steps
 
 1. rerun `generateDraftRepliesPhase5DryRun()` and inspect `DraftLog`
-2. validate whether the tighter heuristic candidate selection now favors genuinely reply-worthy threads over bulk job alerts
-3. review whether the current draft exclusions are too aggressive or appropriately conservative
-4. decide whether Phase 5 should stay heuristic-driven or become on-demand only
+2. validate whether the new strict Phase 5 gate now limits candidates to genuinely actionable threads
+3. review whether some reply-worthy threads are now being missed because they are not labeled strongly enough yet
+4. decide whether Phase 5 should stay strict and label-driven or become on-demand only
 5. decide which labels should be visible in the Gmail sidebar by default
 
 ## Open questions
