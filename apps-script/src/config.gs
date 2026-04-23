@@ -50,13 +50,28 @@ const CONFIG = {
     'promontana.si',
     'mailings.bots.io',
     'news.oeticket.com',
-    'e.dji.com'
+    'e.dji.com',
+    'email.nba.com',
+    'openstageit.com',
+    'mcdproductions.co',
+    'soho-graz.at',
+    'service.alibaba.com',
+    'make.co',
+    'believeinboudoir.com',
+    'c-automobil-import.si',
+    'woop.fun',
+    'news.crypto.com',
+    'redsharknews.com',
+    'news.odlo.com',
+    'otheruk.com'
   ],
   forceReviewSenders: [
     'developers.google.com',
     'googledev-noreply@google.com',
     'ifttt.com',
-    'ollama.com'
+    'ollama.com',
+    'families-noreply@google.com',
+    'invitations@linkedin.com'
   ],
   forceShippingSenders: [
     'post.at',
@@ -162,7 +177,11 @@ const CONFIG = {
     /one-time code/i,
     /otp/i,
     /varnostno opozorilo/i,
-    /račun google/i
+    /račun google/i,
+    /noticed you/i,
+    /pomembno obvestilo/i,
+    /review .* activity/i,
+    /order has been updated/i
   ],
   neverArchiveSenders: [
     'incident.io',

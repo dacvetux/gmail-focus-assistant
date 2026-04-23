@@ -146,8 +146,8 @@ Core intent:
 
 ## Immediate next steps
 
-1. rerun dry-run processing after the latest sender overrides and verify whether the review bucket shrinks meaningfully
-2. rerun the updated RunLog-producing entrypoints so spreadsheet output catches up with the latest wording/semantics
+1. rerun dry-run processing after the latest sender overrides and verify whether the review bucket shrinks meaningfully again
+2. rerun the updated RunLog-producing entrypoints so the header migration is applied in the live sheet
 3. keep Phase 6 visibility-first, with no automatic follow-up sending
 4. only add richer sent-mail inference after clearer real waiting-on-them examples are available
 5. continue tuning sender/domain exceptions from observed false positives and false negatives

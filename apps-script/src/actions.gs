@@ -190,6 +190,26 @@ function getOrCreateRunLogSheet_() {
       'Outcome',
       'Notes'
     ]]);
+    return sheet;
+  }
+
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, 8).setValues([[
+      'Timestamp',
+      'Run Type',
+      'Mode',
+      'Entry Point',
+      'Processed Threads',
+      'Primary Count',
+      'Outcome',
+      'Notes'
+    ]]);
+    return sheet;
+  }
+
+  const header = sheet.getRange(1, 1, 1, 8).getValues()[0];
+  if (header[5] !== 'Primary Count') {
+    sheet.getRange(1, 6).setValue('Primary Count');
   }
 
   return sheet;

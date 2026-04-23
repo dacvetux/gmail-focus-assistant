@@ -209,3 +209,17 @@ Applied a small operational cleanup plus one concrete tuning pass based on fresh
 ### Why
 - the old RunLog wording was accurate enough but clunky
 - several review-bucket items were plainly commercial and not worth leaving in `Review/Ambiguous`
+
+## 2026-04-23 - RunLog header migration and second review-bucket cleanup pass
+
+Added a tiny sheet-header migration and another conservative tuning pass driven by the remaining review items.
+
+### Added or changed
+- `RunLog` now corrects the existing sheet header from `Created/Matched Items` to `Primary Count`
+- expanded `forceCommercialSenders` with another batch of obvious promo/event/newsletter domains seen in recent review output
+- expanded `notificationPatterns` for a few recurring non-commercial notification-style subjects
+- added `families-noreply@google.com` and `invitations@linkedin.com` to `forceReviewSenders` to avoid burying potentially personal or human-relevant items under commercial cleanup
+
+### Current tradeoff
+- this remains a sender/domain-heavy tuning pass rather than a deeper classifier rewrite
+- some borderline lifestyle/event senders may still require later preference decisions rather than hard-coded routing
