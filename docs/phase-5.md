@@ -52,6 +52,32 @@ Preferred manual/on-demand path:
 - Gmail search queries are more reliable in the current deployment context
 - start broad enough to match real mailbox state, then narrow as needed
 
+## Operator cookbook
+
+Recommended manual/on-demand usage pattern:
+
+1. start with a broad sender query
+2. confirm that it produces candidate rows in `DraftLog`
+3. narrow the query only after the broader form is known to match
+
+Examples:
+
+- broad sender query
+  - `generateDraftRepliesForQueryPhase5DryRun('from:Manuela.Rath@a1.at')`
+- broader domain query
+  - `generateDraftRepliesForQueryPhase5DryRun('from:a1.at')`
+- narrower sender plus subject query
+  - `generateDraftRepliesForQueryPhase5DryRun('from:Manuela.Rath@a1.at subject:"Einladung Bewerbungsgespräch"')`
+- live draft creation after successful dry-run validation
+  - `generateDraftRepliesForQueryPhase5Live('from:Manuela.Rath@a1.at')`
+
+Practical tips:
+
+- prefer dry-run first
+- keep the query simple at first
+- if an exact subject query returns no candidates, widen it instead of assuming the thread is gone
+- treat query-based drafting as the primary manual operator path for now
+
 ## Current tradeoffs
 
 - uses only bounded context from the latest message, not full-thread reasoning
