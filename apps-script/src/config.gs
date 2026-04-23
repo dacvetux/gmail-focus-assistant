@@ -43,7 +43,14 @@ const CONFIG = {
     'mailrobot@mail.xing.com',
     'ns.nl',
     'diem25.org',
-    'shared1.ccsend.com'
+    'shared1.ccsend.com',
+    'e.a1.si',
+    'getjibjab.com',
+    'e1.theathletic.com',
+    'promontana.si',
+    'mailings.bots.io',
+    'news.oeticket.com',
+    'e.dji.com'
   ],
   forceReviewSenders: [
     'developers.google.com',

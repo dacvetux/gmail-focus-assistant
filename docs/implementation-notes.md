@@ -196,3 +196,16 @@ Extended the Phase 7 operational reporting layer across the later-phase entrypoi
 ### Current tradeoff
 - `RunLog` is intentionally summary-level and does not replace the detailed phase-specific sheets
 - some run notes are heuristic strings meant for operator visibility, not strict machine contracts
+
+## 2026-04-23 - RunLog wording cleanup and first new review-bucket tightening
+
+Applied a small operational cleanup plus one concrete tuning pass based on fresh log output.
+
+### Added or changed
+- renamed the `RunLog` count header from `Created/Matched Items` to `Primary Count`
+- shortened draft run outcome wording from `drafts-created-or-generated` to `drafts-generated`
+- added several obvious commercial/newsletter sender domains seen in the current review bucket to `forceCommercialSenders`
+
+### Why
+- the old RunLog wording was accurate enough but clunky
+- several review-bucket items were plainly commercial and not worth leaving in `Review/Ambiguous`

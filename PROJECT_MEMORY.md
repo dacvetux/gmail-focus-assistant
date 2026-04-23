@@ -144,7 +144,7 @@ Core intent:
 
 ## Immediate next steps
 
-1. review real `RunLog` output and decide whether any notes/outcomes need simplification or normalization
+1. rerun dry-run processing after the latest sender overrides and verify whether the review bucket shrinks meaningfully
 2. keep Phase 6 visibility-first, with no automatic follow-up sending
 3. only add richer sent-mail inference after clearer real waiting-on-them examples are available
 4. review whether digest sections now need ranking or pruning based on real logs

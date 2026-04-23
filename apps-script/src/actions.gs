@@ -186,7 +186,7 @@ function getOrCreateRunLogSheet_() {
       'Mode',
       'Entry Point',
       'Processed Threads',
-      'Created/Matched Items',
+      'Primary Count',
       'Outcome',
       'Notes'
     ]]);
