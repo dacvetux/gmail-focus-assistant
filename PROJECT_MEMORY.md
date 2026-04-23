@@ -141,13 +141,15 @@ Core intent:
 - accepted Phase 6 as implemented but only lightly validated, with broader waiting-state inference deferred until clearer real examples exist
 - ended the checkpoint with Phase 5 practically validated, Phase 6 implemented and lightly validated, and the project ready either for digest surfacing of stale follow-ups or for Phase 7 tuning/ops cleanup
 - added a small Phase 6 follow-up digest layer so stale `6: awaiting reply` threads can surface in summaries without broadening automation
+- started Phase 7 with `RunLog` operational reporting for processing runs, then expanded it across draft, follow-up, and digest entrypoints
+- tightened `RunLog` wording (`Primary Count`, `drafts-generated`) and added another concrete review-bucket cleanup pass using real dry-run evidence
 
 ## Immediate next steps
 
 1. rerun dry-run processing after the latest sender overrides and verify whether the review bucket shrinks meaningfully
-2. keep Phase 6 visibility-first, with no automatic follow-up sending
-3. only add richer sent-mail inference after clearer real waiting-on-them examples are available
-4. review whether digest sections now need ranking or pruning based on real logs
+2. rerun the updated RunLog-producing entrypoints so spreadsheet output catches up with the latest wording/semantics
+3. keep Phase 6 visibility-first, with no automatic follow-up sending
+4. only add richer sent-mail inference after clearer real waiting-on-them examples are available
 5. continue tuning sender/domain exceptions from observed false positives and false negatives
 
 ## Open questions

@@ -63,4 +63,4 @@ MIT, see `LICENSE`.
 
 ## Status
 
-Phases 1 through 4 are implemented in usable v1 form. Phase 5 has produced multiple successful targeted end-to-end dry-run drafts on clearly reply-worthy threads; in unattended mode it remains intentionally sparse under a strict gate, and query-based on-demand drafting is the preferred practical path. Phase 6 now has a narrow visibility-first v1 implementation with query-based validation and `FollowUpLog` output, and has been lightly validated on real threads with conservative results.
+Phases 1 through 4 are implemented in usable v1 form. Phase 5 has produced multiple successful targeted end-to-end dry-run drafts on clearly reply-worthy threads; in unattended mode it remains intentionally sparse under a strict gate, and query-based on-demand drafting is the preferred practical path. Phase 6 now has a narrow visibility-first v1 implementation with query-based validation, `FollowUpLog`, and digest surfacing, and has been lightly validated on real threads with conservative results. Phase 7 has started with `RunLog` operational reporting plus an initial review-bucket cleanup pass based on real dry-run output.
