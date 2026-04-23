@@ -133,6 +133,7 @@ function processInboxFocusWithOptions_(options) {
   const threads = selectThreadsForProcessing_(options);
   const logRows = [];
   const previousDryRun = CONFIG.dryRun;
+  const mode = options.dryRun ? 'dry-run' : 'live';
 
   CONFIG.dryRun = Boolean(options.dryRun);
 
@@ -165,10 +166,44 @@ function processInboxFocusWithOptions_(options) {
     CONFIG.dryRun = previousDryRun;
   }
 
-  return {
+  const summary = {
     processedThreads: threads.length,
-    mode: options.dryRun ? 'dry-run' : 'live'
+    mode: mode
   };
+
+  logRunSummary_({
+    runType: options.enableAiReview ? 'phase4-ai-review' : 'phase1-2-processing',
+    mode: mode,
+    entryPoint: inferProcessingEntryPoint_(options),
+    processedThreads: threads.length,
+    itemCount: logRows.length,
+    outcome: threads.length ? 'processed' : 'no-candidates',
+    notes: buildProcessingRunNotes_(options, threads.length, logRows.length)
+  });
+
+  return summary;
+}
+
+function inferProcessingEntryPoint_(options) {
+  if (options.enableAiReview) {
+    return options.dryRun ? 'processInboxFocusPhase4AiReviewDryRun' : 'processInboxFocusPhase4AiReviewLive';
+  }
+
+  if (options.validationMode) {
+    return 'validatePhases1And2DryRun';
+  }
+
+  return options.dryRun ? 'processInboxFocusPhase1DryRun' : 'processInboxFocusPhase1Live';
+}
+
+function buildProcessingRunNotes_(options, threadCount, rowCount) {
+  const notes = [];
+  if (options.validationMode) notes.push('validation-mode');
+  if (options.enableAiReview) notes.push('ai-review-enabled');
+  if (hasDebugFilters_()) notes.push('debug-filters-active');
+  if (!threadCount) notes.push('search returned no candidate threads');
+  if (threadCount && !rowCount) notes.push('no decision rows recorded');
+  return notes.join('; ');
 }
 
 function selectThreadsForProcessing_(options) {

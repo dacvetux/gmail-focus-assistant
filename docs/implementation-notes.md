@@ -170,3 +170,15 @@ Added a small digest/report layer on top of the Phase 6 tracker.
 ### Current tradeoff
 - digest surfacing only sees threads already discoverable through the narrow Phase 6 input pool
 - usefulness depends on the mailbox actually accumulating `6: awaiting reply` threads over time
+
+## 2026-04-23 - Phase 7 operational run reporting
+
+Started Phase 7 with a small operational reporting layer.
+
+### Added or changed
+- `RunLog` sheet for top-level run summaries
+- Phase 1/2 and Phase 4 processing entrypoints now record processed-thread counts, outcome, and notes
+- no-candidate and debug-filter situations are easier to spot without reading raw decision logs first
+
+### Current tradeoff
+- this first RunLog pass covers processing runs only; draft, follow-up, and digest runs still rely mainly on their dedicated logs plus return values

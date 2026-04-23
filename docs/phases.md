@@ -46,8 +46,9 @@ Status: narrow v1 implemented and lightly validated on 2026-04-23
 - richer inference should wait until more real waiting-on-them examples are available
 
 ## Phase 7, continuous tuning
-Status: next active phase
+Status: started on 2026-04-23
 - adjust sender/domain rules
 - improve exceptions and prompts
 - review false positives and false negatives
 - tighten operational reporting and checkpointing around dry-run/live behavior
+- keep rollout visibility improving before broadening automation

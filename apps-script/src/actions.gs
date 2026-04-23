@@ -174,6 +174,43 @@ function logDigestRun_(digestType, mode, summary, itemCount) {
   sheet.getRange(startRow, 1, 1, row[0].length).setValues(row);
 }
 
+function getOrCreateRunLogSheet_() {
+  const spreadsheet = getLogSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName('RunLog');
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('RunLog');
+    sheet.getRange(1, 1, 1, 8).setValues([[
+      'Timestamp',
+      'Run Type',
+      'Mode',
+      'Entry Point',
+      'Processed Threads',
+      'Created/Matched Items',
+      'Outcome',
+      'Notes'
+    ]]);
+  }
+
+  return sheet;
+}
+
+function logRunSummary_(entry) {
+  const sheet = getOrCreateRunLogSheet_();
+  const row = [[
+    new Date(),
+    entry.runType || '',
+    entry.mode || '',
+    entry.entryPoint || '',
+    entry.processedThreads === undefined ? '' : entry.processedThreads,
+    entry.itemCount === undefined ? '' : entry.itemCount,
+    entry.outcome || '',
+    entry.notes || ''
+  ]];
+  const startRow = sheet.getLastRow() + 1;
+  sheet.getRange(startRow, 1, 1, row[0].length).setValues(row);
+}
+
 function getLogSpreadsheet_() {
   if (!CONFIG.logSpreadsheetId) {
     throw new Error('CONFIG.logSpreadsheetId must be set before running logging.');
