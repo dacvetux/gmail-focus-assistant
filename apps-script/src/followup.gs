@@ -72,11 +72,24 @@ function trackAwaitingRepliesPhase6_(options) {
 
   flushFollowUpLog_(rows);
 
-  return {
+  const staleCount = rows.filter(row => row[9] === 'waiting-stale').length;
+  const summary = {
     mode: mode,
     processedThreads: threads.length,
-    staleCount: rows.filter(row => row[9] === 'waiting-stale').length
+    staleCount: staleCount
   };
+
+  logRunSummary_({
+    runType: 'phase6-followup',
+    mode: mode,
+    entryPoint: inferFollowUpEntryPoint_(options),
+    processedThreads: threads.length,
+    itemCount: staleCount,
+    outcome: staleCount ? 'stale-candidates-found' : (threads.length ? 'processed-no-stale-candidates' : 'no-candidates'),
+    notes: buildFollowUpRunNotes_(options, threads.length, rows, staleCount)
+  });
+
+  return summary;
 }
 
 function selectAwaitingReplyThreads_(options) {
@@ -166,6 +179,25 @@ function ensureAwaitingReplyLabel_(thread) {
   if (!labelNames.includes(CONFIG.labels.awaitingReply)) {
     getOrCreateLabel_(CONFIG.labels.awaitingReply).addToThread(thread);
   }
+}
+
+function inferFollowUpEntryPoint_(options) {
+  if (options && options.query) {
+    return options.dryRun ? 'trackAwaitingRepliesForQueryPhase6DryRun' : 'trackAwaitingRepliesForQueryPhase6Live';
+  }
+
+  return options && options.dryRun ? 'trackAwaitingRepliesPhase6DryRun' : 'trackAwaitingRepliesPhase6Live';
+}
+
+function buildFollowUpRunNotes_(options, threadCount, rows, staleCount) {
+  const notes = [];
+  if (options && options.forceIncludeQueryMatches) notes.push('query-mode');
+  if (options && options.query) notes.push(`query=${options.query}`);
+  if (!threadCount) notes.push('no candidate threads resolved');
+  if (threadCount && !staleCount) notes.push('no stale follow-up candidates');
+  if ((rows || []).some(row => row[9] === 'closed-or-replied')) notes.push('closed-or-replied threads present');
+  if ((rows || []).some(row => row[9] === 'waiting-fresh')) notes.push('fresh waiting threads present');
+  return notes.join('; ');
 }
 
 function classifySenderType_(from) {

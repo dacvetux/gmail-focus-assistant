@@ -182,3 +182,17 @@ Started Phase 7 with a small operational reporting layer.
 
 ### Current tradeoff
 - this first RunLog pass covers processing runs only; draft, follow-up, and digest runs still rely mainly on their dedicated logs plus return values
+
+## 2026-04-23 - Expanded RunLog coverage
+
+Extended the Phase 7 operational reporting layer across the later-phase entrypoints.
+
+### Added or changed
+- Phase 5 draft entrypoints now write top-level summaries to `RunLog`
+- Phase 6 follow-up tracking entrypoints now write top-level summaries to `RunLog`
+- digest entrypoints now write top-level summaries to `RunLog`
+- `RunLog` now acts as a compact operational index across processing, drafting, follow-up tracking, and digesting
+
+### Current tradeoff
+- `RunLog` is intentionally summary-level and does not replace the detailed phase-specific sheets
+- some run notes are heuristic strings meant for operator visibility, not strict machine contracts

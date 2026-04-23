@@ -68,6 +68,7 @@ function generateDraftReplies_(options) {
   const threads = selectDraftCandidateThreads_(options);
   const rows = [];
   let createdCount = 0;
+  const mode = options.dryRun ? 'dry-run' : 'live';
 
   threads.forEach(thread => {
     const result = buildDraftForThread_(thread, options);
@@ -80,7 +81,7 @@ function generateDraftReplies_(options) {
   if (!rows.length) {
     rows.push([
       new Date(),
-      options.dryRun ? 'dry-run' : 'live',
+      mode,
       '',
       '',
       '',
@@ -91,16 +92,29 @@ function generateDraftReplies_(options) {
 
   flushDraftLog_(rows);
 
-  return {
+  const summary = {
     processedThreads: threads.length,
     createdDrafts: createdCount,
-    mode: options.dryRun ? 'dry-run' : 'live'
+    mode: mode
   };
+
+  logRunSummary_({
+    runType: 'phase5-drafts',
+    mode: mode,
+    entryPoint: options.allowDebugBypass ? 'generateDraftRepliesPhase5DebugDryRun' : (options.dryRun ? 'generateDraftRepliesPhase5DryRun' : 'generateDraftRepliesPhase5Live'),
+    processedThreads: threads.length,
+    itemCount: createdCount,
+    outcome: createdCount ? 'drafts-created-or-generated' : 'no-drafts',
+    notes: buildDraftRunNotes_(options, threads.length, createdCount, rows)
+  });
+
+  return summary;
 }
 
 function generateDraftRepliesForThreadIds_(threadIds, options) {
   const rows = [];
   let createdCount = 0;
+  const mode = options.dryRun ? 'dry-run' : 'live';
 
   (threadIds || [])
     .map(getThreadByIdSafe_)
@@ -118,7 +132,7 @@ function generateDraftRepliesForThreadIds_(threadIds, options) {
   if (!rows.length) {
     rows.push([
       new Date(),
-      options.dryRun ? 'dry-run' : 'live',
+      mode,
       '',
       '',
       '',
@@ -129,11 +143,23 @@ function generateDraftRepliesForThreadIds_(threadIds, options) {
 
   flushDraftLog_(rows);
 
-  return {
+  const summary = {
     processedThreads: rows.length,
     createdDrafts: createdCount,
-    mode: options.dryRun ? 'dry-run' : 'live'
+    mode: mode
   };
+
+  logRunSummary_({
+    runType: 'phase5-drafts',
+    mode: mode,
+    entryPoint: options.dryRun ? 'generateDraftForThreadIdPhase5DryRun' : 'generateDraftForThreadIdPhase5Live',
+    processedThreads: rows.length,
+    itemCount: createdCount,
+    outcome: createdCount ? 'drafts-created-or-generated' : 'no-drafts',
+    notes: rows.length ? 'thread-id-mode' : 'no valid thread ids resolved'
+  });
+
+  return summary;
 }
 
 function generateDraftRepliesForLabelQuery_(labelQuery, options) {
@@ -161,6 +187,7 @@ function generateDraftRepliesForQuery_(query, options) {
 function processOnDemandDraftThreads_(threads, options, emptyMessage) {
   const rows = [];
   let createdCount = 0;
+  const mode = options.dryRun ? 'dry-run' : 'live';
 
   threads.forEach(thread => {
     const result = buildDraftForThread_(thread, Object.assign({}, options, {
@@ -175,7 +202,7 @@ function processOnDemandDraftThreads_(threads, options, emptyMessage) {
   if (!rows.length) {
     rows.push([
       new Date(),
-      options.dryRun ? 'dry-run' : 'live',
+      mode,
       '',
       '',
       '',
@@ -186,11 +213,23 @@ function processOnDemandDraftThreads_(threads, options, emptyMessage) {
 
   flushDraftLog_(rows);
 
-  return {
+  const summary = {
     processedThreads: threads.length,
     createdDrafts: createdCount,
-    mode: options.dryRun ? 'dry-run' : 'live'
+    mode: mode
   };
+
+  logRunSummary_({
+    runType: 'phase5-drafts',
+    mode: mode,
+    entryPoint: inferOnDemandDraftEntryPoint_(options, emptyMessage),
+    processedThreads: threads.length,
+    itemCount: createdCount,
+    outcome: createdCount ? 'drafts-created-or-generated' : 'no-drafts',
+    notes: buildDraftRunNotes_(options, threads.length, createdCount, rows)
+  });
+
+  return summary;
 }
 
 function selectDraftCandidateThreads_(options) {
@@ -231,6 +270,25 @@ function selectDraftCandidateThreads_(options) {
     .filter(thread => threadMatchesDebugFilters_(thread))
     .sort((a, b) => getThreadSortKey_(b) - getThreadSortKey_(a))
     .slice(0, maxThreads);
+}
+
+function inferOnDemandDraftEntryPoint_(options, emptyMessage) {
+  if ((emptyMessage || '').includes('label-based')) {
+    return options.dryRun ? 'generateDraftRepliesForToRespondLabelPhase5DryRun' : 'generateDraftRepliesForToRespondLabelPhase5Live';
+  }
+
+  return options.dryRun ? 'generateDraftRepliesForQueryPhase5DryRun' : 'generateDraftRepliesForQueryPhase5Live';
+}
+
+function buildDraftRunNotes_(options, threadCount, createdCount, rows) {
+  const notes = [];
+  if (options.allowDebugBypass) notes.push('debug-bypass');
+  if (options.requireStrictCandidate === false) notes.push('strict-gate-bypassed');
+  if (hasDebugFilters_()) notes.push('debug-filters-active');
+  if (!threadCount) notes.push('no candidate threads resolved');
+  if (threadCount && !createdCount) notes.push('threads processed but no draft created');
+  if ((rows || []).some(row => String(row[5] || '').startsWith('ERROR:'))) notes.push('errors present in DraftLog');
+  return notes.join('; ');
 }
 
 function isStrictDraftCandidate_(thread) {

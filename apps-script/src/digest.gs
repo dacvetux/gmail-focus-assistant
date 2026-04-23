@@ -50,12 +50,24 @@ function generateDigest_(options) {
     });
   }
 
-  return {
+  const result = {
     type: options.type,
     mode: mode,
     itemCount: itemCount,
     summary: summary
   };
+
+  logRunSummary_({
+    runType: 'digest',
+    mode: mode,
+    entryPoint: options.type === 'morning' ? 'generateMorningDigest' : 'generateEveningDigest',
+    processedThreads: itemCount,
+    itemCount: itemCount,
+    outcome: itemCount ? 'digest-items-found' : 'no-items',
+    notes: buildDigestRunNotes_(sections)
+  });
+
+  return result;
 }
 
 function generateFollowUpDigestPhase6_(options) {
@@ -73,12 +85,35 @@ function generateFollowUpDigestPhase6_(options) {
     });
   }
 
-  return {
+  const result = {
     type: 'follow-up',
     mode: mode,
     itemCount: staleThreads.length,
     summary: summary
   };
+
+  logRunSummary_({
+    runType: 'digest',
+    mode: mode,
+    entryPoint: options.dryRun ? 'generateFollowUpDigestPhase6DryRun' : 'generateFollowUpDigestPhase6Live',
+    processedThreads: staleThreads.length,
+    itemCount: staleThreads.length,
+    outcome: staleThreads.length ? 'digest-items-found' : 'no-items',
+    notes: staleThreads.length ? 'follow-up-only-digest' : 'no stale follow-up candidates'
+  });
+
+  return result;
+}
+
+function buildDigestRunNotes_(sections) {
+  const notes = [];
+  if (sections.toRespond.length) notes.push(`to-respond=${sections.toRespond.length}`);
+  if (sections.notifications.length) notes.push(`notifications=${sections.notifications.length}`);
+  if (sections.opportunities.length) notes.push(`opportunities=${sections.opportunities.length}`);
+  if (sections.review.length) notes.push(`review=${sections.review.length}`);
+  if (sections.followUpStale.length) notes.push(`followup-stale=${sections.followUpStale.length}`);
+  if (!notes.length) notes.push('no digest sections populated');
+  return notes.join('; ');
 }
 
 function buildDigestSections_(query) {
