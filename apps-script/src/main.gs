@@ -117,6 +117,18 @@ function trackAwaitingRepliesForQueryPhase6Live(query) {
   return trackAwaitingRepliesForQueryPhase6Live_(query);
 }
 
+function generateFollowUpDigestPhase6DryRun() {
+  return generateFollowUpDigestPhase6_({
+    dryRun: true
+  });
+}
+
+function generateFollowUpDigestPhase6Live() {
+  return generateFollowUpDigestPhase6_({
+    dryRun: false
+  });
+}
+
 function processInboxFocusWithOptions_(options) {
   const threads = selectThreadsForProcessing_(options);
   const logRows = [];

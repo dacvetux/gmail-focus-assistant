@@ -113,12 +113,12 @@ Implemented v1 entrypoints:
 - `trackAwaitingRepliesPhase6Live()`
 - `trackAwaitingRepliesForQueryPhase6DryRun(query)`
 - `trackAwaitingRepliesForQueryPhase6Live(query)`
+- `generateFollowUpDigestPhase6DryRun()`
+- `generateFollowUpDigestPhase6Live()`
 
 The query-based entrypoints exist specifically to validate Phase 6 on known threads even when `6: awaiting reply` is still sparsely populated.
 
-Possible later entrypoints:
-- `generateFollowUpDigestPhase6DryRun()`
-- `generateFollowUpDigestPhase6Live()`
+The follow-up digest entrypoints provide a small surfacing layer for stale `6: awaiting reply` threads without widening automation.
 
 ## Key implementation questions
 
@@ -136,7 +136,7 @@ Keep Phase 6 intentionally narrow:
 2. allow narrow query-based validation on known candidate threads
 3. determine staleness from the latest meaningful message, ignoring trivial acknowledgements where possible
 4. log stale candidates to `FollowUpLog` with a human-readable reason
-5. optionally surface them later in digest output
+5. optionally surface stale candidates in digest output
 
 This avoids premature complexity while building the core memory loop.
 

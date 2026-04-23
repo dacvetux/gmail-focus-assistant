@@ -140,14 +140,15 @@ Core intent:
 - manually validated Phase 6 query-mode logging on real A1-related threads; results were conservatively `closed-or-replied`, which is acceptable for the sampled threads because the latest meaningful message appeared to be external
 - accepted Phase 6 as implemented but only lightly validated, with broader waiting-state inference deferred until clearer real examples exist
 - ended the checkpoint with Phase 5 practically validated, Phase 6 implemented and lightly validated, and the project ready either for digest surfacing of stale follow-ups or for Phase 7 tuning/ops cleanup
+- added a small Phase 6 follow-up digest layer so stale `6: awaiting reply` threads can surface in summaries without broadening automation
 
 ## Immediate next steps
 
-1. optionally surface stale Phase 6 candidates in a digest/report view rather than widening automation
-2. checkpoint repo state cleanly with commits once the remaining working-tree changes are reviewed
-3. keep Phase 6 visibility-first, with no automatic follow-up sending
-4. only add richer sent-mail inference after clearer real waiting-on-them examples are available
-5. continue with Phase 7 tuning and operational cleanup when useful
+1. begin Phase 7 by tightening operational reporting and rollout discipline around dry-run/live behavior
+2. keep Phase 6 visibility-first, with no automatic follow-up sending
+3. only add richer sent-mail inference after clearer real waiting-on-them examples are available
+4. review whether digest sections now need ranking or pruning based on real logs
+5. continue tuning sender/domain exceptions from observed false positives and false negatives
 
 ## Open questions
 

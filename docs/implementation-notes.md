@@ -156,3 +156,17 @@ Extended the initial Phase 6 skeleton so it can be validated on real known threa
 ### Current tradeoff
 - meaningful-message detection is still heuristic and intentionally simple
 - Phase 6 remains visibility-first; no follow-up drafting or sending is triggered from this path
+
+## 2026-04-23 - Phase 6 digest surfacing
+
+Added a small digest/report layer on top of the Phase 6 tracker.
+
+### Added or changed
+- `generateFollowUpDigestPhase6DryRun()`
+- `generateFollowUpDigestPhase6Live()`
+- stale `6: awaiting reply` threads can now appear as a dedicated digest section
+- follow-up digest remains read-only apart from normal digest logging/email behavior
+
+### Current tradeoff
+- digest surfacing only sees threads already discoverable through the narrow Phase 6 input pool
+- usefulness depends on the mailbox actually accumulating `6: awaiting reply` threads over time
