@@ -44,12 +44,13 @@ See `docs/roadmap.md` for the phased build direction.
 
 ## Current implementation
 
-Phases 1 through 4 now have working v1 implementations, with Phase 4 kept intentionally narrow and conservative, and Phase 5 started in a draft-only mode. See:
+Phases 1 through 6 now have working narrow implementations, with later phases kept intentionally conservative and visibility-first where appropriate. See:
 - `docs/phase-1.md`
 - `docs/phase-2.md`
 - `docs/phase-3.md`
 - `docs/phase-4.md`
 - `docs/phase-5.md`
+- `docs/phase-6.md`
 - `docs/testing-phase-1.md`
 - `docs/deployment.md`
 - `docs/first-run-checklist.md`
@@ -62,4 +63,4 @@ MIT, see `LICENSE`.
 
 ## Status
 
-Phases 1 through 4 are implemented in a usable v1 form. Phase 5 has now produced multiple successful targeted end-to-end dry-run drafts on clearly reply-worthy threads. In unattended mode it remains intentionally sparse under a strict gate, and an initial on-demand draft flow is now being added on top of the same draft-only safety model.
+Phases 1 through 4 are implemented in usable v1 form. Phase 5 has produced multiple successful targeted end-to-end dry-run drafts on clearly reply-worthy threads; in unattended mode it remains intentionally sparse under a strict gate, and query-based on-demand drafting is the preferred practical path. Phase 6 now has a narrow visibility-first v1 implementation with query-based validation and `FollowUpLog` output, and has been lightly validated on real threads with conservative results.

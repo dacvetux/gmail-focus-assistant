@@ -341,5 +341,28 @@ const CONFIG = {
     /new model/i,
     /product update/i
   ],
-  draftRetryableStatusCodes: [429, 500, 503]
+  draftRetryableStatusCodes: [429, 500, 503],
+  followUpLookbackDays: 30,
+  followUpStaleDays: 5,
+  followUpMeaningfulBodyMinChars: 20,
+  followUpMeaninglessPatterns: [
+    /^ok[.!]?$/i,
+    /^thanks[.!]?$/i,
+    /^thank you[.!]?$/i,
+    /^noted[.!]?$/i,
+    /^super[.!]?$/i,
+    /^great[.!]?$/i,
+    /^sounds good[.!]?$/i,
+    /^best[,!]?$/i,
+    /^br[,!]?$/i,
+    /^sent from my iphone/i,
+    /^sent from my pixel/i,
+    /^sent from outlook for ios/i,
+    /^gesendet von meinem iphone/i,
+    /^poslano iz mojega iphone/i
+  ],
+  myAddresses: [
+    'cvetko.damjan@gmail.com',
+    'damjan@sdmaribor.si'
+  ]
 };

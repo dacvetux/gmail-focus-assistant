@@ -93,6 +93,62 @@ function getOrCreateDecisionLogSheet_() {
   return sheet;
 }
 
+function getOrCreateFollowUpLogSheet_() {
+  const spreadsheet = getLogSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName('FollowUpLog');
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('FollowUpLog');
+    sheet.getRange(1, 1, 1, 11).setValues([[
+      'Timestamp',
+      'Mode',
+      'Thread ID',
+      'From',
+      'Subject',
+      'Current Labels',
+      'Last Message Date',
+      'Last Message Sender Type',
+      'Days Since Last Message',
+      'Suggested Status',
+      'Reason'
+    ]]);
+    return sheet;
+  }
+
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, 11).setValues([[
+      'Timestamp',
+      'Mode',
+      'Thread ID',
+      'From',
+      'Subject',
+      'Current Labels',
+      'Last Message Date',
+      'Last Message Sender Type',
+      'Days Since Last Message',
+      'Suggested Status',
+      'Reason'
+    ]]);
+    return sheet;
+  }
+
+  const header = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 10)).getValues()[0];
+  if (header[10] !== 'Reason') {
+    sheet.insertColumnAfter(10);
+    sheet.getRange(1, 11).setValue('Reason');
+  }
+
+  return sheet;
+}
+
+function flushFollowUpLog_(rows) {
+  if (!rows.length) return;
+
+  const sheet = getOrCreateFollowUpLogSheet_();
+  const startRow = sheet.getLastRow() + 1;
+  sheet.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
+}
+
 function getOrCreateDigestLogSheet_() {
   const spreadsheet = getLogSpreadsheet_();
   let sheet = spreadsheet.getSheetByName('DigestLog');

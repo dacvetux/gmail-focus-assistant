@@ -101,6 +101,22 @@ function generateDraftRepliesForQueryPhase5Live(query) {
   return generateDraftRepliesForQueryLive_(query);
 }
 
+function trackAwaitingRepliesPhase6DryRun() {
+  return trackAwaitingRepliesPhase6DryRun_();
+}
+
+function trackAwaitingRepliesPhase6Live() {
+  return trackAwaitingRepliesPhase6Live_();
+}
+
+function trackAwaitingRepliesForQueryPhase6DryRun(query) {
+  return trackAwaitingRepliesForQueryPhase6DryRun_(query);
+}
+
+function trackAwaitingRepliesForQueryPhase6Live(query) {
+  return trackAwaitingRepliesForQueryPhase6Live_(query);
+}
+
 function processInboxFocusWithOptions_(options) {
   const threads = selectThreadsForProcessing_(options);
   const logRows = [];

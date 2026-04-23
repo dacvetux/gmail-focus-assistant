@@ -46,6 +46,7 @@ Core intent:
 - phase 3 digest generation implemented and refined from live log review
 - phase 4 selective AI review implemented and validated for ambiguous mail
 - phase 5 first narrow draft-only implementation added for `1: to respond` threads
+- phase 6 follow-up tracking implementation added with `FollowUpLog` output and query-based validation entrypoints
 - `CONFIG.logSpreadsheetId` is now set to the main Gmail Focus Assistant log sheet
 - main phase entrypoints exist
 
@@ -134,15 +135,19 @@ Core intent:
 - implemented initial on-demand Phase 5 entrypoints for a specific thread id and for the `1: to respond` label slice, reusing the same draft builder, logging path, and draft-only safety model
 - after thread-id lookup proved unreliable in Apps Script, added a query-based on-demand Phase 5 entrypoint as a more robust fallback for user-selected drafting
 - validated the query-based on-demand path successfully against Manuela Rath / A1 recruiting threads and accepted it as the preferred manual targeting method in the current deployment context
-- ended the day with Phase 4 closed for v1 and Phase 5 validated on multiple focused cases, with autonomous behavior staying sparse and query-based on-demand drafting now established as the preferred practical path
+- implemented Phase 6 as a narrow visibility-first follow-up tracker with `FollowUpLog`, query-based validation entrypoints, and reason logging
+- pushed the updated Apps Script code with clasp on 2026-04-23
+- manually validated Phase 6 query-mode logging on real A1-related threads; results were conservatively `closed-or-replied`, which is acceptable for the sampled threads because the latest meaningful message appeared to be external
+- accepted Phase 6 as implemented but only lightly validated, with broader waiting-state inference deferred until clearer real examples exist
+- ended the checkpoint with Phase 5 practically validated, Phase 6 implemented and lightly validated, and the project ready either for digest surfacing of stale follow-ups or for Phase 7 tuning/ops cleanup
 
 ## Immediate next steps
 
-1. document that unattended `generateDraftRepliesPhase5DryRun()` is intentionally sparse under the current strict gate
-2. design an on-demand Phase 5 flow for user-selected threads or very narrow label inputs
-3. keep strict gating in place for unattended runs rather than widening autonomous eligibility further
-4. if on-demand drafting is implemented, reuse the same prompt, logging, and draft-only safety model
-5. revisit broader autonomous eligibility only if real usage shows the on-demand flow is too restrictive
+1. optionally surface stale Phase 6 candidates in a digest/report view rather than widening automation
+2. checkpoint repo state cleanly with commits once the remaining working-tree changes are reviewed
+3. keep Phase 6 visibility-first, with no automatic follow-up sending
+4. only add richer sent-mail inference after clearer real waiting-on-them examples are available
+5. continue with Phase 7 tuning and operational cleanup when useful
 
 ## Open questions
 

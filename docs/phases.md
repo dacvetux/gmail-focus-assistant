@@ -31,15 +31,19 @@ Status: implemented and validated for v1 on 2026-04-22
 - keep the operational scope narrow and conservative
 
 ## Phase 5, draft assistant
-Status: first safe implementation started on 2026-04-22
+Status: implemented and practically validated for a narrow v1 on 2026-04-23
 - generate draft replies for selected labels or on-demand
 - never auto-send
-- start with a narrow draft-only flow for `1: to respond`
+- unattended behavior remains intentionally sparse under a strict gate
+- query-based on-demand drafting is the preferred practical path in the current deployment context
 
 ## Phase 6, follow-up memory
-- detect sent mail awaiting reply
-- remind about stale open loops
-- keep closure tasks visible
+Status: narrow v1 implemented and lightly validated on 2026-04-23
+- detect likely awaiting-reply threads conservatively
+- support query-based validation when `6: awaiting reply` is sparsely populated
+- log stale/fresh/closed decisions to `FollowUpLog`
+- keep closure tasks visible without triggering automatic follow-up actions
+- richer inference should wait until more real waiting-on-them examples are available
 
 ## Phase 7, continuous tuning
 - adjust sender/domain rules

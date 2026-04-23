@@ -141,3 +141,18 @@ Phase 5 required several same-day tuning passes after dry-run validation.
 
 ### Current tradeoff
 - Phase 5 structure is now much safer and more predictable, but it still needs one successful end-to-end validation on a real actionable thread before it should be treated as stable
+
+## 2026-04-23 - Phase 6 validation path and logging upgrade
+
+Extended the initial Phase 6 skeleton so it can be validated on real known threads before the `6: awaiting reply` label is fully populated.
+
+### Added or changed
+- query-based Phase 6 entrypoints for dry-run and live validation
+- richer Phase 6 analysis based on the latest meaningful message in a thread, not only the literal latest message
+- conservative filtering for trivial acknowledgement-style messages
+- `Reason` column in `FollowUpLog` for easier review of stale/fresh/closed decisions
+- optional live-mode application of `6: awaiting reply` only for query-mode candidates that look like genuine waiting threads
+
+### Current tradeoff
+- meaningful-message detection is still heuristic and intentionally simple
+- Phase 6 remains visibility-first; no follow-up drafting or sending is triggered from this path
