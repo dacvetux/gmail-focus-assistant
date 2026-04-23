@@ -62,4 +62,4 @@ MIT, see `LICENSE`.
 
 ## Status
 
-Phases 1 through 4 are implemented in a usable v1 form. Phase 5 is structurally implemented in a strict draft-only mode and is awaiting one successful targeted end-to-end draft validation before it can be considered stable.
+Phases 1 through 4 are implemented in a usable v1 form. Phase 5 has now produced multiple successful targeted end-to-end dry-run drafts on clearly reply-worthy threads. In unattended mode it remains intentionally sparse under a strict gate, and an initial on-demand draft flow is now being added on top of the same draft-only safety model.

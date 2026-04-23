@@ -20,6 +20,50 @@ function generateDraftRepliesLive() {
   });
 }
 
+function generateDraftForThreadIdDryRun_(threadId) {
+  return generateDraftRepliesForThreadIds_([threadId], {
+    dryRun: true
+  });
+}
+
+function generateDraftForThreadIdLive_(threadId) {
+  return generateDraftRepliesForThreadIds_([threadId], {
+    dryRun: false
+  });
+}
+
+function generateDraftRepliesForToRespondLabelDryRun_() {
+  return generateDraftRepliesForLabelQuery_(`label:"${CONFIG.labels.toRespond}"`, {
+    dryRun: true,
+    maxThreads: CONFIG.draftDailyLimit || 10,
+    requireStrictCandidate: false
+  });
+}
+
+function generateDraftRepliesForToRespondLabelLive_() {
+  return generateDraftRepliesForLabelQuery_(`label:"${CONFIG.labels.toRespond}"`, {
+    dryRun: false,
+    maxThreads: CONFIG.draftDailyLimit || 10,
+    requireStrictCandidate: false
+  });
+}
+
+function generateDraftRepliesForQueryDryRun_(query) {
+  return generateDraftRepliesForQuery_(query, {
+    dryRun: true,
+    maxThreads: CONFIG.draftDailyLimit || 10,
+    requireStrictCandidate: false
+  });
+}
+
+function generateDraftRepliesForQueryLive_(query) {
+  return generateDraftRepliesForQuery_(query, {
+    dryRun: false,
+    maxThreads: CONFIG.draftDailyLimit || 10,
+    requireStrictCandidate: false
+  });
+}
+
 function generateDraftReplies_(options) {
   const threads = selectDraftCandidateThreads_(options);
   const rows = [];
@@ -54,13 +98,130 @@ function generateDraftReplies_(options) {
   };
 }
 
-function selectDraftCandidateThreads_(options) {
+function generateDraftRepliesForThreadIds_(threadIds, options) {
+  const rows = [];
+  let createdCount = 0;
+
+  (threadIds || [])
+    .map(getThreadByIdSafe_)
+    .filter(Boolean)
+    .forEach(thread => {
+      const result = buildDraftForThread_(thread, Object.assign({}, options, {
+        forceDraftMode: 'required'
+      }));
+      rows.push(result.logRow);
+      if (result.created) {
+        createdCount += 1;
+      }
+    });
+
+  if (!rows.length) {
+    rows.push([
+      new Date(),
+      options.dryRun ? 'dry-run' : 'live',
+      '',
+      '',
+      '',
+      'No valid thread ids found for on-demand draft generation.',
+      'no'
+    ]);
+  }
+
+  flushDraftLog_(rows);
+
+  return {
+    processedThreads: rows.length,
+    createdDrafts: createdCount,
+    mode: options.dryRun ? 'dry-run' : 'live'
+  };
+}
+
+function generateDraftRepliesForLabelQuery_(labelQuery, options) {
   const lookbackDays = CONFIG.draftSearchLookbackDays || 14;
   const maxThreads = options.maxThreads || CONFIG.draftDailyLimit || 10;
-  const baseQuery = `in:inbox newer_than:${lookbackDays}d -in:drafts -label:TRASH -label:SPAM`;
-  const pool = GmailApp.search(baseQuery, 0, Math.max(60, maxThreads * 8));
+  const query = `${labelQuery} newer_than:${lookbackDays}d -in:drafts -label:TRASH -label:SPAM`;
+  const threads = dedupeThreads_(GmailApp.search(query, 0, Math.max(30, maxThreads * 4)))
+    .filter(thread => options.requireStrictCandidate === false ? true : isStrictDraftCandidate_(thread))
+    .sort((a, b) => getThreadSortKey_(b) - getThreadSortKey_(a))
+    .slice(0, maxThreads);
 
-  return dedupeThreads_(pool)
+  return processOnDemandDraftThreads_(threads, options, 'No candidate threads found for on-demand label-based draft generation.');
+}
+
+function generateDraftRepliesForQuery_(query, options) {
+  const maxThreads = options.maxThreads || CONFIG.draftDailyLimit || 10;
+  const threads = dedupeThreads_(GmailApp.search(query, 0, Math.max(30, maxThreads * 4)))
+    .filter(thread => options.requireStrictCandidate === false ? true : isStrictDraftCandidate_(thread))
+    .sort((a, b) => getThreadSortKey_(b) - getThreadSortKey_(a))
+    .slice(0, maxThreads);
+
+  return processOnDemandDraftThreads_(threads, options, 'No candidate threads found for on-demand query-based draft generation.');
+}
+
+function processOnDemandDraftThreads_(threads, options, emptyMessage) {
+  const rows = [];
+  let createdCount = 0;
+
+  threads.forEach(thread => {
+    const result = buildDraftForThread_(thread, Object.assign({}, options, {
+      forceDraftMode: 'required'
+    }));
+    rows.push(result.logRow);
+    if (result.created) {
+      createdCount += 1;
+    }
+  });
+
+  if (!rows.length) {
+    rows.push([
+      new Date(),
+      options.dryRun ? 'dry-run' : 'live',
+      '',
+      '',
+      '',
+      emptyMessage,
+      'no'
+    ]);
+  }
+
+  flushDraftLog_(rows);
+
+  return {
+    processedThreads: threads.length,
+    createdDrafts: createdCount,
+    mode: options.dryRun ? 'dry-run' : 'live'
+  };
+}
+
+function selectDraftCandidateThreads_(options) {
+  const maxThreads = options.maxThreads || CONFIG.draftDailyLimit || 10;
+
+  if (options.allowDebugBypass && CONFIG.debugSampleThreads && CONFIG.debugSampleThreads.length) {
+    return CONFIG.debugSampleThreads
+      .map(getThreadByIdSafe_)
+      .filter(Boolean)
+      .slice(0, maxThreads);
+  }
+
+  const lookbackDays = CONFIG.draftSearchLookbackDays || 14;
+  const poolLimit = Math.max(60, maxThreads * 8);
+  const queries = [
+    `in:inbox newer_than:${lookbackDays}d -in:drafts -label:TRASH -label:SPAM`,
+    `label:"${CONFIG.labels.toRespond}" newer_than:${lookbackDays}d -in:drafts -label:TRASH -label:SPAM`,
+    `label:"${CONFIG.labels.importantServices}" newer_than:${lookbackDays}d -in:drafts -label:TRASH -label:SPAM`,
+    `label:"${CONFIG.labels.importantCalendar}" newer_than:${lookbackDays}d -in:drafts -label:TRASH -label:SPAM`,
+    `label:"${CONFIG.labels.importantOpportunities}" newer_than:${lookbackDays}d -in:drafts -label:TRASH -label:SPAM`
+  ];
+
+  const pooledThreads = queries.flatMap(query => {
+    try {
+      return GmailApp.search(query, 0, poolLimit);
+    } catch (error) {
+      return [];
+    }
+  });
+
+  return dedupeThreads_(pooledThreads)
     .filter(thread => {
       if (options.allowDebugBypass && hasDebugFilters_() && threadMatchesDebugFilters_(thread)) {
         return true;
@@ -76,7 +237,10 @@ function isStrictDraftCandidate_(thread) {
   const labels = thread.getLabels().map(label => label.getName());
   const managedLabels = new Set(labels);
   const decision = classifyThread_(thread);
-  const lastMessage = thread.getMessages()[thread.getMessageCount() - 1];
+  const lastMessage = getLastMessageSafe_(thread);
+  if (!lastMessage) {
+    return false;
+  }
   const from = ((lastMessage && lastMessage.getFrom()) || '').toLowerCase();
   const subject = ((lastMessage && lastMessage.getSubject()) || '').toLowerCase();
   const haystack = `${from}\n${subject}`;
@@ -105,16 +269,35 @@ function isStrictDraftCandidate_(thread) {
     return true;
   }
 
+  if (decision.label === CONFIG.labels.importantOpportunities && decision.workflowLabel === CONFIG.labels.toRespond && !isOpportunityBroadcastSender_(from)) {
+    return true;
+  }
+
   return false;
 }
 
 function buildDraftForThread_(thread, options) {
-  const lastMessage = thread.getMessages()[thread.getMessageCount() - 1];
+  const lastMessage = getLastMessageSafe_(thread);
+  if (!lastMessage) {
+    return {
+      created: false,
+      logRow: [
+        new Date(),
+        options.dryRun ? 'dry-run' : 'live',
+        thread.getId(),
+        '',
+        '',
+        'SKIPPED: could not read latest message for thread.',
+        'no'
+      ]
+    };
+  }
+
   const from = (lastMessage && lastMessage.getFrom()) || '';
   const subject = (lastMessage && lastMessage.getSubject()) || '';
   const subjectHaystack = `${from}\n${subject}`.toLowerCase();
   const body = ((lastMessage && lastMessage.getPlainBody()) || '').slice(0, CONFIG.draftMaxBodyChars || 4000);
-  const draftMode = getDraftGenerationMode_(thread);
+  const draftMode = options.forceDraftMode || getDraftGenerationMode_(thread);
 
   if (containsAny_(subjectHaystack, CONFIG.draftExcludedSenders) || matchesAny_(subjectHaystack, CONFIG.draftExcludedSubjectPatterns)) {
     return {
@@ -296,6 +479,35 @@ function extractReplyAddress_(message) {
   const source = replyTo || from;
   const match = source.match(/<([^>]+)>/);
   return match ? match[1] : source.replace(/^[^\s<]+\s*/, '').trim();
+}
+
+function isOpportunityBroadcastSender_(from) {
+  return [
+    'jobs@mail.xing.com',
+    'jobs-listings@linkedin.com',
+    'jobs-noreply@linkedin.com',
+    'jobalerts-noreply@linkedin.com',
+    'news@email.experteer.com',
+    'job.karriere.at'
+  ].some(snippet => from.includes(snippet));
+}
+
+function getLastMessageSafe_(thread) {
+  try {
+    const messages = thread.getMessages();
+    if (!messages || !messages.length) return null;
+    return messages[messages.length - 1] || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function getThreadByIdSafe_(threadId) {
+  try {
+    return GmailApp.getThreadById(threadId);
+  } catch (error) {
+    return null;
+  }
 }
 
 function getOrCreateDraftLogSheet_() {

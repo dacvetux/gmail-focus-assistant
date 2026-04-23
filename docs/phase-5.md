@@ -34,9 +34,23 @@ It:
 
 ## Entry points
 
+Unattended/background mode:
 - `generateDraftRepliesPhase5DryRun()`
 - `generateDraftRepliesPhase5DebugDryRun()`
 - `generateDraftRepliesPhase5Live()`
+
+On-demand mode:
+- `generateDraftForThreadIdPhase5DryRun(threadId)`
+- `generateDraftForThreadIdPhase5Live(threadId)`
+- `generateDraftRepliesForToRespondLabelPhase5DryRun()`
+- `generateDraftRepliesForToRespondLabelPhase5Live()`
+- `generateDraftRepliesForQueryPhase5DryRun(query)`
+- `generateDraftRepliesForQueryPhase5Live(query)`
+
+Preferred manual/on-demand path:
+- prefer the query-based entrypoints over raw thread-id lookup in Apps Script
+- Gmail search queries are more reliable in the current deployment context
+- start broad enough to match real mailbox state, then narrow as needed
 
 ## Current tradeoffs
 
@@ -48,10 +62,52 @@ It:
 - model availability can still affect results, though fallback reduces single-model fragility
 - preview model behavior may shift over time, so Phase 7 should revisit the chosen draft stack periodically
 
+## Validation status
+
+Phase 5 has now produced multiple useful end-to-end dry-run drafts on clearly reply-worthy threads.
+
+Validated examples:
+- thread `19daf77006243bc4`
+  - from `Manuela Rath <Manuela.Rath@a1.at>`
+  - subject `Einladung Bewerbungsgespräch Team Lead Network & Security Services @ A1`
+  - result: concise, grounded confirmation draft suitable for manual review
+- thread `19daeff098e33d9d`
+  - from `Manuela Rath <Manuela.Rath@a1.at>`
+  - subject `Team Lead Network & Security Services @ A1`
+  - result: useful human-style reply draft appropriate for a recruiting/interview thread
+
+A focused negative validation also succeeded:
+- thread `19daee6c22c50335`
+  - from `LinkedIn <jobs-listings@linkedin.com>`
+  - result: `NO_DRAFT`
+  - interpretation: some opportunity mail that looks actionable at classification time is still effectively broadcast mail and should not trigger a draft
+
+This suggests the current narrow Phase 5 path works well on human-origin reply-needed threads and is conservatively rejecting at least some broadcast-style opportunity mail. That is a good sign for safety and usefulness.
+
+A broader non-debug dry run then returned no candidates. The likely reason is that draft candidacy depended too heavily on currently applied Gmail labels, while dry-run classification evidence in `DecisionLog` was not enough on its own to make a thread eligible. The next tuning pass therefore keeps the gate strict but allows fresh classification decisions to admit human-origin opportunity threads, while explicitly excluding known broadcast recruiting senders.
+
+A second broader dry run still returned no candidates, which pointed to a discovery problem rather than a drafting problem. Phase 5 search was therefore widened carefully: it now scans recent inbox threads plus recent threads already carrying relevant managed labels, then applies the same strict candidate gate. This should improve visibility without broadly loosening reply-draft eligibility.
+
+Even after that search widening, broader unattended dry runs still produced no candidates in the current mailbox state. The best interpretation is that the current strict unattended mode is operating as a sparse, high-confidence safety layer, not as a frequently active drafting assistant.
+
+## Recommended operating model
+
+For now, Phase 5 should be understood as two related modes:
+
+- **strict unattended mode**
+  - conservative and possibly infrequent
+  - useful when it fires, but not expected to fire often
+- **on-demand mode**
+  - likely the next practical product direction
+  - user selects a thread, thread id, or very narrow label-defined slice
+  - Phase 5 then generates a draft using the same draft-only safety model and logging path
+
+This preserves the strongest current property of the system: good draft quality on clearly reply-worthy threads without pressure to make autonomous selection overly aggressive.
+
 ## What to validate next
 
-- whether the selected threads are actually good draft candidates
-- whether generated drafts are concise and useful
+- whether additional selected threads are actually good draft candidates
+- whether generated drafts stay concise and useful across 2 to 3 more reply-worthy cases
+- whether some auto-labeled opportunity mail is still really broadcast mail and should be excluded or downgraded
 - whether the current strict gate is too narrow for everyday usefulness
-- whether targeted debug validation on a known good thread produces a genuinely usable draft
 - whether draft generation should stay strict and label-driven or move to on-demand only

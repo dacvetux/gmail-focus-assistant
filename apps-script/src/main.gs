@@ -77,6 +77,30 @@ function generateDraftRepliesPhase5Live() {
   return generateDraftRepliesLive();
 }
 
+function generateDraftForThreadIdPhase5DryRun(threadId) {
+  return generateDraftForThreadIdDryRun_(threadId);
+}
+
+function generateDraftForThreadIdPhase5Live(threadId) {
+  return generateDraftForThreadIdLive_(threadId);
+}
+
+function generateDraftRepliesForToRespondLabelPhase5DryRun() {
+  return generateDraftRepliesForToRespondLabelDryRun_();
+}
+
+function generateDraftRepliesForToRespondLabelPhase5Live() {
+  return generateDraftRepliesForToRespondLabelLive_();
+}
+
+function generateDraftRepliesForQueryPhase5DryRun(query) {
+  return generateDraftRepliesForQueryDryRun_(query);
+}
+
+function generateDraftRepliesForQueryPhase5Live(query) {
+  return generateDraftRepliesForQueryLive_(query);
+}
+
 function processInboxFocusWithOptions_(options) {
   const threads = selectThreadsForProcessing_(options);
   const logRows = [];

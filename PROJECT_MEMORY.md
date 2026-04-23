@@ -111,15 +111,38 @@ Core intent:
 - simplified Phase 5 to a strict gate that only admits strongly actionable threads
 - added a debug dry-run path that can bypass the strict gate for explicitly filtered test threads
 - set a Phase 5 debug thread filter for focused validation on thread `19db437c601fdf1b`
-- ended the day with Phase 4 closed for v1 and Phase 5 structurally implemented, but still waiting on successful end-to-end validation of one genuinely useful draft
+- validated that thread `19db437c601fdf1b` was a poor Phase 5 debug candidate because the model correctly returned `NO_DRAFT` for an administrative membership/consent email
+- identified a stronger reply-worthy debug candidate from DecisionLog: thread `19daf77006243bc4` from `Manuela Rath <Manuela.Rath@a1.at>` with subject `Einladung Bewerbungsgespräch Team Lead Network & Security Services @ A1`
+- updated `CONFIG.debugSampleThreads` to use `19daf77006243bc4` for the next Phase 5 debug validation
+- found a Phase 5 debug-run failure caused by Gmail object lookup errors while iterating the broader inbox pool during debug mode
+- patched `drafts.gs` so debug mode resolves configured debug thread ids directly and safely skips unreadable threads/messages instead of crashing
+- ran `generateDraftRepliesPhase5DebugDryRun()` successfully against thread `19daf77006243bc4`
+- confirmed one genuinely useful end-to-end Phase 5 draft in `DraftLog` for `Manuela Rath <Manuela.Rath@a1.at>` / `Einladung Bewerbungsgespräch Team Lead Network & Security Services @ A1`
+- accepted this as the first successful Phase 5 end-to-end validation, while keeping the gate intentionally strict pending a few more targeted checks
+- validated two additional focused debug cases on 2026-04-23:
+  - `19daeff098e33d9d` (`Manuela Rath <Manuela.Rath@a1.at>` / `Team Lead Network & Security Services @ A1`) produced a good usable draft
+  - `19daee6c22c50335` (`LinkedIn <jobs-listings@linkedin.com>`) correctly produced `NO_DRAFT`, suggesting some opportunity mail labeled `1: to respond` is still effectively broadcast mail
+- concluded that Phase 5 currently behaves well on human-origin reply-needed threads and conservatively rejects broadcast-style opportunity mail
+- a broader non-debug dry run with normal candidate selection returned no candidates, which exposed that Phase 5 was relying too much on current Gmail labels even when `DecisionLog` showed draft-worthy dry-run classifications
+- tightened the opportunity draft exclusions to explicitly reject LinkedIn/XING/Experteer broadcast senders in Phase 5
+- widened strict candidate selection slightly so fresh classification decisions can admit human-origin `Important/Opportunities, 1: to respond` threads even if Gmail labels were not physically applied in prior dry-runs
+- a second broader dry run still returned no candidates, which suggested the remaining bottleneck was search-pool discovery rather than gating or draft generation quality
+- widened Phase 5 search discovery to scan recent inbox threads plus recent threads already carrying relevant managed labels (`1: to respond`, `Important/Services`, `Important/Calendar`, `Important/Opportunities`) before applying the same strict candidate gate
+- even after the discovery widening, broader unattended dry runs still returned no candidates in the current mailbox state
+- concluded that Phase 5 background mode is currently best understood as intentionally sparse, high-confidence automation rather than a frequently firing assistant
+- next product direction is to keep the strict unattended gate and explore an on-demand draft flow for user-selected threads or very narrow label-based inputs
+- implemented initial on-demand Phase 5 entrypoints for a specific thread id and for the `1: to respond` label slice, reusing the same draft builder, logging path, and draft-only safety model
+- after thread-id lookup proved unreliable in Apps Script, added a query-based on-demand Phase 5 entrypoint as a more robust fallback for user-selected drafting
+- validated the query-based on-demand path successfully against Manuela Rath / A1 recruiting threads and accepted it as the preferred manual targeting method in the current deployment context
+- ended the day with Phase 4 closed for v1 and Phase 5 validated on multiple focused cases, with autonomous behavior staying sparse and query-based on-demand drafting now established as the preferred practical path
 
 ## Immediate next steps
 
-1. run `generateDraftRepliesPhase5DebugDryRun()` for the configured debug thread and inspect `DraftLog`
-2. confirm whether Phase 5 can produce one genuinely useful draft end-to-end on a known good actionable thread
-3. if the targeted draft looks good, decide whether to keep strict gating or widen slightly
-4. if the targeted draft still fails or skips, tune the draft prompt/control flow before broadening eligibility
-5. decide whether Phase 5 should stay strict and label-driven or become on-demand only
+1. document that unattended `generateDraftRepliesPhase5DryRun()` is intentionally sparse under the current strict gate
+2. design an on-demand Phase 5 flow for user-selected threads or very narrow label inputs
+3. keep strict gating in place for unattended runs rather than widening autonomous eligibility further
+4. if on-demand drafting is implemented, reuse the same prompt, logging, and draft-only safety model
+5. revisit broader autonomous eligibility only if real usage shows the on-demand flow is too restrictive
 
 ## Open questions
 

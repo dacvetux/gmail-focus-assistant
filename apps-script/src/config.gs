@@ -6,7 +6,7 @@ const CONFIG = {
   enableAiForReview: true,
   logSpreadsheetId: '1F2ZNpYVwNqa0-pOuVavJDEf6LahtLNryyoaXYA13EwA',
   digestRecipient: '',
-  debugSampleThreads: ['19db437c601fdf1b'],
+  debugSampleThreads: [],
   debugSenderIncludes: [],
   debugSubjectIncludes: [],
   forceImportantSenders: [
@@ -321,6 +321,8 @@ const CONFIG = {
   draftExcludedSenders: [
     'jobalerts-noreply@linkedin.com',
     'jobs@mail.xing.com',
+    'jobs-listings@linkedin.com',
+    'jobs-noreply@linkedin.com',
     'news@email.experteer.com',
     'm1.email.samsung.com',
     'ifttt.com',
