@@ -2,7 +2,26 @@ function generateMorningDigest() {
   return generateDigest_({
     type: 'morning',
     dryRun: CONFIG.dryRun,
-    query: 'newer_than:1d'
+    query: 'newer_than:1d',
+    entryPointName: CONFIG.dryRun ? 'generateMorningDigestDryRun' : 'generateMorningDigestLive'
+  });
+}
+
+function generateMorningDigestDryRun() {
+  return generateDigest_({
+    type: 'morning',
+    dryRun: true,
+    query: 'newer_than:1d',
+    entryPointName: 'generateMorningDigestDryRun'
+  });
+}
+
+function generateMorningDigestLive() {
+  return generateDigest_({
+    type: 'morning',
+    dryRun: false,
+    query: 'newer_than:1d',
+    entryPointName: 'generateMorningDigestLive'
   });
 }
 
@@ -10,7 +29,26 @@ function generateEveningDigest() {
   return generateDigest_({
     type: 'evening',
     dryRun: CONFIG.dryRun,
-    query: 'newer_than:1d'
+    query: 'newer_than:1d',
+    entryPointName: CONFIG.dryRun ? 'generateEveningDigestDryRun' : 'generateEveningDigestLive'
+  });
+}
+
+function generateEveningDigestDryRun() {
+  return generateDigest_({
+    type: 'evening',
+    dryRun: true,
+    query: 'newer_than:1d',
+    entryPointName: 'generateEveningDigestDryRun'
+  });
+}
+
+function generateEveningDigestLive() {
+  return generateDigest_({
+    type: 'evening',
+    dryRun: false,
+    query: 'newer_than:1d',
+    entryPointName: 'generateEveningDigestLive'
   });
 }
 
@@ -23,6 +61,42 @@ function generateFollowUpDigestPhase6DryRun() {
 function generateFollowUpDigestPhase6Live() {
   return generateFollowUpDigestPhase6_({
     dryRun: false
+  });
+}
+
+function generateNewsDigestMorningDryRun() {
+  return generateNewsDigest_({
+    type: 'news-morning',
+    dryRun: true,
+    query: 'newer_than:1d',
+    entryPointName: 'generateNewsDigestMorningDryRun'
+  });
+}
+
+function generateNewsDigestMorningLive() {
+  return generateNewsDigest_({
+    type: 'news-morning',
+    dryRun: false,
+    query: 'newer_than:1d',
+    entryPointName: 'generateNewsDigestMorningLive'
+  });
+}
+
+function generateNewsDigestEveningDryRun() {
+  return generateNewsDigest_({
+    type: 'news-evening',
+    dryRun: true,
+    query: 'newer_than:1d',
+    entryPointName: 'generateNewsDigestEveningDryRun'
+  });
+}
+
+function generateNewsDigestEveningLive() {
+  return generateNewsDigest_({
+    type: 'news-evening',
+    dryRun: false,
+    query: 'newer_than:1d',
+    entryPointName: 'generateNewsDigestEveningLive'
   });
 }
 
@@ -60,11 +134,48 @@ function generateDigest_(options) {
   logRunSummary_({
     runType: 'digest',
     mode: mode,
-    entryPoint: options.type === 'morning' ? 'generateMorningDigest' : 'generateEveningDigest',
+    entryPoint: inferDigestEntryPoint_(options),
     processedThreads: itemCount,
     itemCount: itemCount,
     outcome: itemCount ? 'digest-items-found' : 'no-items',
     notes: buildDigestRunNotes_(sections)
+  });
+
+  return result;
+}
+
+function generateNewsDigest_(options) {
+  const mode = options.dryRun ? 'dry-run' : 'live';
+  const threads = selectNewsThreads_(options.query);
+  const summary = renderDigestSection_('News digest', threads) || 'No notable news items.';
+  const itemCount = threads.length;
+
+  logDigestRun_(options.type, mode, summary, itemCount);
+
+  if (!options.dryRun && CONFIG.digestRecipient) {
+    const subjectPrefix = options.type === 'news-morning' ? 'Morning news digest' : 'Evening news digest';
+    MailApp.sendEmail({
+      to: CONFIG.digestRecipient,
+      subject: `[Gmail Focus Assistant] ${subjectPrefix}`,
+      body: summary
+    });
+  }
+
+  const result = {
+    type: options.type,
+    mode: mode,
+    itemCount: itemCount,
+    summary: summary
+  };
+
+  logRunSummary_({
+    runType: 'digest',
+    mode: mode,
+    entryPoint: options.entryPointName,
+    processedThreads: itemCount,
+    itemCount: itemCount,
+    outcome: itemCount ? 'digest-items-found' : 'no-items',
+    notes: itemCount ? `news-items=${itemCount}` : 'no news items found'
   });
 
   return result;
@@ -103,6 +214,18 @@ function generateFollowUpDigestPhase6_(options) {
   });
 
   return result;
+}
+
+function inferDigestEntryPoint_(options) {
+  if (options && options.entryPointName) {
+    return options.entryPointName;
+  }
+
+  if (options && options.type === 'morning') {
+    return options.dryRun ? 'generateMorningDigestDryRun' : 'generateMorningDigestLive';
+  }
+
+  return options && options.dryRun ? 'generateEveningDigestDryRun' : 'generateEveningDigestLive';
 }
 
 function buildDigestRunNotes_(sections) {
@@ -154,6 +277,10 @@ function buildDigestSections_(query) {
 
     if (decision.label === CONFIG.labels.importantOpportunities) {
       sections.opportunities.push(thread);
+      return;
+    }
+
+    if (decision.label === CONFIG.labels.newsDigest) {
       return;
     }
 
@@ -233,6 +360,24 @@ function renderFollowUpDigestSection_(threads) {
   }
 
   return `Awaiting reply - stale (${threads.length})\n${lines.join('\n')}`;
+}
+
+function selectNewsThreads_(query) {
+  const limit = CONFIG.digestSearchPool || 120;
+  const candidates = GmailApp.search(`${CONFIG.query} ${query}`, 0, limit);
+  const newsThreads = [];
+  const seen = new Set();
+
+  candidates.forEach(thread => {
+    const decision = classifyThread_(thread);
+    if (decision.action !== 'label' || decision.label !== CONFIG.labels.newsDigest) return;
+    const id = thread.getId();
+    if (seen.has(id)) return;
+    seen.add(id);
+    newsThreads.push(thread);
+  });
+
+  return prioritizeThreads_(newsThreads).slice(0, CONFIG.newsDigestThreadLimit || 12);
 }
 
 function selectStaleAwaitingReplyThreads_() {

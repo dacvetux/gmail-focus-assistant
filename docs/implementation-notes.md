@@ -270,3 +270,35 @@ Tightened Phase 3 execution clarity and reduced another batch of misrouted oppor
 - digest execution should be as explicit and operator-friendly as the later phase entrypoints
 - LinkedIn broadcast suggestions should bias toward FYI unless they clearly look like direct recruiting workflow
 - obvious store marketing mail should not survive in `Review/Ambiguous` after repeated real-log evidence
+
+## 2026-04-24 - Finance alert tuning from live digest review
+
+Applied one more conservative routing correction based on the refreshed morning digest.
+
+### Added or changed
+- added `sparkassepay.si` to forced important senders
+- expanded finance patterns with `Blokada kartice` / card-block phrasing
+- Sparkasse/card-block alerts should now route to `Important/Finance, 3: notification`
+
+### Why
+- a card-block alert is operationally important and should not sit in `Review/Ambiguous`
+
+## 2026-04-24 - Phase 8 news layer started
+
+Started the first version of a separate news lane inside Gmail Focus Assistant.
+
+### Added or changed
+- added a new structural label: `News/Digest`
+- added sender/pattern-based news detection for sources like Reuters, Economist, LinkedIn publisher newsletters, and XING news-style traffic
+- added dedicated entrypoints:
+  - `generateNewsDigestMorningDryRun()`
+  - `generateNewsDigestMorningLive()`
+  - `generateNewsDigestEveningDryRun()`
+  - `generateNewsDigestEveningLive()`
+- added a news-thread selector and summary renderer for digest generation
+- excluded `News/Digest` items from the main morning/evening action digest so read-later news does not crowd urgent triage sections
+
+### Why
+- some inbox content is genuinely "read later" news rather than urgent operational mail or generic commercial junk
+- that content deserves a distinct lane and digest instead of being buried under `Commercial/Newsletters`
+- the first version should stay explainable and conservative before any richer ranking or summarization is added

@@ -15,7 +15,7 @@ function classifyThread_(thread) {
   }
 
   if (containsAny_(subjectHaystack, CONFIG.forceImportantSenders)) {
-    return buildDecision_('label', CONFIG.labels.importantServices, false, 'forced important sender override', inferWorkflowLabel_(workflowHaystack) || CONFIG.labels.notification);
+    return classifyForcedImportant_(subjectHaystack, workflowHaystack);
   }
 
   if (containsAny_(subjectHaystack, CONFIG.forceCalendarSenders) || matchesAny_(subjectHaystack, CONFIG.calendarPatterns)) {
@@ -28,6 +28,10 @@ function classifyThread_(thread) {
 
   if (containsAny_(subjectHaystack, CONFIG.forceCommercialSenders)) {
     return classifyForcedCommercial_(subjectHaystack);
+  }
+
+  if (isNewsThread_(from, subjectHaystack)) {
+    return buildDecision_('label', CONFIG.labels.newsDigest, false, 'news pattern', CONFIG.newsWorkflowLabel || CONFIG.labels.fyi);
   }
 
   if (matchesAny_(subjectHaystack, CONFIG.financePatterns)) {
@@ -82,15 +86,23 @@ function inferWorkflowLabel_(haystack) {
 }
 
 function inferOpportunityWorkflowLabel_(from, subjectHaystack) {
-  if (matchesAny_(subjectHaystack, CONFIG.opportunityResponsePatterns)) {
-    return CONFIG.labels.toRespond;
-  }
-
   if (containsAny_(from, CONFIG.opportunityFyiSenders)) {
     return CONFIG.labels.fyi;
   }
 
+  if (matchesAny_(subjectHaystack, CONFIG.opportunityResponsePatterns)) {
+    return CONFIG.labels.toRespond;
+  }
+
   return CONFIG.labels.toRespond;
+}
+
+function classifyForcedImportant_(subjectHaystack, workflowHaystack) {
+  if (matchesAny_(subjectHaystack, CONFIG.financePatterns)) {
+    return buildDecision_('label', CONFIG.labels.importantFinance, false, 'forced important sender override', CONFIG.labels.notification);
+  }
+
+  return buildDecision_('label', CONFIG.labels.importantServices, false, 'forced important sender override', inferWorkflowLabel_(workflowHaystack) || CONFIG.labels.notification);
 }
 
 function classifyForcedCommercial_(subjectHaystack) {
@@ -117,6 +129,10 @@ function isOpportunitySender_(from) {
     'headhunter',
     'a1.at'
   ].some(snippet => from.includes(snippet));
+}
+
+function isNewsThread_(from, subjectHaystack) {
+  return containsAny_(from, CONFIG.newsSenders || []) || matchesAny_(subjectHaystack, CONFIG.newsPatterns || []);
 }
 
 function buildDecision_(action, label, archive, reason, workflowLabel) {

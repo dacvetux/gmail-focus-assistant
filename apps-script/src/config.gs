@@ -12,8 +12,31 @@ const CONFIG = {
   forceImportantSenders: [
     'accounts.google.com',
     'status.incident.io',
-    'racun@mail.a1.si'
+    'racun@mail.a1.si',
+    'sparkassepay.si'
   ],
+  newsSenders: [
+    'newsletters@email.reuters.com',
+    'reuters.com',
+    'newsletters@e.economist.com',
+    'noreply@e.economist.com',
+    'newsletters-noreply@linkedin.com',
+    'news@mail.xing.com'
+  ],
+  newsPatterns: [
+    /techcrunch daily/i,
+    /reuters/i,
+    /economist/i,
+    /roundup/i,
+    /daily:/i,
+    /today:/i,
+    /breaking:/i,
+    /news internet/i,
+    /financial times/i,
+    /ted conferences via linkedin/i,
+    /via linkedin/i
+  ],
+  newsWorkflowLabel: '2: FYI',
   forceCommercialSenders: [
     'qwertee.com',
     'steampowered.com',
@@ -102,6 +125,7 @@ const CONFIG = {
     importantShipping: 'Important/Shipping',
     importantCalendar: 'Important/Calendar',
     importantOpportunities: 'Important/Opportunities',
+    newsDigest: 'News/Digest',
     commercialNewsletters: 'Commercial/Newsletters',
     commercialAds: 'Commercial/Ads',
     commercialCampaigns: 'Commercial/Campaigns'
@@ -120,7 +144,8 @@ const CONFIG = {
     'Important/Finance',
     'Important/Shipping',
     'Important/Calendar',
-    'Important/Opportunities'
+    'Important/Opportunities',
+    'News/Digest'
   ],
   preserveSystemLabels: [
     'CATEGORY_PERSONAL'
@@ -140,6 +165,7 @@ const CONFIG = {
     'Important/Shipping',
     'Important/Calendar',
     'Important/Opportunities',
+    'News/Digest',
     'Commercial/Newsletters',
     'Commercial/Ads',
     'Commercial/Campaigns'
@@ -209,7 +235,10 @@ const CONFIG = {
     /billing statement/i,
     /elektronski račun/i,
     /elektronska\(e\) specifikacija\(e\)/i,
-    /obračunsko obdobje/i
+    /obračunsko obdobje/i,
+    /blokada kartice/i,
+    /card block/i,
+    /card blocked/i
   ],
   shippingPatterns: [
     /tracking number/i,
@@ -359,6 +388,7 @@ const CONFIG = {
     'Important/Opportunities',
     'Review/Ambiguous'
   ],
+  newsDigestThreadLimit: 12,
   draftInstructions: [
     'Write concise, professional, human email replies.',
     'Do not invent facts.',

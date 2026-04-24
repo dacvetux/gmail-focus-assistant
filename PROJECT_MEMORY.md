@@ -153,6 +153,8 @@ Core intent:
 - added explicit dry-run/live entrypoints for morning and evening digests so Phase 3 execution mode now matches the clarity of later phases
 - tightened opportunity-response matching so broadcast LinkedIn "you may be a fit" job suggestions are less likely to land in `1: to respond`
 - expanded conservative commercial overrides again, including Shopify marketing mail seen in the live review bucket
+- started Phase 8 with a separate `News/Digest` label path, sender/pattern-based news detection, and dedicated morning/evening news digest entrypoints
+- the first Phase 8 design keeps news out of the main action digest while preserving explainable rule-based routing and digest logging
 - used `gog` successfully to inspect the production log spreadsheet, which is now the preferred direct inspection path from the local environment when sheet auth is available
 
 ## Immediate next steps

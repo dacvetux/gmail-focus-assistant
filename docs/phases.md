@@ -52,3 +52,10 @@ Status: started on 2026-04-23
 - review false positives and false negatives
 - tighten operational reporting and checkpointing around dry-run/live behavior
 - keep rollout visibility improving before broadening automation
+
+## Phase 8, news layer
+Status: started on 2026-04-24
+- add a separate `News/Digest` lane for read-later news/newsletter content
+- keep news distinct from urgent workflow mail and generic commercial junk
+- add morning and evening news digest entrypoints
+- start with explainable sender/pattern rules before any richer ranking or summarization
