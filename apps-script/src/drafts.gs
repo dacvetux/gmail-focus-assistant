@@ -104,7 +104,7 @@ function generateDraftReplies_(options) {
     entryPoint: options.allowDebugBypass ? 'generateDraftRepliesPhase5DebugDryRun' : (options.dryRun ? 'generateDraftRepliesPhase5DryRun' : 'generateDraftRepliesPhase5Live'),
     processedThreads: threads.length,
     itemCount: createdCount,
-    outcome: createdCount ? 'drafts-generated' : 'no-drafts',
+    outcome: inferDraftRunOutcome_(options, createdCount),
     notes: buildDraftRunNotes_(options, threads.length, createdCount, rows)
   });
 
@@ -155,7 +155,7 @@ function generateDraftRepliesForThreadIds_(threadIds, options) {
     entryPoint: options.dryRun ? 'generateDraftForThreadIdPhase5DryRun' : 'generateDraftForThreadIdPhase5Live',
     processedThreads: rows.length,
     itemCount: createdCount,
-    outcome: createdCount ? 'drafts-generated' : 'no-drafts',
+    outcome: inferDraftRunOutcome_(options, createdCount),
     notes: rows.length ? 'thread-id-mode' : 'no valid thread ids resolved'
   });
 
@@ -225,11 +225,19 @@ function processOnDemandDraftThreads_(threads, options, emptyMessage) {
     entryPoint: inferOnDemandDraftEntryPoint_(options, emptyMessage),
     processedThreads: threads.length,
     itemCount: createdCount,
-    outcome: createdCount ? 'drafts-generated' : 'no-drafts',
+    outcome: inferDraftRunOutcome_(options, createdCount),
     notes: buildDraftRunNotes_(options, threads.length, createdCount, rows)
   });
 
   return summary;
+}
+
+function inferDraftRunOutcome_(options, createdCount) {
+  if (!createdCount) {
+    return 'no-drafts';
+  }
+
+  return options && options.dryRun ? 'drafts-produced-for-review' : 'drafts-generated';
 }
 
 function selectDraftCandidateThreads_(options) {

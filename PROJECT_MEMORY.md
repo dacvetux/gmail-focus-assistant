@@ -144,6 +144,14 @@ Core intent:
 - started Phase 7 with `RunLog` operational reporting for processing runs, then expanded it across draft, follow-up, and digest entrypoints
 - tightened `RunLog` wording (`Primary Count`, `drafts-generated`) and added another concrete review-bucket cleanup pass using real dry-run evidence
 
+### 2026-04-24
+- verified the live log spreadsheet directly and confirmed that `RunLog` rows match current dry-run activity across processing, Phase 5 drafts, and Phase 6 follow-up checks
+- found that Phase 5 dry-run reporting was misleading because `RunLog` said `drafts-generated` even when dry-run entries were only produced for review; changed dry-run outcome wording to `drafts-produced-for-review`
+- found and fixed a manifest/auth gap for Gemini-backed draft generation: `UrlFetchApp.fetch` required explicit `script.external_request` scope plus reauthorization
+- confirmed the scope fix on a fresh dry run: `DraftLog` no longer shows `UrlFetchApp.fetch` permission errors and Phase 5 again produces reviewable draft bodies on real threads
+- found and fixed a small Phase 2 operational reporting bug where Phase 2 wrappers could log to `RunLog` with Phase 1-style entry-point names
+- used `gog` successfully to inspect the production log spreadsheet, which is now the preferred direct inspection path from the local environment when sheet auth is available
+
 ## Immediate next steps
 
 1. rerun dry-run processing after the latest sender overrides and verify whether the review bucket shrinks meaningfully again

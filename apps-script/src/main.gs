@@ -1,42 +1,48 @@
 function processInboxFocusPhase1() {
   return processInboxFocusWithOptions_({
     dryRun: CONFIG.dryRun,
-    maxThreads: CONFIG.maxThreads
+    maxThreads: CONFIG.maxThreads,
+    entryPointName: CONFIG.dryRun ? 'processInboxFocusPhase1DryRun' : 'processInboxFocusPhase1Live'
   });
 }
 
 function processInboxFocusPhase1DryRun() {
   return processInboxFocusWithOptions_({
     dryRun: true,
-    maxThreads: CONFIG.maxThreads
+    maxThreads: CONFIG.maxThreads,
+    entryPointName: 'processInboxFocusPhase1DryRun'
   });
 }
 
 function processInboxFocusPhase1Live() {
   return processInboxFocusWithOptions_({
     dryRun: false,
-    maxThreads: CONFIG.maxThreads
+    maxThreads: CONFIG.maxThreads,
+    entryPointName: 'processInboxFocusPhase1Live'
   });
 }
 
 function processInboxFocusPhase2() {
   return processInboxFocusWithOptions_({
     dryRun: CONFIG.dryRun,
-    maxThreads: CONFIG.maxThreads
+    maxThreads: CONFIG.maxThreads,
+    entryPointName: CONFIG.dryRun ? 'processInboxFocusPhase2DryRun' : 'processInboxFocusPhase2Live'
   });
 }
 
 function processInboxFocusPhase2DryRun() {
   return processInboxFocusWithOptions_({
     dryRun: true,
-    maxThreads: CONFIG.maxThreads
+    maxThreads: CONFIG.maxThreads,
+    entryPointName: 'processInboxFocusPhase2DryRun'
   });
 }
 
 function processInboxFocusPhase2Live() {
   return processInboxFocusWithOptions_({
     dryRun: false,
-    maxThreads: CONFIG.maxThreads
+    maxThreads: CONFIG.maxThreads,
+    entryPointName: 'processInboxFocusPhase2Live'
   });
 }
 
@@ -44,7 +50,8 @@ function validatePhases1And2DryRun() {
   return processInboxFocusWithOptions_({
     dryRun: true,
     maxThreads: CONFIG.maxThreads,
-    validationMode: true
+    validationMode: true,
+    entryPointName: 'validatePhases1And2DryRun'
   });
 }
 
@@ -53,7 +60,8 @@ function processInboxFocusPhase4AiReviewDryRun() {
     dryRun: true,
     maxThreads: CONFIG.maxThreads,
     validationMode: true,
-    enableAiReview: true
+    enableAiReview: true,
+    entryPointName: 'processInboxFocusPhase4AiReviewDryRun'
   });
 }
 
@@ -61,7 +69,8 @@ function processInboxFocusPhase4AiReviewLive() {
   return processInboxFocusWithOptions_({
     dryRun: false,
     maxThreads: CONFIG.maxThreads,
-    enableAiReview: true
+    enableAiReview: true,
+    entryPointName: 'processInboxFocusPhase4AiReviewLive'
   });
 }
 
@@ -185,6 +194,10 @@ function processInboxFocusWithOptions_(options) {
 }
 
 function inferProcessingEntryPoint_(options) {
+  if (options && options.entryPointName) {
+    return options.entryPointName;
+  }
+
   if (options.enableAiReview) {
     return options.dryRun ? 'processInboxFocusPhase4AiReviewDryRun' : 'processInboxFocusPhase4AiReviewLive';
   }
@@ -237,3 +250,5 @@ function threadMatchesDebugFilters_(thread) {
 function hasDebugFilters_() {
   return CONFIG.debugSampleThreads.length || CONFIG.debugSenderIncludes.length || CONFIG.debugSubjectIncludes.length;
 }
+
+

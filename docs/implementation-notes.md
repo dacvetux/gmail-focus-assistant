@@ -223,3 +223,24 @@ Added a tiny sheet-header migration and another conservative tuning pass driven 
 ### Current tradeoff
 - this remains a sender/domain-heavy tuning pass rather than a deeper classifier rewrite
 - some borderline lifestyle/event senders may still require later preference decisions rather than hard-coded routing
+
+## 2026-04-24 - RunLog verification, draft auth fix, and reporting cleanup
+
+Validated the live spreadsheet directly, fixed a real Phase 5 authorization failure, and tightened one misleading reporting detail.
+
+### Added or changed
+- verified via the live log spreadsheet that current dry-run activity is represented in `RunLog` and matches `DraftLog` / `FollowUpLog`
+- changed Phase 5 dry-run `RunLog` outcome wording from `drafts-generated` to `drafts-produced-for-review`
+- added explicit Apps Script manifest scopes for:
+  - `https://www.googleapis.com/auth/script.external_request`
+  - `https://www.googleapis.com/auth/script.send_mail`
+  - `https://www.googleapis.com/auth/spreadsheets`
+  - `https://www.googleapis.com/auth/gmail.modify`
+- redeployed and reauthorized after the scope change so Gemini-backed draft generation could call `UrlFetchApp.fetch` successfully again
+- fixed processing entry-point inference so Phase 2 wrappers now log correct Phase 2 names in `RunLog`
+- removed temporary debug helper functions after spreadsheet verification was complete
+
+### Why
+- the previous dry-run wording implied real draft creation even though dry-run only produces reviewable draft content
+- the missing external request scope caused hard failures in `DraftLog` for all AI-backed draft attempts
+- operational logs are most useful when entry-point names are exact and trustworthy
