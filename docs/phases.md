@@ -59,3 +59,10 @@ Status: started on 2026-04-24
 - keep news distinct from urgent workflow mail and generic commercial junk
 - add morning and evening news digest entrypoints
 - start with explainable sender/pattern rules before any richer ranking or summarization
+
+## Phase 9, tuning assistant
+Status: started on 2026-04-24
+- scan recent logs for repeated review-bucket leaks and misroutes
+- write recommendation-first suggestions into a `TuningSuggestions` sheet
+- keep the first version advisory only; do not auto-mutate rules yet
+- surface commercial, shipping, and finance candidates before expanding into richer suggestion types

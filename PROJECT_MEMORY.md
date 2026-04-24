@@ -155,6 +155,7 @@ Core intent:
 - expanded conservative commercial overrides again, including Shopify marketing mail seen in the live review bucket
 - started Phase 8 with a separate `News/Digest` label path, sender/pattern-based news detection, and dedicated morning/evening news digest entrypoints
 - the first Phase 8 design keeps news out of the main action digest while preserving explainable rule-based routing and digest logging
+- started Phase 9 with a recommendation-first tuning assistant that writes structured suggestions into a `TuningSuggestions` sheet instead of auto-mutating rules
 - used `gog` successfully to inspect the production log spreadsheet, which is now the preferred direct inspection path from the local environment when sheet auth is available
 
 ## Immediate next steps

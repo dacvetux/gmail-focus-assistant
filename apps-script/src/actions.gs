@@ -215,6 +215,53 @@ function getOrCreateRunLogSheet_() {
   return sheet;
 }
 
+function getOrCreateTuningSuggestionsSheet_() {
+  const spreadsheet = getLogSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName('TuningSuggestions');
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('TuningSuggestions');
+    sheet.getRange(1, 1, 1, 10).setValues([[
+      'Timestamp',
+      'Category',
+      'Suggested Change',
+      'Target',
+      'Evidence Count',
+      'Confidence',
+      'Example Subject',
+      'Reason',
+      'Status',
+      'Notes'
+    ]]);
+    return sheet;
+  }
+
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, 10).setValues([[
+      'Timestamp',
+      'Category',
+      'Suggested Change',
+      'Target',
+      'Evidence Count',
+      'Confidence',
+      'Example Subject',
+      'Reason',
+      'Status',
+      'Notes'
+    ]]);
+  }
+
+  return sheet;
+}
+
+function flushTuningSuggestions_(rows) {
+  if (!rows.length) return;
+
+  const sheet = getOrCreateTuningSuggestionsSheet_();
+  const startRow = sheet.getLastRow() + 1;
+  sheet.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
+}
+
 function logRunSummary_(entry) {
   const sheet = getOrCreateRunLogSheet_();
   const row = [[

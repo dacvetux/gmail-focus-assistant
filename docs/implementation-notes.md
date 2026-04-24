@@ -302,3 +302,33 @@ Started the first version of a separate news lane inside Gmail Focus Assistant.
 - some inbox content is genuinely "read later" news rather than urgent operational mail or generic commercial junk
 - that content deserves a distinct lane and digest instead of being buried under `Commercial/Newsletters`
 - the first version should stay explainable and conservative before any richer ranking or summarization is added
+
+## 2026-04-24 - Phase 8 refinement pass
+
+Applied a short cleanup pass after the first real news-digest validation.
+
+### Added or changed
+- excluded `messaging-digest-noreply@linkedin.com` from the news lane so LinkedIn message digests are not treated like publisher/news content
+- added `marketing@lon.si` to conservative commercial overrides after it still appeared in the live review bucket
+
+### Why
+- LinkedIn messaging digests are product/activity noise, not news content
+- repeated obvious marketing senders should not survive in `Review/Ambiguous` after live validation
+
+## 2026-04-24 - Phase 9 tuning assistant started
+
+Started the first recommendation-first tuning helper.
+
+### Added or changed
+- added a `TuningSuggestions` sheet with structured suggestion rows
+- added `generateTuningSuggestionsPhase9DryRun()`
+- added `generateTuningSuggestionsPhase9Live()`
+- first suggestion pass scans recent `DecisionLog` rows and proposes conservative candidates for:
+  - commercial overrides
+  - shipping handling
+  - finance handling
+- added top-level `RunLog` reporting for tuning suggestion runs
+
+### Why
+- repeated manual sender patching does not scale
+- the first version should suggest changes from evidence before any automatic rule mutation is considered
