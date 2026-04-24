@@ -1,30 +1,39 @@
 # Roadmap
 
-## Now
+## Completed foundation
 - establish repository structure
 - document architecture and phased plan
-- implement a safe phase 1 rules-first inbox classifier
-- prepare GitHub publishing
-
-## Near term
-- expand sender and domain rules
-- add decision logging
-- define visible vs archived behavior per label
-- design digest format and schedule
-
-## Medium term
+- implement safe phase 1 rules-first inbox classification
 - implement phase 2 priority labeling
 - implement phase 3 daily briefing
-- add test fixtures for representative inbox cases
-- define safe rollout and rollback steps
+- implement phase 4 selective AI review for ambiguous mail only
+- implement phase 5 draft-only assistance in a narrow, validated form
+- implement phase 6 follow-up tracking in a visibility-first form
+- start phase 7 operational reporting and conservative tuning
+
+## Next phase: Phase 8 - News layer
+- add a separate `News/Digest` lane inside Gmail Focus Assistant
+- distinguish read-later news/newsletters from urgent mail and generic commercial junk
+- add morning and evening news digest entrypoints
+- keep the first version explainable and label-driven
+
+## After that: Phase 9 - Tuning assistant
+- scan `DecisionLog`, `RunLog`, `DigestLog`, and related sheets for repeated misroutes
+- generate recommendation-first tuning suggestions instead of mutating rules silently
+- identify candidates for commercial overrides, finance/service routing, opportunity demotion, and retry/backoff tuning
+
+## After that: Phase 10 - Preferences and control surface
+- use the existing Google Sheets workbook as the first GUI/control surface
+- add tabs such as `Preferences`, `DigestSettings`, `NewsSources`, and `TuningSuggestions`
+- let operators review or approve safe tuning suggestions without editing code directly
 
 ## Later
-- selective AI classification for ambiguous cases only
-- draft assistant for chosen threads and labels
-- follow-up memory and stale-thread reminders
-- long-term tuning and analytics
+- strengthen follow-up intelligence once real waiting-on-them mailbox state exists
+- add accepted-suggestion semi-automation only after suggestion quality is trustworthy
+- expand long-term analytics and preference-aware behavior
 
 ## Non-goals for early versions
 - full autonomous inbox management
 - auto-send replies
 - opaque AI-first decisioning on all mail
+- immediate auto-mutation of rules without review

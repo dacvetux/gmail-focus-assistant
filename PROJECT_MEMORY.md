@@ -157,11 +157,11 @@ Core intent:
 
 ## Immediate next steps
 
-1. rerun dry-run processing after the latest sender overrides and verify whether the review bucket shrinks meaningfully again
-2. rerun the updated RunLog-producing entrypoints so the header migration is applied in the live sheet
-3. keep Phase 6 visibility-first, with no automatic follow-up sending
-4. only add richer sent-mail inference after clearer real waiting-on-them examples are available
-5. continue tuning sender/domain exceptions from observed false positives and false negatives
+1. start Phase 8 by adding a separate `News/Digest` lane plus morning/evening news digests inside Gmail Focus Assistant
+2. start Phase 9 by building a recommendation-first tuning assistant that scans logs and proposes safe rule/config changes instead of hand-patching every sender
+3. start Phase 10 by using the existing Google Sheets log workbook as the first control surface for preferences, digest settings, news sources, and tuning suggestions
+4. keep Phase 6 visibility-first, with no automatic follow-up sending, until real waiting-on-them mailbox state is available
+5. only consider semi-automatic rule application after the tuning assistant has proved reliable in suggestion mode
 
 ## Open questions
 
@@ -180,3 +180,5 @@ Core intent:
 - Avoid hidden complexity early
 - Bias toward explainable automation
 - Add safety features before scaling automation scope
+- build operator-friendly controls in the spreadsheet before investing in a separate GUI
+- treat automatic rule adaptation as an accepted-suggestions follow-on, not the first version
