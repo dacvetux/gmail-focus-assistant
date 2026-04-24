@@ -158,6 +158,7 @@ Core intent:
 - started Phase 9 with a recommendation-first tuning assistant that writes structured suggestions into a `TuningSuggestions` sheet instead of auto-mutating rules
 - accepted the first two high-confidence Phase 9 suggestions by promoting Samsung promo mail into commercial overrides and Express One delivery mail into shipping handling
 - added a reusable `docs/testing-checklist.md` runbook so future checkpoint validation is easier to repeat consistently
+- started Phase 10 with a spreadsheet-native control surface that creates `Preferences`, `DigestSettings`, `NewsSources`, and `ApprovedRules` sheets plus a first small config-loading path back into runtime
 - used `gog` successfully to inspect the production log spreadsheet, which is now the preferred direct inspection path from the local environment when sheet auth is available
 
 ## Immediate next steps

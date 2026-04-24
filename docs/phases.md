@@ -66,3 +66,10 @@ Status: started on 2026-04-24
 - write recommendation-first suggestions into a `TuningSuggestions` sheet
 - keep the first version advisory only; do not auto-mutate rules yet
 - surface commercial, shipping, and finance candidates before expanding into richer suggestion types
+
+## Phase 10, spreadsheet control surface
+Status: started on 2026-04-24
+- use the existing Google Sheets workbook as the first operator UI
+- create tabs such as `Preferences`, `DigestSettings`, `NewsSources`, and `ApprovedRules`
+- load a small set of core preferences back into runtime config
+- keep the first version simple and spreadsheet-native before any richer standalone GUI

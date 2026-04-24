@@ -338,3 +338,27 @@ Started the first recommendation-first tuning helper.
 - repeated manual sender patching does not scale
 - the first version should suggest changes from evidence before any automatic rule mutation is considered
 - once a few suggestions are clearly correct, folding them back into config is the fastest way to keep momentum without waiting for a richer approval UI
+
+## 2026-04-24 - Phase 10 spreadsheet control surface started
+
+Started the first sheet-based operator control layer.
+
+### Added or changed
+- added `setupControlSurfacePhase10()` to create the initial operator sheets:
+  - `Preferences`
+  - `DigestSettings`
+  - `NewsSources`
+  - `ApprovedRules`
+- added `refreshConfigFromPreferencesPhase10()` to load a small set of sheet-backed preferences into runtime config
+- added helper readers/creators for the new control-surface sheets
+- started with a deliberately small preference set:
+  - `dryRun`
+  - `enableAiForReview`
+  - `maxThreads`
+  - digest thread limits
+  - `digestRecipient`
+  - `newsWorkflowLabel`
+
+### Why
+- the project is now mature enough to benefit from operator controls without editing code for every change
+- a spreadsheet-native control surface is the fastest practical UI before building anything heavier
