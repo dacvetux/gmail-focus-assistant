@@ -221,13 +221,14 @@ function getOrCreateTuningSuggestionsSheet_() {
 
   if (!sheet) {
     sheet = spreadsheet.insertSheet('TuningSuggestions');
-    sheet.getRange(1, 1, 1, 10).setValues([[
+    sheet.getRange(1, 1, 1, 11).setValues([[
       'Timestamp',
       'Category',
       'Suggested Change',
       'Target',
       'Evidence Count',
       'Confidence',
+      'Example From',
       'Example Subject',
       'Reason',
       'Status',
@@ -237,18 +238,30 @@ function getOrCreateTuningSuggestionsSheet_() {
   }
 
   if (sheet.getLastRow() === 0) {
-    sheet.getRange(1, 1, 1, 10).setValues([[
+    sheet.getRange(1, 1, 1, 11).setValues([[
       'Timestamp',
       'Category',
       'Suggested Change',
       'Target',
       'Evidence Count',
       'Confidence',
+      'Example From',
       'Example Subject',
       'Reason',
       'Status',
       'Notes'
     ]]);
+    return sheet;
+  }
+
+  const header = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 11)).getValues()[0];
+  if (header[6] !== 'Example From') {
+    sheet.insertColumnAfter(6);
+    sheet.getRange(1, 7).setValue('Example From');
+    sheet.getRange(1, 8).setValue('Example Subject');
+    sheet.getRange(1, 9).setValue('Reason');
+    sheet.getRange(1, 10).setValue('Status');
+    sheet.getRange(1, 11).setValue('Notes');
   }
 
   return sheet;

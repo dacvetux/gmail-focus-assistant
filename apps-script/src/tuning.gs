@@ -56,6 +56,7 @@ function generateTuningSuggestionsPhase9_(options) {
         target: senderKey,
         evidenceCount: entry.count,
         confidence: 'medium',
+        exampleFrom: entry.from,
         exampleSubject: entry.subject,
         reason: entry.reason || 'repeated review-bucket commercial-looking mail',
         notes: options.dryRun ? 'generated in dry-run suggestion mode' : 'generated in live suggestion mode'
@@ -74,6 +75,7 @@ function generateTuningSuggestionsPhase9_(options) {
         target: senderKey,
         evidenceCount: entry.count,
         confidence: 'medium',
+        exampleFrom: entry.from,
         exampleSubject: entry.subject,
         reason: entry.reason || 'shipping-like mail still landing in review',
         notes: 'check forceShippingSenders or shippingPatterns'
@@ -92,6 +94,7 @@ function generateTuningSuggestionsPhase9_(options) {
         target: senderKey,
         evidenceCount: entry.count,
         confidence: 'medium',
+        exampleFrom: entry.from,
         exampleSubject: entry.subject,
         reason: entry.reason || 'finance-like mail still landing in review',
         notes: 'check forceImportantSenders or financePatterns'
@@ -107,6 +110,7 @@ function generateTuningSuggestionsPhase9_(options) {
       target: '',
       evidenceCount: 0,
       confidence: 'low',
+      exampleFrom: '',
       exampleSubject: '',
       reason: 'No suggestion candidates found in recent decision rows.',
       notes: ''
@@ -184,6 +188,7 @@ function buildTuningSuggestionRow_(entry) {
     entry.target || '',
     entry.evidenceCount === undefined ? '' : entry.evidenceCount,
     entry.confidence || '',
+    entry.exampleFrom || '',
     entry.exampleSubject || '',
     entry.reason || '',
     'new',

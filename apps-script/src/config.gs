@@ -23,6 +23,9 @@ const CONFIG = {
     'newsletters-noreply@linkedin.com',
     'news@mail.xing.com'
   ],
+  newsExcludedSenders: [
+    'messaging-digest-noreply@linkedin.com'
+  ],
   newsPatterns: [
     /techcrunch daily/i,
     /reuters/i,
@@ -93,7 +96,9 @@ const CONFIG = {
     'reply.spreadshirt.net',
     'e.jackjones.com',
     'komoot.de',
-    'g.shopifyemail.com'
+    'g.shopifyemail.com',
+    'marketing@lon.si',
+    'no-reply@m1.email.samsung.com'
   ],
   forceReviewSenders: [
     'developers.google.com',
@@ -107,7 +112,8 @@ const CONFIG = {
     'post.at',
     'meinesendung@post.at',
     'amazon.de',
-    'notice.aliexpress.com'
+    'notice.aliexpress.com',
+    'noreply.nesy.service@expressone.si'
   ],
   forceCalendarSenders: [
     'alenka.iskra@gmail.com',

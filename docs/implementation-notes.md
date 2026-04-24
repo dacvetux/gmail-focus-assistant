@@ -328,7 +328,13 @@ Started the first recommendation-first tuning helper.
   - shipping handling
   - finance handling
 - added top-level `RunLog` reporting for tuning suggestion runs
+- expanded suggestion rows to include `Example From` in addition to subject/reason so review is easier
+- immediately applied the first two high-confidence suggestion outputs:
+  - Samsung promo mail into `forceCommercialSenders`
+  - Express One delivery mail into `forceShippingSenders`
+- added a dedicated `docs/testing-checklist.md` runbook for repeatable checkpoint validation
 
 ### Why
 - repeated manual sender patching does not scale
 - the first version should suggest changes from evidence before any automatic rule mutation is considered
+- once a few suggestions are clearly correct, folding them back into config is the fastest way to keep momentum without waiting for a richer approval UI
