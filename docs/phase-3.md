@@ -29,7 +29,11 @@ The digest relies on workflow and structural labels created in earlier phases:
 ## Entry points
 
 - `generateMorningDigest()`
+- `generateMorningDigestDryRun()`
+- `generateMorningDigestLive()`
 - `generateEveningDigest()`
+- `generateEveningDigestDryRun()`
+- `generateEveningDigestLive()`
 
 ## Current behavior
 

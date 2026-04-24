@@ -236,7 +236,7 @@ Validated the live spreadsheet directly, fixed a real Phase 5 authorization fail
   - `https://www.googleapis.com/auth/script.send_mail`
   - `https://www.googleapis.com/auth/spreadsheets`
   - `https://www.googleapis.com/auth/gmail.modify`
-- redeployed and reauthorized after the scope change so Gemini-backed draft generation could call `UrlFetchApp.fetch` successfully again
+- reauthorized after the scope change so Gemini-backed draft generation could call `UrlFetchApp.fetch` successfully again
 - fixed processing entry-point inference so Phase 2 wrappers now log correct Phase 2 names in `RunLog`
 - removed temporary debug helper functions after spreadsheet verification was complete
 
@@ -244,3 +244,29 @@ Validated the live spreadsheet directly, fixed a real Phase 5 authorization fail
 - the previous dry-run wording implied real draft creation even though dry-run only produces reviewable draft content
 - the missing external request scope caused hard failures in `DraftLog` for all AI-backed draft attempts
 - operational logs are most useful when entry-point names are exact and trustworthy
+
+## 2026-04-24 - Direct spreadsheet inspection path documented
+
+Documented the now-proven local sheet inspection path.
+
+### Added or changed
+- noted that `gog` can inspect the production spreadsheet directly when local Google auth is available
+
+### Why
+- this is the fastest reliable operator path for checking `RunLog`, `DraftLog`, `FollowUpLog`, and `DigestLog` without temporary in-script debug helpers
+
+## 2026-04-24 - Digest entrypoint cleanup and another conservative tuning pass
+
+Tightened Phase 3 execution clarity and reduced another batch of misrouted opportunity/commercial mail.
+
+### Added or changed
+- added explicit Phase 3 digest entrypoints for dry-run/live morning and evening digest execution
+- `RunLog` digest entry-point naming now reflects the explicit digest function used
+- removed generic opportunity response matches like bare `role` / `position` that were over-promoting LinkedIn broadcast job suggestions into `1: to respond`
+- added `g.shopifyemail.com` to conservative commercial overrides after fresh review-bucket inspection
+- kept stronger response-style opportunity phrases like interview scheduling, recruiter-driven next steps, assessments, and direct application updates
+
+### Why
+- digest execution should be as explicit and operator-friendly as the later phase entrypoints
+- LinkedIn broadcast suggestions should bias toward FYI unless they clearly look like direct recruiting workflow
+- obvious store marketing mail should not survive in `Review/Ambiguous` after repeated real-log evidence

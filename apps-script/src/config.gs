@@ -11,7 +11,8 @@ const CONFIG = {
   debugSubjectIncludes: [],
   forceImportantSenders: [
     'accounts.google.com',
-    'status.incident.io'
+    'status.incident.io',
+    'racun@mail.a1.si'
   ],
   forceCommercialSenders: [
     'qwertee.com',
@@ -63,7 +64,13 @@ const CONFIG = {
     'news.crypto.com',
     'redsharknews.com',
     'news.odlo.com',
-    'otheruk.com'
+    'otheruk.com',
+    'cloudhq.net',
+    'refurbed.com',
+    'reply.spreadshirt.net',
+    'e.jackjones.com',
+    'komoot.de',
+    'g.shopifyemail.com'
   ],
   forceReviewSenders: [
     'developers.google.com',
@@ -199,7 +206,10 @@ const CONFIG = {
     /statement available/i,
     /order confirmation/i,
     /bank declined/i,
-    /billing statement/i
+    /billing statement/i,
+    /elektronski račun/i,
+    /elektronska\(e\) specifikacija\(e\)/i,
+    /obračunsko obdobje/i
   ],
   shippingPatterns: [
     /tracking number/i,
@@ -246,14 +256,26 @@ const CONFIG = {
   opportunityResponsePatterns: [
     /bewerbungsgespräch/i,
     /interview/i,
-    /application/i,
-    /candidate/i,
-    /role/i,
-    /position/i
+    /application status/i,
+    /application update/i,
+    /your application/i,
+    /hearing -/i,
+    /recruiter/i,
+    /recruiting/i,
+    /hiring manager/i,
+    /schedule/i,
+    /availability/i,
+    /next step/i,
+    /next steps/i,
+    /assessment/i,
+    /case study/i,
+    /task for the interview/i
   ],
   opportunityFyiSenders: [
     'jobs@mail.xing.com',
     'jobalerts-noreply@linkedin.com',
+    'jobs-listings@linkedin.com',
+    'jobs-noreply@linkedin.com',
     'news@email.experteer.com'
   ],
   newsletterPatterns: [
@@ -278,7 +300,8 @@ const CONFIG = {
     /quiet hiring/i,
     /techcrunch daily/i,
     /latest insights/i,
-    /meivakantie/i
+    /meivakantie/i,
+    /weekend:/i
   ],
   adPatterns: [
     /sale/i,
@@ -295,7 +318,8 @@ const CONFIG = {
     /clearance/i,
     /save up to/i,
     /danes poštnine ni/i,
-    /popust/i
+    /popust/i,
+    /wish(ed)? product is now/i
   ],
   campaignPatterns: [
     /bandsintown/i,

@@ -150,6 +150,9 @@ Core intent:
 - found and fixed a manifest/auth gap for Gemini-backed draft generation: `UrlFetchApp.fetch` required explicit `script.external_request` scope plus reauthorization
 - confirmed the scope fix on a fresh dry run: `DraftLog` no longer shows `UrlFetchApp.fetch` permission errors and Phase 5 again produces reviewable draft bodies on real threads
 - found and fixed a small Phase 2 operational reporting bug where Phase 2 wrappers could log to `RunLog` with Phase 1-style entry-point names
+- added explicit dry-run/live entrypoints for morning and evening digests so Phase 3 execution mode now matches the clarity of later phases
+- tightened opportunity-response matching so broadcast LinkedIn "you may be a fit" job suggestions are less likely to land in `1: to respond`
+- expanded conservative commercial overrides again, including Shopify marketing mail seen in the live review bucket
 - used `gog` successfully to inspect the production log spreadsheet, which is now the preferred direct inspection path from the local environment when sheet auth is available
 
 ## Immediate next steps
