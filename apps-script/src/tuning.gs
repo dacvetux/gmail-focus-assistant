@@ -136,12 +136,13 @@ function generateTuningSuggestionsPhase9_(options) {
   };
 }
 
-function readRecentDecisionRows_() {
+function readRecentDecisionRows_(maxRows) {
   const sheet = getOrCreateDecisionLogSheet_();
   const lastRow = sheet.getLastRow();
   if (lastRow <= 1) return [];
 
-  const startRow = Math.max(2, lastRow - 199);
+  const effectiveMaxRows = Math.max(1, maxRows || 200);
+  const startRow = Math.max(2, lastRow - (effectiveMaxRows - 1));
   const numRows = lastRow - startRow + 1;
   const values = sheet.getRange(startRow, 1, numRows, 8).getDisplayValues();
 

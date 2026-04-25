@@ -6,6 +6,24 @@ function generateMorningDigest() {
   });
 }
 
+function generateMorningDigestFromLogsDryRun() {
+  return generateLogBackedDigest_({
+    type: 'morning-log',
+    sourceType: 'main',
+    dryRun: true,
+    entryPointName: 'generateMorningDigestFromLogsDryRun'
+  });
+}
+
+function generateMorningDigestFromLogsLive() {
+  return generateLogBackedDigest_({
+    type: 'morning-log',
+    sourceType: 'main',
+    dryRun: false,
+    entryPointName: 'generateMorningDigestFromLogsLive'
+  });
+}
+
 function generateMorningDigestDryRun() {
   return generateDigest_({
     type: 'morning',
@@ -27,6 +45,24 @@ function generateEveningDigest() {
     type: 'evening',
     dryRun: CONFIG.dryRun,
     entryPointName: CONFIG.dryRun ? 'generateEveningDigestDryRun' : 'generateEveningDigestLive'
+  });
+}
+
+function generateEveningDigestFromLogsDryRun() {
+  return generateLogBackedDigest_({
+    type: 'evening-log',
+    sourceType: 'main',
+    dryRun: true,
+    entryPointName: 'generateEveningDigestFromLogsDryRun'
+  });
+}
+
+function generateEveningDigestFromLogsLive() {
+  return generateLogBackedDigest_({
+    type: 'evening-log',
+    sourceType: 'main',
+    dryRun: false,
+    entryPointName: 'generateEveningDigestFromLogsLive'
   });
 }
 
@@ -66,6 +102,24 @@ function generateNewsDigestMorningDryRun() {
   });
 }
 
+function generateNewsDigestMorningFromLogsDryRun() {
+  return generateLogBackedDigest_({
+    type: 'news-morning-log',
+    sourceType: 'news',
+    dryRun: true,
+    entryPointName: 'generateNewsDigestMorningFromLogsDryRun'
+  });
+}
+
+function generateNewsDigestMorningFromLogsLive() {
+  return generateLogBackedDigest_({
+    type: 'news-morning-log',
+    sourceType: 'news',
+    dryRun: false,
+    entryPointName: 'generateNewsDigestMorningFromLogsLive'
+  });
+}
+
 function generateNewsDigestMorningLive() {
   return generateNewsDigest_({
     type: 'news-morning',
@@ -79,6 +133,24 @@ function generateNewsDigestEveningDryRun() {
     type: 'news-evening',
     dryRun: true,
     entryPointName: 'generateNewsDigestEveningDryRun'
+  });
+}
+
+function generateNewsDigestEveningFromLogsDryRun() {
+  return generateLogBackedDigest_({
+    type: 'news-evening-log',
+    sourceType: 'news',
+    dryRun: true,
+    entryPointName: 'generateNewsDigestEveningFromLogsDryRun'
+  });
+}
+
+function generateNewsDigestEveningFromLogsLive() {
+  return generateLogBackedDigest_({
+    type: 'news-evening-log',
+    sourceType: 'news',
+    dryRun: false,
+    entryPointName: 'generateNewsDigestEveningFromLogsLive'
   });
 }
 
@@ -215,6 +287,43 @@ function generateNewsDigest_(options) {
   });
 
   return result;
+}
+
+function generateLogBackedDigest_(options) {
+  const mode = options.dryRun ? 'dry-run' : 'live';
+  const windowConfig = getDigestWindowConfig_(options.type);
+  const rows = readDecisionRowsForWindow_(windowConfig.start, windowConfig.end);
+  const summaryData = buildLogBackedDigestSummary_(rows, options);
+  const summary = summaryData.summary;
+  const itemCount = summaryData.itemCount;
+
+  logDigestRun_(options.type, mode, summary, itemCount);
+
+  if (!options.dryRun && CONFIG.digestRecipient) {
+    MailApp.sendEmail({
+      to: CONFIG.digestRecipient,
+      subject: `[Gmail Focus Assistant] ${buildLogDigestSubject_(options.type)}`,
+      body: summary
+    });
+  }
+
+  logRunSummary_({
+    runType: 'digest-log-window',
+    mode: mode,
+    entryPoint: options.entryPointName,
+    processedThreads: rows.length,
+    itemCount: itemCount,
+    outcome: itemCount ? 'digest-items-found' : 'no-items',
+    notes: buildLogDigestRunNotes_(summaryData, windowConfig)
+  });
+
+  return {
+    type: options.type,
+    mode: mode,
+    itemCount: itemCount,
+    scannedRows: rows.length,
+    summary: summary
+  };
 }
 
 function generateFollowUpDigestPhase6_(options) {
@@ -436,4 +545,172 @@ function compactSender_(from) {
 
 function capitalize_(value) {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function readDecisionRowsForWindow_(startDate, endDate) {
+  return readRecentDecisionRows_(1000).filter(row => {
+    const timestamp = coerceLogDate_(row.timestamp);
+    if (!timestamp) return false;
+    return timestamp >= startDate && timestamp < endDate;
+  });
+}
+
+function buildLogBackedDigestSummary_(rows, options) {
+  const sourceType = options.sourceType || 'main';
+  const sections = {
+    toRespond: [],
+    notifications: [],
+    opportunities: [],
+    review: [],
+    news: []
+  };
+  const seen = new Set();
+
+  rows.forEach(row => {
+    const key = row.threadId || `${row.from}|${row.subject}|${row.timestamp}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    const entry = {
+      from: row.from,
+      subject: row.subject,
+      timestamp: row.timestamp,
+      labels: row.appliedLabels,
+      archived: row.archived,
+      reason: row.reason,
+      threadId: row.threadId
+    };
+
+    if (sourceType === 'news') {
+      if ((row.appliedLabels || '').includes(CONFIG.labels.newsDigest)) {
+        sections.news.push(entry);
+      }
+      return;
+    }
+
+    if ((row.appliedLabels || '').includes(CONFIG.labels.newsDigest)) {
+      return;
+    }
+
+    if ((row.appliedLabels || '').includes(CONFIG.labels.toRespond)) {
+      sections.toRespond.push(entry);
+      return;
+    }
+
+    if (
+      (row.appliedLabels || '').includes(CONFIG.labels.notification) ||
+      (row.appliedLabels || '').includes(CONFIG.labels.importantShipping) ||
+      (row.appliedLabels || '').includes(CONFIG.labels.importantFinance) ||
+      (row.appliedLabels || '').includes(CONFIG.labels.importantServices) ||
+      (row.appliedLabels || '').includes(CONFIG.labels.importantCalendar)
+    ) {
+      sections.notifications.push(entry);
+      return;
+    }
+
+    if ((row.appliedLabels || '').includes(CONFIG.labels.importantOpportunities)) {
+      sections.opportunities.push(entry);
+      return;
+    }
+
+    if ((row.appliedLabels || '').includes(CONFIG.labels.review)) {
+      sections.review.push(entry);
+    }
+  });
+
+  if (sourceType === 'news') {
+    const summary = renderLogDigestSection_('News digest', sections.news) || 'No notable news items in this window.';
+    return {
+      summary: summary,
+      itemCount: sections.news.length,
+      sections: sections
+    };
+  }
+
+  const renderedSections = [
+    renderLogDigestSection_('Needs response', sections.toRespond),
+    renderLogDigestSection_('Important notifications', sections.notifications),
+    renderLogDigestSection_('Opportunities', sections.opportunities),
+    renderLogDigestSection_('Review later', sections.review)
+  ];
+
+  return {
+    summary: renderedSections.filter(Boolean).join('\n\n').trim() || 'No notable items in this window.',
+    itemCount: sections.toRespond.length + sections.notifications.length + sections.opportunities.length + sections.review.length,
+    sections: sections
+  };
+}
+
+function renderLogDigestSection_(title, entries) {
+  if (!entries || !entries.length) return '';
+
+  const limit = CONFIG.digestThreadLimitPerSection || 8;
+  const sorted = entries.slice().sort((a, b) => {
+    const aTime = coerceLogDate_(a.timestamp);
+    const bTime = coerceLogDate_(b.timestamp);
+    return (bTime ? bTime.getTime() : 0) - (aTime ? aTime.getTime() : 0);
+  });
+
+  const lines = sorted.slice(0, limit).map(entry => `- ${compactSender_(entry.from || 'Unknown sender')}: ${entry.subject || '(No subject)'}`);
+  const hiddenCount = Math.max(0, sorted.length - lines.length);
+  if (hiddenCount > 0) lines.push(`- … and ${hiddenCount} more`);
+
+  return `${title} (${sorted.length})\n${lines.join('\n')}`;
+}
+
+function buildLogDigestSubject_(digestType) {
+  return `${digestType.replace(/-/g, ' ')} digest`;
+}
+
+function buildLogDigestRunNotes_(summaryData, windowConfig) {
+  const notes = [];
+  notes.push(`window-start=${windowConfig.start.toISOString()}`);
+  notes.push(`window-end=${windowConfig.end.toISOString()}`);
+
+  const sections = summaryData.sections || {};
+  if (sections.toRespond && sections.toRespond.length) notes.push(`to-respond=${sections.toRespond.length}`);
+  if (sections.notifications && sections.notifications.length) notes.push(`notifications=${sections.notifications.length}`);
+  if (sections.opportunities && sections.opportunities.length) notes.push(`opportunities=${sections.opportunities.length}`);
+  if (sections.review && sections.review.length) notes.push(`review=${sections.review.length}`);
+  if (sections.news && sections.news.length) notes.push(`news=${sections.news.length}`);
+  if (notes.length === 2) notes.push('no digest sections populated');
+
+  return notes.join('; ');
+}
+
+function getDigestWindowConfig_(digestType) {
+  const now = new Date();
+
+  if ((digestType || '').includes('morning')) {
+    const end = new Date(now);
+    end.setHours(7, 30, 0, 0);
+    if (now < end) {
+      end.setDate(end.getDate() - 1);
+    }
+
+    const start = new Date(end);
+    start.setDate(start.getDate() - 1);
+    start.setHours(19, 0, 0, 0);
+    return { start: start, end: end };
+  }
+
+  const end = new Date(now);
+  end.setHours(19, 0, 0, 0);
+  if (now < end) {
+    end.setDate(end.getDate() - 1);
+  }
+
+  const start = new Date(end);
+  start.setHours(7, 30, 0, 0);
+  return { start: start, end: end };
+}
+
+function coerceLogDate_(value) {
+  if (!value) return null;
+  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value)) {
+    return value;
+  }
+
+  const parsed = new Date(value);
+  return isNaN(parsed) ? null : parsed;
 }
