@@ -714,35 +714,46 @@ function coerceLogDate_(value) {
 }
 
 function dedupeDecisionRowsByLatestThread_(rows) {
-  const byThread = new Map();
-  const fallbackRows = [];
+  const byKey = new Map();
 
   (rows || []).forEach(row => {
+    const dedupeKey = buildDecisionRowDedupeKey_(row);
     const timestamp = coerceLogDate_(row.timestamp);
-    if (!row.threadId) {
-      fallbackRows.push(row);
+
+    if (!byKey.has(dedupeKey)) {
+      byKey.set(dedupeKey, row);
       return;
     }
 
-    if (!byThread.has(row.threadId)) {
-      byThread.set(row.threadId, row);
-      return;
-    }
-
-    const existing = byThread.get(row.threadId);
+    const existing = byKey.get(dedupeKey);
     const existingTimestamp = coerceLogDate_(existing.timestamp);
     if (!existingTimestamp || (timestamp && timestamp > existingTimestamp)) {
-      byThread.set(row.threadId, row);
+      byKey.set(dedupeKey, row);
     }
   });
 
-  return Array.from(byThread.values())
-    .concat(fallbackRows)
-    .sort((a, b) => {
-      const aTime = coerceLogDate_(a.timestamp);
-      const bTime = coerceLogDate_(b.timestamp);
-      return (bTime ? bTime.getTime() : 0) - (aTime ? aTime.getTime() : 0);
-    });
+  return Array.from(byKey.values()).sort((a, b) => {
+    const aTime = coerceLogDate_(a.timestamp);
+    const bTime = coerceLogDate_(b.timestamp);
+    return (bTime ? bTime.getTime() : 0) - (aTime ? aTime.getTime() : 0);
+  });
+}
+
+function buildDecisionRowDedupeKey_(row) {
+  if (row && row.threadId) {
+    return `thread:${row.threadId}`;
+  }
+
+  const from = normalizeDigestKeyPart_(row && row.from);
+  const subject = normalizeDigestKeyPart_(row && row.subject);
+  return `fallback:${from}|${subject}`;
+}
+
+function normalizeDigestKeyPart_(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function formatWindowDateLocal_(date) {
