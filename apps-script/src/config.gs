@@ -13,7 +13,8 @@ const CONFIG = {
     'accounts.google.com',
     'status.incident.io',
     'racun@mail.a1.si',
-    'sparkassepay.si'
+    'sparkassepay.si',
+    'myfritz.net'
   ],
   newsSenders: [
     'newsletters@email.reuters.com',
@@ -98,7 +99,9 @@ const CONFIG = {
     'komoot.de',
     'g.shopifyemail.com',
     'marketing@lon.si',
-    'no-reply@m1.email.samsung.com'
+    'no-reply@m1.email.samsung.com',
+    'global.narwal.com',
+    'e.wmg.com'
   ],
   forceReviewSenders: [
     'developers.google.com',
