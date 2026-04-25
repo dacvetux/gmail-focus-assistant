@@ -362,3 +362,25 @@ Started the first sheet-based operator control layer.
 ### Why
 - the project is now mature enough to benefit from operator controls without editing code for every change
 - a spreadsheet-native control surface is the fastest practical UI before building anything heavier
+
+## 2026-04-25 - Phase 10 control surface moved from scaffold to live runtime input
+
+Connected the new spreadsheet control surface to actual digest/news behavior and finalized the latest Phase 8 refinement in code.
+
+### Added or changed
+- `isNewsThread_()` now explicitly respects `CONFIG.newsExcludedSenders` before sender/pattern-based news matching
+- `refreshConfigFromPreferencesPhase10()` now also loads `NewsSources` into runtime as:
+  - `CONFIG.newsSenders`
+  - `CONFIG.newsExcludedSenders`
+- added digest-settings readers so `DigestSettings` now controls per-digest:
+  - enabled/disabled state
+  - lookback query
+  - search/thread limit
+- main and news digest entrypoints now read `DigestSettings` instead of relying on hard-coded `newer_than:1d`
+- disabled digests now log a clear `digest-disabled` outcome in `RunLog`
+- validated via the live spreadsheet that the digest/news behavior changed after deployment, including a reduced news-digest count consistent with the LinkedIn messaging exclusion path
+
+### Why
+- Phase 10 needed to become a real operator surface, not just sheet scaffolding
+- news-source control belongs in the sheet if Phase 8 is going to stay maintainable
+- digest timing/scope knobs are among the highest-value settings to expose before building any heavier UI

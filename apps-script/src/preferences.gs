@@ -132,6 +132,83 @@ function getOrCreateApprovedRulesSheet_() {
   return sheet;
 }
 
+function readDigestSettingsMap_() {
+  const sheet = getOrCreateDigestSettingsSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return {};
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 5).getDisplayValues();
+  const result = {};
+
+  values.forEach(row => {
+    const digestType = (row[0] || '').trim();
+    const enabled = String(row[1] || '').trim().toLowerCase();
+    const lookbackQuery = (row[2] || '').trim();
+    const threadLimit = Number(row[3]);
+    const notes = (row[4] || '').trim();
+
+    if (!digestType) return;
+
+    result[digestType] = {
+      enabled: !enabled || enabled === 'yes' || enabled === 'true' || enabled === '1',
+      lookbackQuery: lookbackQuery || 'newer_than:1d',
+      threadLimit: Number.isFinite(threadLimit) && threadLimit > 0 ? threadLimit : null,
+      notes: notes
+    };
+  });
+
+  return result;
+}
+
+function getDigestSetting_(digestType) {
+  const settings = readDigestSettingsMap_();
+  return settings[digestType] || {
+    enabled: true,
+    lookbackQuery: 'newer_than:1d',
+    threadLimit: null,
+    notes: ''
+  };
+}
+
+function readNewsSourceConfig_() {
+  const sheet = getOrCreateNewsSourcesSheet_();
+  const lastRow = sheet.getLastRow();
+  const fallback = {
+    senders: (CONFIG.newsSenders || []).slice(),
+    excludedSenders: (CONFIG.newsExcludedSenders || []).slice()
+  };
+
+  if (lastRow <= 1) return fallback;
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 5).getDisplayValues();
+  const senders = [];
+  const excludedSenders = [];
+
+  values.forEach(row => {
+    const source = String(row[0] || '').trim().toLowerCase();
+    const type = String(row[1] || '').trim().toLowerCase();
+    const action = String(row[2] || '').trim().toLowerCase();
+    const enabled = String(row[3] || '').trim().toLowerCase();
+
+    if (!source || type !== 'sender') return;
+    if (enabled && enabled !== 'yes' && enabled !== 'true' && enabled !== '1') return;
+
+    if (action === 'exclude') {
+      excludedSenders.push(source);
+      return;
+    }
+
+    if (action === 'news') {
+      senders.push(source);
+    }
+  });
+
+  return {
+    senders: senders.length ? senders : fallback.senders,
+    excludedSenders: excludedSenders.length ? excludedSenders : fallback.excludedSenders
+  };
+}
+
 function refreshConfigFromPreferencesPhase10() {
   CONFIG.dryRun = getPreferenceValue_('dryRun', CONFIG.dryRun);
   CONFIG.enableAiForReview = getPreferenceValue_('enableAiForReview', CONFIG.enableAiForReview);
@@ -141,14 +218,18 @@ function refreshConfigFromPreferencesPhase10() {
   CONFIG.digestRecipient = getPreferenceValue_('digestRecipient', CONFIG.digestRecipient);
   CONFIG.newsWorkflowLabel = getPreferenceValue_('newsWorkflowLabel', CONFIG.newsWorkflowLabel);
 
+  const newsConfig = readNewsSourceConfig_();
+  CONFIG.newsSenders = newsConfig.senders;
+  CONFIG.newsExcludedSenders = newsConfig.excludedSenders;
+
   logRunSummary_({
     runType: 'control-surface',
     mode: 'internal',
     entryPoint: 'refreshConfigFromPreferencesPhase10',
     processedThreads: 0,
-    itemCount: 7,
+    itemCount: 9,
     outcome: 'preferences-loaded',
-    notes: 'Loaded selected CONFIG values from Preferences sheet'
+    notes: `Loaded preferences plus news sources (${CONFIG.newsSenders.length} includes, ${CONFIG.newsExcludedSenders.length} excludes)`
   });
 
   return {
@@ -158,6 +239,8 @@ function refreshConfigFromPreferencesPhase10() {
     digestThreadLimitPerSection: CONFIG.digestThreadLimitPerSection,
     newsDigestThreadLimit: CONFIG.newsDigestThreadLimit,
     digestRecipient: CONFIG.digestRecipient,
-    newsWorkflowLabel: CONFIG.newsWorkflowLabel
+    newsWorkflowLabel: CONFIG.newsWorkflowLabel,
+    newsSenders: CONFIG.newsSenders,
+    newsExcludedSenders: CONFIG.newsExcludedSenders
   };
 }

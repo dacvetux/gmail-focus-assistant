@@ -132,6 +132,10 @@ function isOpportunitySender_(from) {
 }
 
 function isNewsThread_(from, subjectHaystack) {
+  if (containsAny_(from, CONFIG.newsExcludedSenders || [])) {
+    return false;
+  }
+
   return containsAny_(from, CONFIG.newsSenders || []) || matchesAny_(subjectHaystack, CONFIG.newsPatterns || []);
 }
 

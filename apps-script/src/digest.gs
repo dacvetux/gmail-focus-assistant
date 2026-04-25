@@ -2,7 +2,6 @@ function generateMorningDigest() {
   return generateDigest_({
     type: 'morning',
     dryRun: CONFIG.dryRun,
-    query: 'newer_than:1d',
     entryPointName: CONFIG.dryRun ? 'generateMorningDigestDryRun' : 'generateMorningDigestLive'
   });
 }
@@ -11,7 +10,6 @@ function generateMorningDigestDryRun() {
   return generateDigest_({
     type: 'morning',
     dryRun: true,
-    query: 'newer_than:1d',
     entryPointName: 'generateMorningDigestDryRun'
   });
 }
@@ -20,7 +18,6 @@ function generateMorningDigestLive() {
   return generateDigest_({
     type: 'morning',
     dryRun: false,
-    query: 'newer_than:1d',
     entryPointName: 'generateMorningDigestLive'
   });
 }
@@ -29,7 +26,6 @@ function generateEveningDigest() {
   return generateDigest_({
     type: 'evening',
     dryRun: CONFIG.dryRun,
-    query: 'newer_than:1d',
     entryPointName: CONFIG.dryRun ? 'generateEveningDigestDryRun' : 'generateEveningDigestLive'
   });
 }
@@ -38,7 +34,6 @@ function generateEveningDigestDryRun() {
   return generateDigest_({
     type: 'evening',
     dryRun: true,
-    query: 'newer_than:1d',
     entryPointName: 'generateEveningDigestDryRun'
   });
 }
@@ -47,7 +42,6 @@ function generateEveningDigestLive() {
   return generateDigest_({
     type: 'evening',
     dryRun: false,
-    query: 'newer_than:1d',
     entryPointName: 'generateEveningDigestLive'
   });
 }
@@ -68,7 +62,6 @@ function generateNewsDigestMorningDryRun() {
   return generateNewsDigest_({
     type: 'news-morning',
     dryRun: true,
-    query: 'newer_than:1d',
     entryPointName: 'generateNewsDigestMorningDryRun'
   });
 }
@@ -77,7 +70,6 @@ function generateNewsDigestMorningLive() {
   return generateNewsDigest_({
     type: 'news-morning',
     dryRun: false,
-    query: 'newer_than:1d',
     entryPointName: 'generateNewsDigestMorningLive'
   });
 }
@@ -86,7 +78,6 @@ function generateNewsDigestEveningDryRun() {
   return generateNewsDigest_({
     type: 'news-evening',
     dryRun: true,
-    query: 'newer_than:1d',
     entryPointName: 'generateNewsDigestEveningDryRun'
   });
 }
@@ -95,14 +86,36 @@ function generateNewsDigestEveningLive() {
   return generateNewsDigest_({
     type: 'news-evening',
     dryRun: false,
-    query: 'newer_than:1d',
     entryPointName: 'generateNewsDigestEveningLive'
   });
 }
 
 function generateDigest_(options) {
   const mode = options.dryRun ? 'dry-run' : 'live';
-  const sections = buildDigestSections_(options.query);
+  const digestSettings = getDigestSetting_(options.type);
+
+  if (!digestSettings.enabled) {
+    const result = {
+      type: options.type,
+      mode: mode,
+      itemCount: 0,
+      summary: 'Digest disabled in DigestSettings.'
+    };
+
+    logRunSummary_({
+      runType: 'digest',
+      mode: mode,
+      entryPoint: inferDigestEntryPoint_(options),
+      processedThreads: 0,
+      itemCount: 0,
+      outcome: 'digest-disabled',
+      notes: `disabled-by-setting; type=${options.type}`
+    });
+
+    return result;
+  }
+
+  const sections = buildDigestSections_(digestSettings.lookbackQuery, digestSettings.threadLimit);
   const renderedSections = [
     renderDigestSection_('Needs response', sections.toRespond),
     renderDigestSection_('Important notifications', sections.notifications),
@@ -146,7 +159,30 @@ function generateDigest_(options) {
 
 function generateNewsDigest_(options) {
   const mode = options.dryRun ? 'dry-run' : 'live';
-  const threads = selectNewsThreads_(options.query);
+  const digestSettings = getDigestSetting_(options.type);
+
+  if (!digestSettings.enabled) {
+    const result = {
+      type: options.type,
+      mode: mode,
+      itemCount: 0,
+      summary: 'Digest disabled in DigestSettings.'
+    };
+
+    logRunSummary_({
+      runType: 'digest',
+      mode: mode,
+      entryPoint: options.entryPointName,
+      processedThreads: 0,
+      itemCount: 0,
+      outcome: 'digest-disabled',
+      notes: `disabled-by-setting; type=${options.type}`
+    });
+
+    return result;
+  }
+
+  const threads = selectNewsThreads_(digestSettings.lookbackQuery, digestSettings.threadLimit);
   const summary = renderDigestSection_('News digest', threads) || 'No notable news items.';
   const itemCount = threads.length;
 
@@ -239,9 +275,10 @@ function buildDigestRunNotes_(sections) {
   return notes.join('; ');
 }
 
-function buildDigestSections_(query) {
-  const limit = CONFIG.digestSearchPool || 120;
-  const candidates = GmailApp.search(`${CONFIG.query} ${query}`, 0, limit);
+function buildDigestSections_(query, searchLimit) {
+  const limit = searchLimit || CONFIG.digestSearchPool || 120;
+  const effectiveQuery = query || 'newer_than:1d';
+  const candidates = GmailApp.search(`${CONFIG.query} ${effectiveQuery}`, 0, limit);
   const seen = new Set();
   const sections = {
     toRespond: [],
@@ -362,9 +399,10 @@ function renderFollowUpDigestSection_(threads) {
   return `Awaiting reply - stale (${threads.length})\n${lines.join('\n')}`;
 }
 
-function selectNewsThreads_(query) {
-  const limit = CONFIG.digestSearchPool || 120;
-  const candidates = GmailApp.search(`${CONFIG.query} ${query}`, 0, limit);
+function selectNewsThreads_(query, searchLimit) {
+  const limit = searchLimit || CONFIG.digestSearchPool || 120;
+  const effectiveQuery = query || 'newer_than:1d';
+  const candidates = GmailApp.search(`${CONFIG.query} ${effectiveQuery}`, 0, limit);
   const newsThreads = [];
   const seen = new Set();
 
