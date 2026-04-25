@@ -6,6 +6,7 @@ const CONFIG = {
   enableAiForReview: true,
   logSpreadsheetId: '1F2ZNpYVwNqa0-pOuVavJDEf6LahtLNryyoaXYA13EwA',
   digestRecipient: '',
+  tuningSuggestionLookbackRows: 500,
   debugSampleThreads: [],
   debugSenderIncludes: [],
   debugSubjectIncludes: [],

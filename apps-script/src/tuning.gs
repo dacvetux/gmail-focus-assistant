@@ -11,7 +11,7 @@ function generateTuningSuggestionsPhase9Live() {
 }
 
 function generateTuningSuggestionsPhase9_(options) {
-  const rows = readRecentDecisionRows_();
+  const rows = readRecentDecisionRows_(CONFIG.tuningSuggestionLookbackRows || 500);
   const suggestions = [];
   const bySender = new Map();
 
@@ -157,7 +157,7 @@ function generateTuningSuggestionsPhase9_(options) {
     processedThreads: rows.length,
     itemCount: suggestions.filter(row => row[1] !== 'no-suggestions').length,
     outcome: suggestions[0][1] === 'no-suggestions' ? 'no-suggestions' : 'suggestions-generated',
-    notes: `rows-scanned=${rows.length}`
+    notes: `rows-scanned=${rows.length}; lookback-rows=${CONFIG.tuningSuggestionLookbackRows || 500}`
   });
 
   return {
