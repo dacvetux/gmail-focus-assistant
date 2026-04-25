@@ -311,6 +311,10 @@ function isStrictDraftCandidate_(thread) {
   const subject = ((lastMessage && lastMessage.getSubject()) || '').toLowerCase();
   const haystack = `${from}\n${subject}`;
 
+  if (isNoReplySender_(from)) {
+    return false;
+  }
+
   if (containsAny_(haystack, CONFIG.draftExcludedSenders) || matchesAny_(haystack, CONFIG.draftExcludedSubjectPatterns)) {
     return false;
   }
@@ -364,6 +368,21 @@ function buildDraftForThread_(thread, options) {
   const subjectHaystack = `${from}\n${subject}`.toLowerCase();
   const body = ((lastMessage && lastMessage.getPlainBody()) || '').slice(0, CONFIG.draftMaxBodyChars || 4000);
   const draftMode = options.forceDraftMode || getDraftGenerationMode_(thread);
+
+  if (isNoReplySender_(from)) {
+    return {
+      created: false,
+      logRow: [
+        new Date(),
+        options.dryRun ? 'dry-run' : 'live',
+        thread.getId(),
+        from,
+        subject,
+        'SKIPPED: sender appears to be no-reply/noreply, so no reply draft was generated.',
+        'no'
+      ]
+    };
+  }
 
   if (containsAny_(subjectHaystack, CONFIG.draftExcludedSenders) || matchesAny_(subjectHaystack, CONFIG.draftExcludedSubjectPatterns)) {
     return {
@@ -545,6 +564,11 @@ function extractReplyAddress_(message) {
   const source = replyTo || from;
   const match = source.match(/<([^>]+)>/);
   return match ? match[1] : source.replace(/^[^\s<]+\s*/, '').trim();
+}
+
+function isNoReplySender_(from) {
+  const normalized = String(from || '').toLowerCase();
+  return normalized.includes('noreply@') || normalized.includes('no-reply@');
 }
 
 function isOpportunityBroadcastSender_(from) {

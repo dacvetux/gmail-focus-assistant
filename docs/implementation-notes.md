@@ -337,6 +337,20 @@ Started the first recommendation-first tuning helper.
 ### Why
 - repeated manual sender patching does not scale
 - the first version should suggest changes from evidence before any automatic rule mutation is considered
+
+## 2026-04-25 - Draft safety tightened for no-reply senders
+
+Added a simple but high-value reply-safety rule for Phase 5 drafting.
+
+### Added or changed
+- added `noreply@` and `no-reply@` style sender fragments to draft exclusion config
+- added an explicit `isNoReplySender_()` guard in draft candidate selection
+- added the same no-reply guard again during actual draft building so query-based or forced paths still refuse to generate reply drafts
+- DraftLog now records a clear skip reason when a sender appears to be a no-reply address
+
+### Why
+- mail from no-reply/noreply addresses is overwhelmingly not intended for conversational reply handling
+- this is a cheap, conservative safety win that reduces obviously bad draft suggestions before broader live Phase 5 use
 - once a few suggestions are clearly correct, folding them back into config is the fastest way to keep momentum without waiting for a richer approval UI
 
 ## 2026-04-24 - Phase 10 spreadsheet control surface started

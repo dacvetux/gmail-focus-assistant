@@ -413,7 +413,9 @@ const CONFIG = {
     'm1.email.samsung.com',
     'ifttt.com',
     'ollama.com',
-    'maribox.si'
+    'maribox.si',
+    'noreply@',
+    'no-reply@'
   ],
   draftExcludedSubjectPatterns: [
     /job alert/i,
