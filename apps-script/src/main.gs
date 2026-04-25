@@ -6,6 +6,56 @@ function processInboxFocusPhase1() {
   });
 }
 
+function runFrequentProcessingLiveWrapper() {
+  return runAutomationWrapper_({
+    wrapperName: 'runFrequentProcessingLiveWrapper',
+    lockKey: 'runFrequentProcessingLiveWrapper',
+    action: function() {
+      return processInboxFocusPhase2Live();
+    }
+  });
+}
+
+function runMorningMainDigestLiveWrapper() {
+  return runAutomationWrapper_({
+    wrapperName: 'runMorningMainDigestLiveWrapper',
+    lockKey: 'runMorningMainDigestLiveWrapper',
+    action: function() {
+      return generateMorningDigestFromLogsLive();
+    }
+  });
+}
+
+function runEveningMainDigestLiveWrapper() {
+  return runAutomationWrapper_({
+    wrapperName: 'runEveningMainDigestLiveWrapper',
+    lockKey: 'runEveningMainDigestLiveWrapper',
+    action: function() {
+      return generateEveningDigestFromLogsLive();
+    }
+  });
+}
+
+function runMorningNewsDigestLiveWrapper() {
+  return runAutomationWrapper_({
+    wrapperName: 'runMorningNewsDigestLiveWrapper',
+    lockKey: 'runMorningNewsDigestLiveWrapper',
+    action: function() {
+      return generateNewsDigestMorningFromLogsLive();
+    }
+  });
+}
+
+function runEveningNewsDigestLiveWrapper() {
+  return runAutomationWrapper_({
+    wrapperName: 'runEveningNewsDigestLiveWrapper',
+    lockKey: 'runEveningNewsDigestLiveWrapper',
+    action: function() {
+      return generateNewsDigestEveningFromLogsLive();
+    }
+  });
+}
+
 function processInboxFocusPhase1DryRun() {
   return processInboxFocusWithOptions_({
     dryRun: true,
@@ -249,6 +299,67 @@ function threadMatchesDebugFilters_(thread) {
 
 function hasDebugFilters_() {
   return CONFIG.debugSampleThreads.length || CONFIG.debugSenderIncludes.length || CONFIG.debugSubjectIncludes.length;
+}
+
+function runAutomationWrapper_(options) {
+  const wrapperName = options.wrapperName || 'runAutomationWrapper';
+  const lock = LockService.getScriptLock();
+  const startedAt = new Date();
+
+  if (!lock.tryLock(1000)) {
+    logRunSummary_({
+      runType: 'automation-wrapper',
+      mode: 'internal',
+      entryPoint: wrapperName,
+      processedThreads: 0,
+      itemCount: 0,
+      outcome: 'skipped-overlap',
+      notes: 'lock-busy'
+    });
+
+    return {
+      wrapperName: wrapperName,
+      outcome: 'skipped-overlap'
+    };
+  }
+
+  try {
+    refreshConfigFromPreferencesPhase10();
+    const result = options.action ? options.action() : null;
+    const durationMs = new Date().getTime() - startedAt.getTime();
+
+    logRunSummary_({
+      runType: 'automation-wrapper',
+      mode: 'internal',
+      entryPoint: wrapperName,
+      processedThreads: 0,
+      itemCount: 1,
+      outcome: 'completed',
+      notes: `duration-ms=${durationMs}`
+    });
+
+    return result;
+  } catch (error) {
+    logRunSummary_({
+      runType: 'automation-wrapper',
+      mode: 'internal',
+      entryPoint: wrapperName,
+      processedThreads: 0,
+      itemCount: 0,
+      outcome: 'failed',
+      notes: truncateRunNote_(error && error.message ? error.message : String(error), 400)
+    });
+    throw error;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function truncateRunNote_(value, maxLength) {
+  const text = String(value || '');
+  const limit = maxLength || 400;
+  if (text.length <= limit) return text;
+  return text.slice(0, Math.max(0, limit - 1)) + '…';
 }
 
 
