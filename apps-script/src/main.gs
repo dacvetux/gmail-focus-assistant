@@ -1,9 +1,79 @@
+const AUTOMATION_TRIGGER_SPECS = [
+  { functionName: 'runFrequentProcessingLiveWrapper', hour: 6, minute: 30 },
+  { functionName: 'runFrequentProcessingLiveWrapper', hour: 8, minute: 30 },
+  { functionName: 'runFrequentProcessingLiveWrapper', hour: 10, minute: 30 },
+  { functionName: 'runFrequentProcessingLiveWrapper', hour: 12, minute: 30 },
+  { functionName: 'runFrequentProcessingLiveWrapper', hour: 14, minute: 30 },
+  { functionName: 'runFrequentProcessingLiveWrapper', hour: 16, minute: 30 },
+  { functionName: 'runFrequentProcessingLiveWrapper', hour: 19, minute: 0 },
+  { functionName: 'runFrequentProcessingLiveWrapper', hour: 22, minute: 0 },
+  { functionName: 'runMorningMainDigestLiveWrapper', hour: 7, minute: 30 },
+  { functionName: 'runMorningNewsDigestLiveWrapper', hour: 7, minute: 35 },
+  { functionName: 'runEveningMainDigestLiveWrapper', hour: 19, minute: 5 },
+  { functionName: 'runEveningNewsDigestLiveWrapper', hour: 19, minute: 10 }
+];
+
 function processInboxFocusPhase1() {
   return processInboxFocusWithOptions_({
     dryRun: CONFIG.dryRun,
     maxThreads: CONFIG.maxThreads,
     entryPointName: CONFIG.dryRun ? 'processInboxFocusPhase1DryRun' : 'processInboxFocusPhase1Live'
   });
+}
+
+function installAutomationTriggers() {
+  const deletedCount = deleteAutomationTriggers_();
+  const created = AUTOMATION_TRIGGER_SPECS.map(spec => createDailyAutomationTrigger_(spec));
+
+  logRunSummary_({
+    runType: 'automation-triggers',
+    mode: 'internal',
+    entryPoint: 'installAutomationTriggers',
+    processedThreads: 0,
+    itemCount: created.length,
+    outcome: 'installed',
+    notes: `deleted-existing=${deletedCount}; created=${created.length}`
+  });
+
+  return {
+    deletedExisting: deletedCount,
+    createdCount: created.length,
+    triggers: created
+  };
+}
+
+function deleteAutomationTriggers() {
+  const deletedCount = deleteAutomationTriggers_();
+
+  logRunSummary_({
+    runType: 'automation-triggers',
+    mode: 'internal',
+    entryPoint: 'deleteAutomationTriggers',
+    processedThreads: 0,
+    itemCount: deletedCount,
+    outcome: deletedCount ? 'deleted' : 'no-managed-triggers',
+    notes: `deleted=${deletedCount}`
+  });
+
+  return {
+    deletedCount: deletedCount
+  };
+}
+
+function listAutomationTriggers() {
+  const triggers = listManagedAutomationTriggers_();
+
+  logRunSummary_({
+    runType: 'automation-triggers',
+    mode: 'internal',
+    entryPoint: 'listAutomationTriggers',
+    processedThreads: 0,
+    itemCount: triggers.length,
+    outcome: 'listed',
+    notes: `managed-triggers=${triggers.length}`
+  });
+
+  return triggers;
 }
 
 function runFrequentProcessingLiveWrapper() {
@@ -360,6 +430,58 @@ function truncateRunNote_(value, maxLength) {
   const limit = maxLength || 400;
   if (text.length <= limit) return text;
   return text.slice(0, Math.max(0, limit - 1)) + '…';
+}
+
+function createDailyAutomationTrigger_(spec) {
+  ScriptApp.newTrigger(spec.functionName)
+    .timeBased()
+    .everyDays(1)
+    .atHour(spec.hour)
+    .nearMinute(spec.minute)
+    .create();
+
+  return {
+    functionName: spec.functionName,
+    hour: spec.hour,
+    minute: spec.minute
+  };
+}
+
+function deleteAutomationTriggers_() {
+  const managedNames = getManagedAutomationFunctionNames_();
+  let deletedCount = 0;
+
+  ScriptApp.getProjectTriggers().forEach(trigger => {
+    if (managedNames.indexOf(trigger.getHandlerFunction()) === -1) {
+      return;
+    }
+
+    ScriptApp.deleteTrigger(trigger);
+    deletedCount += 1;
+  });
+
+  return deletedCount;
+}
+
+function listManagedAutomationTriggers_() {
+  const managedNames = getManagedAutomationFunctionNames_();
+
+  return ScriptApp.getProjectTriggers()
+    .filter(trigger => managedNames.indexOf(trigger.getHandlerFunction()) !== -1)
+    .map(trigger => ({
+      functionName: trigger.getHandlerFunction(),
+      eventType: String(trigger.getEventType()),
+      triggerSource: String(trigger.getTriggerSource()),
+      uniqueId: trigger.getUniqueId ? trigger.getUniqueId() : ''
+    }));
+}
+
+function getManagedAutomationFunctionNames_() {
+  const names = {};
+  AUTOMATION_TRIGGER_SPECS.forEach(spec => {
+    names[spec.functionName] = true;
+  });
+  return Object.keys(names);
 }
 
 
