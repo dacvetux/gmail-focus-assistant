@@ -31,6 +31,8 @@
 - strengthen follow-up intelligence once real waiting-on-them mailbox state exists
 - add accepted-suggestion semi-automation only after suggestion quality is trustworthy
 - expand long-term analytics and preference-aware behavior
+- shift automated morning/evening digests from mailbox-state reads toward explicit time-window, `DecisionLog`-backed reporting once frequent live processing is scheduled
+- add Apps Script automation wrappers for frequent live processing and digest windows after the log-backed digest path exists
 
 ## Non-goals for early versions
 - full autonomous inbox management

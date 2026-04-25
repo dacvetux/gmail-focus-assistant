@@ -351,6 +351,27 @@ Added a simple but high-value reply-safety rule for Phase 5 drafting.
 ### Why
 - mail from no-reply/noreply addresses is overwhelmingly not intended for conversational reply handling
 - this is a cheap, conservative safety win that reduces obviously bad draft suggestions before broader live Phase 5 use
+
+## 2026-04-25 - First DecisionLog-backed digest windows added
+
+Started the shift from mailbox-state digests to time-window digests backed by `DecisionLog`.
+
+### Added or changed
+- added new log-backed digest entrypoints for main and news reporting:
+  - `generateMorningDigestFromLogsDryRun()` / `Live()`
+  - `generateEveningDigestFromLogsDryRun()` / `Live()`
+  - `generateNewsDigestMorningFromLogsDryRun()` / `Live()`
+  - `generateNewsDigestEveningFromLogsDryRun()` / `Live()`
+- added digest-window filtering over recent `DecisionLog` rows
+- added first explicit digest windows:
+  - morning: previous evening 19:00 -> current morning 07:30
+  - evening: current-day 07:30 -> current-day 19:00
+- added `RunLog` reporting under `digest-log-window` so log-backed runs are distinguishable from mailbox-state digest runs
+- generalized recent `DecisionLog` reading so later features can scan beyond the previous 200-row cap
+
+### Current tradeoff
+- this first pass summarizes by logged applied labels and does not yet fold in follow-up windowing or richer thread de-duplication logic
+- mailbox-state digest functions remain in place as fallback and comparison tools during transition
 - once a few suggestions are clearly correct, folding them back into config is the fastest way to keep momentum without waiting for a richer approval UI
 
 ## 2026-04-24 - Phase 10 spreadsheet control surface started

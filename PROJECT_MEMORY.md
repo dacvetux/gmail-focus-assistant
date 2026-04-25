@@ -160,6 +160,10 @@ Core intent:
 - added a reusable `docs/testing-checklist.md` runbook so future checkpoint validation is easier to repeat consistently
 - started Phase 10 with a spreadsheet-native control surface that creates `Preferences`, `DigestSettings`, `NewsSources`, and `ApprovedRules` sheets plus a first small config-loading path back into runtime
 - used `gog` successfully to inspect the production log spreadsheet, which is now the preferred direct inspection path from the local environment when sheet auth is available
+- began limited live use on 2026-04-25 for Phase 1/2 processing plus digest paths, and confirmed via `RunLog` / `DigestLog` that live runs completed successfully
+- concluded that once processing runs frequently during the day, the current mailbox-state-based digest architecture becomes incomplete because already processed/labeled/archived mail falls out of the digest source pool
+- accepted the next architectural direction: keep frequent live processing conservative, but move automated morning/evening/news digests toward explicit time-window summaries backed primarily by `DecisionLog` instead of current inbox state
+- accepted the next automation direction: add Apps Script wrapper entrypoints for frequent live processing and later for digest windows, but only after the log-backed digest path exists
 
 ## Immediate next steps
 

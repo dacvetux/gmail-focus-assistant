@@ -548,11 +548,11 @@ function capitalize_(value) {
 }
 
 function readDecisionRowsForWindow_(startDate, endDate) {
-  return readRecentDecisionRows_(1000).filter(row => {
+  return dedupeDecisionRowsByLatestThread_(readRecentDecisionRows_(1000).filter(row => {
     const timestamp = coerceLogDate_(row.timestamp);
     if (!timestamp) return false;
     return timestamp >= startDate && timestamp < endDate;
-  });
+  }));
 }
 
 function buildLogBackedDigestSummary_(rows, options) {
@@ -564,13 +564,8 @@ function buildLogBackedDigestSummary_(rows, options) {
     review: [],
     news: []
   };
-  const seen = new Set();
 
   rows.forEach(row => {
-    const key = row.threadId || `${row.from}|${row.subject}|${row.timestamp}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-
     const entry = {
       from: row.from,
       subject: row.subject,
@@ -664,8 +659,11 @@ function buildLogDigestSubject_(digestType) {
 
 function buildLogDigestRunNotes_(summaryData, windowConfig) {
   const notes = [];
-  notes.push(`window-start=${windowConfig.start.toISOString()}`);
-  notes.push(`window-end=${windowConfig.end.toISOString()}`);
+  notes.push(`window-label=${windowConfig.label}`);
+  notes.push(`window-start-local=${formatWindowDateLocal_(windowConfig.start)}`);
+  notes.push(`window-end-local=${formatWindowDateLocal_(windowConfig.end)}`);
+  notes.push(`window-start-utc=${windowConfig.start.toISOString()}`);
+  notes.push(`window-end-utc=${windowConfig.end.toISOString()}`);
 
   const sections = summaryData.sections || {};
   if (sections.toRespond && sections.toRespond.length) notes.push(`to-respond=${sections.toRespond.length}`);
@@ -691,7 +689,7 @@ function getDigestWindowConfig_(digestType) {
     const start = new Date(end);
     start.setDate(start.getDate() - 1);
     start.setHours(19, 0, 0, 0);
-    return { start: start, end: end };
+    return { start: start, end: end, label: 'evening-to-morning' };
   }
 
   const end = new Date(now);
@@ -702,7 +700,7 @@ function getDigestWindowConfig_(digestType) {
 
   const start = new Date(end);
   start.setHours(7, 30, 0, 0);
-  return { start: start, end: end };
+  return { start: start, end: end, label: 'morning-to-evening' };
 }
 
 function coerceLogDate_(value) {
@@ -713,4 +711,42 @@ function coerceLogDate_(value) {
 
   const parsed = new Date(value);
   return isNaN(parsed) ? null : parsed;
+}
+
+function dedupeDecisionRowsByLatestThread_(rows) {
+  const byThread = new Map();
+  const fallbackRows = [];
+
+  (rows || []).forEach(row => {
+    const timestamp = coerceLogDate_(row.timestamp);
+    if (!row.threadId) {
+      fallbackRows.push(row);
+      return;
+    }
+
+    if (!byThread.has(row.threadId)) {
+      byThread.set(row.threadId, row);
+      return;
+    }
+
+    const existing = byThread.get(row.threadId);
+    const existingTimestamp = coerceLogDate_(existing.timestamp);
+    if (!existingTimestamp || (timestamp && timestamp > existingTimestamp)) {
+      byThread.set(row.threadId, row);
+    }
+  });
+
+  return Array.from(byThread.values())
+    .concat(fallbackRows)
+    .sort((a, b) => {
+      const aTime = coerceLogDate_(a.timestamp);
+      const bTime = coerceLogDate_(b.timestamp);
+      return (bTime ? bTime.getTime() : 0) - (aTime ? aTime.getTime() : 0);
+    });
+}
+
+function formatWindowDateLocal_(date) {
+  if (!date) return '';
+
+  return Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm");
 }
