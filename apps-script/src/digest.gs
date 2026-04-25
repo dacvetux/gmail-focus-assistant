@@ -640,7 +640,7 @@ function renderLogDigestSection_(title, entries) {
   if (!entries || !entries.length) return '';
 
   const limit = CONFIG.digestThreadLimitPerSection || 8;
-  const sorted = entries.slice().sort((a, b) => {
+  const sorted = dedupeRenderedDigestEntries_(entries).sort((a, b) => {
     const aTime = coerceLogDate_(a.timestamp);
     const bTime = coerceLogDate_(b.timestamp);
     return (bTime ? bTime.getTime() : 0) - (aTime ? aTime.getTime() : 0);
@@ -760,4 +760,34 @@ function formatWindowDateLocal_(date) {
   if (!date) return '';
 
   return Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm");
+}
+
+function dedupeRenderedDigestEntries_(entries) {
+  const byKey = new Map();
+
+  (entries || []).forEach(entry => {
+    const dedupeKey = buildRenderedDigestEntryKey_(entry);
+    const timestamp = coerceLogDate_(entry && entry.timestamp);
+
+    if (!byKey.has(dedupeKey)) {
+      byKey.set(dedupeKey, entry);
+      return;
+    }
+
+    const existing = byKey.get(dedupeKey);
+    const existingTimestamp = coerceLogDate_(existing && existing.timestamp);
+    if (!existingTimestamp || (timestamp && timestamp > existingTimestamp)) {
+      byKey.set(dedupeKey, entry);
+    }
+  });
+
+  return Array.from(byKey.values());
+}
+
+function buildRenderedDigestEntryKey_(entry) {
+  if (entry && entry.threadId) {
+    return `thread:${entry.threadId}`;
+  }
+
+  return `display:${normalizeDigestKeyPart_(compactSender_((entry && entry.from) || ''))}|${normalizeDigestKeyPart_(entry && entry.subject)}`;
 }
