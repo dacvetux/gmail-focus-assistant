@@ -188,6 +188,7 @@ function repairRecentFyiMislabelsLive() {
 }
 
 function auditAutomationHealth() {
+  refreshConfigFromPreferencesPhase10_({ suppressLog: true });
   const timezone = Session.getScriptTimeZone();
   const now = new Date();
   const todayKey = Utilities.formatDate(now, timezone, 'yyyy-MM-dd');
@@ -220,6 +221,7 @@ function auditAutomationHealth() {
   ]];
 
   logAutomationHealthRows_(rows);
+  const alertDelivery = maybeSendAutomationHealthAlert_(summary, timezone, todayKey);
 
   logRunSummary_({
     runType: 'automation-health',
@@ -228,7 +230,7 @@ function auditAutomationHealth() {
     processedThreads: summary.expectedDueCount,
     itemCount: summary.alerts.length,
     outcome: summary.alerts.length ? 'alerts-detected' : 'healthy',
-    notes: `expected-due=${summary.expectedDueCount}; matched=${summary.completedMatchCount}; failed=${summary.failedCount}; skipped=${summary.skippedCount}`
+    notes: `expected-due=${summary.expectedDueCount}; matched=${summary.completedMatchCount}; failed=${summary.failedCount}; skipped=${summary.skippedCount}; alert-delivery=${alertDelivery.outcome}`
   });
 
   return {
@@ -238,8 +240,85 @@ function auditAutomationHealth() {
     failedCount: summary.failedCount,
     skippedCount: summary.skippedCount,
     alertCount: summary.alerts.length,
-    alerts: summary.alerts
+    alerts: summary.alerts,
+    alertDelivery: alertDelivery
   };
+}
+
+function maybeSendAutomationHealthAlert_(summary, timezone, todayKey) {
+  if (!summary || !summary.alerts || !summary.alerts.length) {
+    return { outcome: 'no-alerts', sent: false };
+  }
+
+  if (!CONFIG.automationHealthAlertEnabled) {
+    return { outcome: 'disabled', sent: false };
+  }
+
+  if (!CONFIG.automationHealthAlertRecipient) {
+    return { outcome: 'missing-recipient', sent: false };
+  }
+
+  const minSeverity = String(CONFIG.automationHealthAlertMinSeverity || 'warning').trim().toLowerCase() || 'warning';
+  const eligibleAlerts = summary.alerts.filter(alert => meetsAutomationHealthSeverityThreshold_(alert.severity, minSeverity));
+  if (!eligibleAlerts.length) {
+    return { outcome: 'below-threshold', sent: false, minSeverity: minSeverity };
+  }
+
+  const signature = buildAutomationHealthAlertSignature_(eligibleAlerts, todayKey);
+  const props = PropertiesService.getScriptProperties();
+  const signatureKey = 'AUTOMATION_HEALTH_LAST_ALERT_SIGNATURE';
+  if (props.getProperty(signatureKey) === signature) {
+    return { outcome: 'duplicate-suppressed', sent: false, minSeverity: minSeverity };
+  }
+
+  MailApp.sendEmail({
+    to: CONFIG.automationHealthAlertRecipient,
+    subject: `[Focuna - Gmail Assistant] Automation health alert (${eligibleAlerts.length})`,
+    body: buildAutomationHealthAlertEmailBody_(eligibleAlerts, summary, timezone, todayKey)
+  });
+  props.setProperty(signatureKey, signature);
+
+  return {
+    outcome: 'sent',
+    sent: true,
+    recipient: CONFIG.automationHealthAlertRecipient,
+    minSeverity: minSeverity,
+    alertCount: eligibleAlerts.length
+  };
+}
+
+function meetsAutomationHealthSeverityThreshold_(severity, minSeverity) {
+  const rank = { info: 0, warning: 1, error: 2 };
+  return (rank[String(severity || 'info').toLowerCase()] || 0) >= (rank[String(minSeverity || 'warning').toLowerCase()] || 1);
+}
+
+function buildAutomationHealthAlertSignature_(alerts, todayKey) {
+  return [todayKey].concat((alerts || []).map(alert => [alert.severity, alert.functionName, alert.status, alert.scheduledLocal, alert.failedCount, alert.skippedCount].join('|'))).join('||');
+}
+
+function buildAutomationHealthAlertEmailBody_(alerts, summary, timezone, todayKey) {
+  const lines = [
+    `Automation health alerts for ${todayKey}`,
+    '',
+    `Expected due wrappers: ${summary.expectedDueCount}`,
+    `Matched wrappers: ${summary.completedMatchCount}`,
+    `Failed wrappers: ${summary.failedCount}`,
+    `Skipped-overlap wrappers: ${summary.skippedCount}`,
+    '',
+    'Alerts:'
+  ];
+
+  (alerts || []).forEach(alert => {
+    lines.push(`- [${String(alert.severity || '').toUpperCase()}] ${alert.functionName} :: ${alert.status}`);
+    if (alert.scheduledLocal) lines.push(`  scheduled: ${alert.scheduledLocal}`);
+    if (alert.matchedRunLocal) lines.push(`  nearest run: ${alert.matchedRunLocal}`);
+    if (alert.notes) lines.push(`  notes: ${alert.notes}`);
+  });
+
+  lines.push('');
+  lines.push(`Timezone: ${timezone}`);
+  lines.push('Review AutomationHealthLog and RunLog for details.');
+  return lines.join('\n');
 }
 
 function processInboxFocusPhase1DryRun() {

@@ -120,14 +120,17 @@ function getOrCreatePreferencesSheet_() {
   if (!sheet) {
     sheet = spreadsheet.insertSheet('Preferences');
     sheet.getRange(1, 1, 1, 4).setValues([['Key', 'Value', 'Description', 'Enabled']]);
-    sheet.getRange(2, 1, 7, 4).setValues([
+    sheet.getRange(2, 1, 10, 4).setValues([
       ['dryRun', 'true', 'Default dry-run mode for generic entrypoints', 'yes'],
       ['enableAiForReview', 'true', 'Allow Phase 4 AI review on ambiguous mail', 'yes'],
       ['maxThreads', '100', 'Default processing thread limit', 'yes'],
       ['digestThreadLimitPerSection', '8', 'Main digest items shown per section', 'yes'],
       ['newsDigestThreadLimit', '12', 'News digest items shown', 'yes'],
       ['digestRecipient', '', 'Optional recipient for live digest emails', 'yes'],
-      ['newsWorkflowLabel', '', 'Optional workflow label for news items; leave blank to keep news separate from FYI/notification', 'yes']
+      ['newsWorkflowLabel', '', 'Optional workflow label for news items; leave blank to keep news separate from FYI/notification', 'yes'],
+      ['automationHealthAlertEnabled', 'false', 'If true, send email when automation-health audit detects qualifying alerts', 'yes'],
+      ['automationHealthAlertRecipient', '', 'Optional recipient for automation-health alert emails; leave blank to suppress sending', 'yes'],
+      ['automationHealthAlertMinSeverity', 'warning', 'Minimum alert severity for email escalation: warning or error', 'yes']
     ]);
   }
 
@@ -202,13 +205,14 @@ function getOrCreateOperatorGuideSheet_() {
 
   const rows = [
     ['Section', 'What this sheet is for', 'How to use it', 'Allowed values / examples', 'Notes'],
-    ['Preferences', 'Top-level runtime parameters', 'Edit Value and keep Enabled=yes for active settings', 'dryRun=true/false; maxThreads=100; newsWorkflowLabel=(blank)|3: notification|2: FYI', 'Use this for global behavior, not sender-specific tuning'],
+    ['Preferences', 'Top-level runtime parameters', 'Edit Value and keep Enabled=yes for active settings', 'dryRun=true/false; maxThreads=100; newsWorkflowLabel=(blank)|3: notification|2: FYI; automationHealthAlertEnabled=true/false', 'Use this for global behavior, not sender-specific tuning'],
     ['DigestSettings', 'Enable/disable digest types and per-digest limits', 'Set Enabled to yes/no and tune thread limits conservatively', 'morning, evening, news-morning, news-evening', 'If disabled, wrappers log digest-disabled instead of sending'],
     ['NewsSources', 'Explicit allow/exclude list for news senders', 'One sender per row; Action=news or exclude', 'Type=sender; Action=news|exclude; Enabled=yes|no', 'Use exclude for digest traffic that looks newsletter-like but should stay out'],
     ['TuningSuggestions', 'Review queue for proposed sender/routing changes', 'Change Status from new to approved/rejected/superseded after review', 'Status=new|approved|rejected|imported|already-imported|skipped|superseded', 'Approved rows can be imported into ApprovedRules'],
     ['ApprovedRules', 'Runtime rules already approved by the operator', 'One rule per row; keep Approved=yes for active rules', 'Category=shipping-sender/commercial-sender/important-sender/fyi-sender/news-sender/news-exclude-sender; Action=add|remove', 'This is the live Option A control surface that affects runtime config'],
     ['ControlSurfaceStatus', 'Small operator dashboard for the current review/import state', 'Rebuild via rebuildControlSurfaceStatusPhase10() or runPhase10ReviewLoopOptionA()', 'Shows pending/new/approved/imported counts plus next-action guidance', 'Use this first before reviewing or importing'],
     ['Workflow label semantics', 'Clarify when to use review vs FYI vs notification', 'Treat Review/Ambiguous as unresolved mail, FYI as intentionally informational, and notification as low-response transactional/system updates', 'Review/Ambiguous != FYI; News/Digest can stay workflow-blank', 'Default news behavior should stay separate unless the operator explicitly wants FYI/notification'],
+    ['Automation health alerts', 'Optional lightweight escalation for wrapper failures or missed schedules', 'Enable only if you want email alerts; blank recipient keeps the feature safely silent', 'automationHealthAlertEnabled=false by default; min severity=warning|error', 'Repeated identical alerts are deduplicated to avoid spam'],
     ['Recommended workflow', 'Use Sheets as the primary operator UI for now', '1) review ControlSurfaceStatus 2) review TuningSuggestions 3) mark approved/rejected 4) run runPhase10ReviewLoopOptionA() 5) confirm status sheet updated', 'Option A now; Option B HTML UI later', 'Only move to the HTML phase once this workflow feels ~90% finalized']
   ];
 
@@ -629,6 +633,7 @@ function normalizeBlankCellRange_(sheet, startRow, column, defaultValue) {
 function rebuildControlSurfaceStatusSheet_(sheet) {
   const tuningSummary = summarizeTuningSuggestions_();
   const approvedRulesSummary = summarizeApprovedRules_();
+  const automationHealthSummary = summarizeAutomationHealthStatus_();
   const nextAction = buildControlSurfaceNextAction_(tuningSummary);
   const newsWorkflowLabel = CONFIG.newsWorkflowLabel ? CONFIG.newsWorkflowLabel : '(blank)';
 
@@ -637,6 +642,9 @@ function rebuildControlSurfaceStatusSheet_(sheet) {
     ['last-updated', formatControlSurfaceTimestamp_(new Date()), 'When this dashboard was last rebuilt', nextAction],
     ['workflow-review-default', 'Review/Ambiguous', 'Ambiguous mail should stay review-only unless there is a real workflow signal', 'Use this as the baseline mental model for operator review'],
     ['workflow-news-label', newsWorkflowLabel, 'Current workflow label applied to News/Digest items; blank keeps news separate from FYI/notification', CONFIG.newsWorkflowLabel ? 'Keep only if this is an intentional operator choice.' : 'Recommended default: leave blank unless you explicitly want FYI/notification on news.'],
+    ['automation-health-last-status', automationHealthSummary.status, 'Latest recorded automation-health outcome from AutomationHealthLog', automationHealthSummary.nextAction],
+    ['automation-health-last-alert-time', automationHealthSummary.timestamp, 'When the latest automation-health row was logged', ''],
+    ['automation-health-alert-email', automationHealthSummary.alertEmailStatus, 'Whether email escalation is enabled/configured in Preferences', automationHealthSummary.alertEmailNextAction],
     ['tuning-total-rows', tuningSummary.totalRows, 'Total non-header rows currently in TuningSuggestions', ''],
     ['tuning-new-actionable', tuningSummary.newCount, 'Real suggestions not yet reviewed', tuningSummary.newCount ? 'Review these first in TuningSuggestions.' : ''],
     ['tuning-no-suggestions-placeholders', tuningSummary.noSuggestionsOpen, 'Informational no-suggestions rows retained as queue anchors, not real review work', ''],
@@ -737,6 +745,44 @@ function summarizeApprovedRules_() {
   return {
     totalRows: rows.length,
     activeRows: rows.filter(row => isAffirmativeFlag_(row.approved)).length
+  };
+}
+
+function summarizeAutomationHealthStatus_() {
+  const prefMap = readPreferencesMap_();
+  const alertEnabled = /^(true|yes|1)$/i.test(String(prefMap.automationHealthAlertEnabled || '').trim());
+  const alertRecipient = String(prefMap.automationHealthAlertRecipient || '').trim();
+  const minSeverity = String(prefMap.automationHealthAlertMinSeverity || 'warning').trim().toLowerCase() || 'warning';
+  const latest = readLatestAutomationHealthRow_();
+
+  const alertEmailStatus = alertEnabled
+    ? (alertRecipient ? `enabled -> ${alertRecipient}` : 'enabled but no recipient configured')
+    : 'disabled';
+
+  return {
+    status: latest ? `${latest.severity || 'info'} / ${latest.status || 'unknown'}` : 'no-audit-data-yet',
+    timestamp: latest ? latest.timestamp : '',
+    nextAction: latest && latest.status !== 'healthy' ? 'Review AutomationHealthLog and recent RunLog rows.' : 'Healthy or no recent alerts logged.',
+    alertEmailStatus: `${alertEmailStatus}; min-severity=${minSeverity}`,
+    alertEmailNextAction: alertEnabled
+      ? (alertRecipient ? 'Email escalation is armed for qualifying alerts.' : 'Set automationHealthAlertRecipient to actually send alert emails.')
+      : 'Set automationHealthAlertEnabled=true only if you want email escalation.'
+  };
+}
+
+function readLatestAutomationHealthRow_() {
+  const sheet = getOrCreateAutomationHealthLogSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return null;
+
+  const row = sheet.getRange(lastRow, 1, 1, 11).getDisplayValues()[0];
+  return {
+    timestamp: row[0] || '',
+    severity: row[1] || '',
+    functionName: row[2] || '',
+    scheduledLocal: row[3] || '',
+    status: row[4] || '',
+    notes: row[10] || ''
   };
 }
 
@@ -847,6 +893,9 @@ function refreshConfigFromPreferencesPhase10_(options) {
   CONFIG.newsDigestThreadLimit = getPreferenceValue_('newsDigestThreadLimit', CONFIG.newsDigestThreadLimit);
   CONFIG.digestRecipient = getPreferenceValue_('digestRecipient', CONFIG.digestRecipient);
   CONFIG.newsWorkflowLabel = getOptionalWorkflowPreferenceValue_('newsWorkflowLabel', CONFIG.newsWorkflowLabel);
+  CONFIG.automationHealthAlertEnabled = getPreferenceValue_('automationHealthAlertEnabled', CONFIG.automationHealthAlertEnabled);
+  CONFIG.automationHealthAlertRecipient = getPreferenceValue_('automationHealthAlertRecipient', CONFIG.automationHealthAlertRecipient);
+  CONFIG.automationHealthAlertMinSeverity = getPreferenceValue_('automationHealthAlertMinSeverity', CONFIG.automationHealthAlertMinSeverity);
 
   const newsConfig = readNewsSourceConfig_();
   CONFIG.newsSenders = newsConfig.senders;
@@ -860,7 +909,7 @@ function refreshConfigFromPreferencesPhase10_(options) {
       mode: 'internal',
       entryPoint: 'refreshConfigFromPreferencesPhase10',
       processedThreads: 0,
-      itemCount: 9 + approvedRulesSummary.appliedCount,
+      itemCount: 12 + approvedRulesSummary.appliedCount,
       outcome: 'preferences-loaded',
       notes: `Loaded preferences plus news sources (${CONFIG.newsSenders.length} includes, ${CONFIG.newsExcludedSenders.length} excludes); approved-rules-applied=${approvedRulesSummary.appliedCount}`
     });
@@ -874,6 +923,9 @@ function refreshConfigFromPreferencesPhase10_(options) {
     newsDigestThreadLimit: CONFIG.newsDigestThreadLimit,
     digestRecipient: CONFIG.digestRecipient,
     newsWorkflowLabel: CONFIG.newsWorkflowLabel,
+    automationHealthAlertEnabled: CONFIG.automationHealthAlertEnabled,
+    automationHealthAlertRecipient: CONFIG.automationHealthAlertRecipient,
+    automationHealthAlertMinSeverity: CONFIG.automationHealthAlertMinSeverity,
     newsSenders: CONFIG.newsSenders,
     newsExcludedSenders: CONFIG.newsExcludedSenders,
     approvedRulesApplied: approvedRulesSummary.appliedCount,
@@ -891,18 +943,68 @@ function normalizePreferenceRowsPhase10_(sheet) {
 
   values.forEach(row => {
     const key = String(row[0] || '').trim();
-    if (key !== 'newsWorkflowLabel') return;
-
-    row[2] = 'Optional workflow label for news items; leave blank to keep news separate from FYI/notification';
-    if (String(row[1] || '').trim() === '2: FYI') {
-      row[1] = '';
+    if (key === 'newsWorkflowLabel') {
+      row[2] = 'Optional workflow label for news items; leave blank to keep news separate from FYI/notification';
+      if (String(row[1] || '').trim() === '2: FYI') {
+        row[1] = '';
+      }
+      changed = true;
+      return;
     }
-    changed = true;
+
+    if (key === 'automationHealthAlertEnabled') {
+      row[2] = 'If true, send email when automation-health audit detects qualifying alerts';
+      if (!String(row[1] || '').trim()) {
+        row[1] = 'false';
+      }
+      changed = true;
+      return;
+    }
+
+    if (key === 'automationHealthAlertRecipient') {
+      row[2] = 'Optional recipient for automation-health alert emails; leave blank to suppress sending';
+      changed = true;
+      return;
+    }
+
+    if (key === 'automationHealthAlertMinSeverity') {
+      row[2] = 'Minimum alert severity for email escalation: warning or error';
+      if (!String(row[1] || '').trim()) {
+        row[1] = 'warning';
+      }
+      changed = true;
+    }
   });
 
   if (changed) {
     range.setValues(values);
   }
+
+  ensurePreferenceRowExists_(sheet, 'automationHealthAlertEnabled', 'false', 'If true, send email when automation-health audit detects qualifying alerts', 'yes');
+  ensurePreferenceRowExists_(sheet, 'automationHealthAlertRecipient', '', 'Optional recipient for automation-health alert emails; leave blank to suppress sending', 'yes');
+  ensurePreferenceRowExists_(sheet, 'automationHealthAlertMinSeverity', 'warning', 'Minimum alert severity for email escalation: warning or error', 'yes');
+}
+
+function ensurePreferenceRowExists_(sheet, key, value, description, enabled) {
+  if (!sheet || !key) return;
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    sheet.getRange(2, 1, 1, 4).setValues([[key, value, description, enabled || 'yes']]);
+    return;
+  }
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 4).getDisplayValues();
+  const existingIndex = values.findIndex(row => String(row[0] || '').trim() === key);
+  if (existingIndex >= 0) {
+    const rowNumber = existingIndex + 2;
+    sheet.getRange(rowNumber, 3).setValue(description);
+    if (!String(sheet.getRange(rowNumber, 4).getDisplayValue() || '').trim()) {
+      sheet.getRange(rowNumber, 4).setValue(enabled || 'yes');
+    }
+    return;
+  }
+
+  sheet.getRange(lastRow + 1, 1, 1, 4).setValues([[key, value, description, enabled || 'yes']]);
 }
 
 function applyPreferenceValueValidations_(sheet) {
@@ -915,13 +1017,18 @@ function applyPreferenceValueValidations_(sheet) {
     const key = String(row[0] || '').trim();
     const rowNumber = index + 2;
 
-    if (key === 'dryRun' || key === 'enableAiForReview') {
+    if (key === 'dryRun' || key === 'enableAiForReview' || key === 'automationHealthAlertEnabled') {
       setDropdownValidation_(sheet, rowNumber, 2, 1, ['true', 'false']);
       return;
     }
 
     if (key === 'newsWorkflowLabel') {
       setDropdownValidation_(sheet, rowNumber, 2, 1, ['', '3: notification', '2: FYI']);
+      return;
+    }
+
+    if (key === 'automationHealthAlertMinSeverity') {
+      setDropdownValidation_(sheet, rowNumber, 2, 1, ['warning', 'error']);
     }
   });
 }
