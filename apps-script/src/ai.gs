@@ -21,9 +21,10 @@ function classifyWithAI_(thread) {
     ].join(', '),
     'Decide one workflowLabel from:',
     [CONFIG.labels.toRespond, CONFIG.labels.fyi, CONFIG.labels.notification].join(', '),
+    'Workflow label may be omitted/null for purely ambiguous review items.',
     'Return keys: structuralLabel, workflowLabel, archive, confidence, reason.',
     'Use archive=true only for clearly commercial non-essential mail.',
-    'If uncertain, prefer Review/Ambiguous with 2: FYI and archive=false.',
+    'If uncertain, prefer Review/Ambiguous with no workflowLabel and archive=false.',
     '',
     `From: ${from}`,
     `Subject: ${subject}`,
@@ -52,7 +53,7 @@ function classifyWithAI_(thread) {
     return {
       action: 'label',
       label: CONFIG.labels.review,
-      workflowLabel: CONFIG.labels.fyi,
+      workflowLabel: null,
       archive: false,
       reason: `ai fallback: ${error.message}`,
       aiConfidence: null
@@ -116,11 +117,15 @@ function sanitizeAiStructuralLabel_(value) {
 
 function sanitizeAiWorkflowLabel_(value) {
   const allowed = [CONFIG.labels.toRespond, CONFIG.labels.fyi, CONFIG.labels.notification];
-  return allowed.includes(value) ? value : CONFIG.labels.fyi;
+  return allowed.includes(value) ? value : null;
 }
 
 function normalizeAiWorkflowLabel_(structuralLabel, value) {
   if (isCommercialLabel_(structuralLabel)) {
+    return null;
+  }
+
+  if (structuralLabel === CONFIG.labels.review && !value) {
     return null;
   }
 

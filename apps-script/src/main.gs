@@ -142,6 +142,51 @@ function runAutomationHealthAuditWrapper() {
   });
 }
 
+function repairRecentFyiMislabelsLive() {
+  refreshConfigFromPreferencesPhase10_({ suppressLog: true });
+  const fyiLabel = GmailApp.getUserLabelByName(CONFIG.labels.fyi);
+  const threads = fyiLabel ? fyiLabel.getThreads(0, 100) : [];
+  let reviewedCount = 0;
+  let changedCount = 0;
+  const changedRows = [];
+
+  threads.forEach(thread => {
+    const labels = getSafeLabelNames_(thread);
+    if (!labels.includes(CONFIG.labels.fyi)) {
+      return;
+    }
+
+    reviewedCount += 1;
+    const decision = classifyThread_(thread, { ignoreManagedDecisionLabels: true });
+    const stillFyi = decision.workflowLabel === CONFIG.labels.fyi || decision.label === CONFIG.labels.fyi;
+    const shouldKeepAsIs = decision.action === 'preserve' || stillFyi;
+    if (shouldKeepAsIs) {
+      return;
+    }
+
+    const result = applyDecision_(thread, decision);
+    changedCount += 1;
+    logDecision_(changedRows, thread, decision, result);
+  });
+
+  flushDecisionLog_(changedRows);
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'live',
+    entryPoint: 'repairRecentFyiMislabelsLive',
+    processedThreads: reviewedCount,
+    itemCount: changedCount,
+    outcome: changedCount ? 'fyi-mislabels-corrected' : 'no-fyi-corrections-needed',
+    notes: `reviewed=${reviewedCount}; corrected=${changedCount}`
+  });
+
+  return {
+    reviewedCount: reviewedCount,
+    correctedCount: changedCount
+  };
+}
+
 function auditAutomationHealth() {
   const timezone = Session.getScriptTimeZone();
   const now = new Date();

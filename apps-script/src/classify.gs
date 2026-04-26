@@ -1,4 +1,5 @@
-function classifyThread_(thread) {
+function classifyThread_(thread, options) {
+  const settings = options || {};
   const labels = getSafeLabelNames_(thread);
   const lastMessage = thread.getMessages()[thread.getMessageCount() - 1];
   const from = ((lastMessage && lastMessage.getFrom()) || '').toLowerCase();
@@ -6,12 +7,12 @@ function classifyThread_(thread) {
   const subjectHaystack = `${from}\n${subject}`;
   const workflowHaystack = `${from}\n${subject}\n${((lastMessage && lastMessage.getPlainBody()) || '').slice(0, 1200).toLowerCase()}`;
 
-  if (hasAnyLabel_(labels, CONFIG.preserveLabels) || hasAnyLabel_(labels, CONFIG.preserveSystemLabels)) {
+  if (hasBlockingPreserveLabels_(labels, settings)) {
     return buildDecision_('preserve', null, false, 'preserve label present', null);
   }
 
   if (containsAny_(subjectHaystack, CONFIG.forceReviewSenders)) {
-    return buildDecision_('label', CONFIG.labels.review, false, 'forced review sender override', CONFIG.labels.fyi);
+    return buildDecision_('label', CONFIG.labels.review, false, 'forced review sender override', null);
   }
 
   if (containsAny_(subjectHaystack, CONFIG.forceImportantSenders)) {
@@ -70,7 +71,7 @@ function classifyThread_(thread) {
     return buildDecision_('label', CONFIG.labels.commercialAds, true, 'gmail promotions category fallback', null);
   }
 
-  return buildDecision_('label', CONFIG.labels.review, false, 'no confident rule match', inferWorkflowLabel_(workflowHaystack) || CONFIG.labels.fyi);
+  return buildDecision_('label', CONFIG.labels.review, false, 'no confident rule match', inferWorkflowLabel_(workflowHaystack));
 }
 
 function inferWorkflowLabel_(haystack) {
@@ -169,6 +170,15 @@ function getSafeLabelNames_(thread) {
   } catch (error) {
     return [];
   }
+}
+
+function hasBlockingPreserveLabels_(labels, options) {
+  const settings = options || {};
+  const preserved = settings.ignoreManagedDecisionLabels
+    ? (CONFIG.preserveLabels || []).filter(name => !CONFIG.decisionLabels.includes(name))
+    : CONFIG.preserveLabels;
+
+  return hasAnyLabel_(labels, preserved) || hasAnyLabel_(labels, CONFIG.preserveSystemLabels);
 }
 
 function matchesAny_(text, patterns) {

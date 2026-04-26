@@ -53,7 +53,7 @@ function generateTuningSuggestionsPhase9_(options) {
     if (!entry.archived && archived) entry.archived = archived;
     if (!entry.timestamp && timestamp) entry.timestamp = timestamp;
 
-    if (labels === 'Review/Ambiguous, 2: FYI' && entry.reviewExamples.length < 3) {
+    if (isReviewLabelSet_(labels) && entry.reviewExamples.length < 3) {
       entry.reviewExamples.push({
         from: from,
         subject: subject,
@@ -65,7 +65,7 @@ function generateTuningSuggestionsPhase9_(options) {
   });
 
   bySender.forEach((entry, senderKey) => {
-    const reviewCount = entry.labelCounts['Review/Ambiguous, 2: FYI'] || 0;
+    const reviewCount = countReviewLabelRows_(entry.labelCounts);
     const representative = entry.reviewExamples[0] || entry;
 
     if (!reviewCount) {
@@ -369,6 +369,16 @@ function isSenderAlreadyCoveredByApprovedRules_(senderKey, approvedRules) {
     if (!target) return false;
     return normalized === target || normalized.endsWith(`@${target}`) || normalized.endsWith(`.${target}`) || normalized.includes(target);
   });
+}
+
+function isReviewLabelSet_(labels) {
+  const normalized = String(labels || '').trim();
+  return normalized === 'Review/Ambiguous' || normalized === 'Review/Ambiguous, 2: FYI';
+}
+
+function countReviewLabelRows_(labelCounts) {
+  const counts = labelCounts || {};
+  return Number(counts['Review/Ambiguous'] || 0) + Number(counts['Review/Ambiguous, 2: FYI'] || 0);
 }
 
 function buildTuningSuggestionRow_(entry) {
