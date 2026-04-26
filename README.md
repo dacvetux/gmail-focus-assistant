@@ -52,6 +52,7 @@ Recent operational status:
 
 ## Key docs
 
+- `docs/current-state.md`
 - `docs/architecture.md`
 - `docs/roadmap.md`
 - `docs/phases.md`
