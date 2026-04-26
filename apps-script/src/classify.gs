@@ -36,7 +36,7 @@ function classifyThread_(thread, options) {
   }
 
   if (containsAny_(subjectHaystack, CONFIG.forceFyiSenders || [])) {
-    return buildDecision_('label', CONFIG.labels.fyi, false, 'forced FYI sender override', null);
+    return buildDecision_('label', null, false, 'forced FYI sender override', CONFIG.labels.fyi);
   }
 
   if (matchesAny_(subjectHaystack, CONFIG.financePatterns)) {
@@ -71,10 +71,13 @@ function classifyThread_(thread, options) {
     return buildDecision_('label', CONFIG.labels.commercialAds, true, 'gmail promotions category fallback', null);
   }
 
-  return buildDecision_('label', CONFIG.labels.review, false, 'no confident rule match', inferWorkflowLabel_(workflowHaystack));
+  return buildDecision_('label', CONFIG.labels.review, false, 'no confident rule match', null);
 }
 
-function inferWorkflowLabel_(haystack) {
+function inferWorkflowLabel_(haystack, options) {
+  const settings = options || {};
+  const allowFyi = settings.allowFyi !== false;
+
   if (matchesAny_(haystack, CONFIG.responsePatterns)) {
     return CONFIG.labels.toRespond;
   }
@@ -83,7 +86,7 @@ function inferWorkflowLabel_(haystack) {
     return CONFIG.labels.notification;
   }
 
-  if (matchesAny_(haystack, CONFIG.fyiPatterns)) {
+  if (allowFyi && matchesAny_(haystack, CONFIG.fyiPatterns)) {
     return CONFIG.labels.fyi;
   }
 

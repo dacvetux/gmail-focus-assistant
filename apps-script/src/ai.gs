@@ -22,6 +22,7 @@ function classifyWithAI_(thread) {
     'Decide one workflowLabel from:',
     [CONFIG.labels.toRespond, CONFIG.labels.fyi, CONFIG.labels.notification].join(', '),
     'Workflow label may be omitted/null for purely ambiguous review items.',
+    'Use FYI only for intentionally informational mail; do not use FYI just because something is ambiguous.',
     'Return keys: structuralLabel, workflowLabel, archive, confidence, reason.',
     'Use archive=true only for clearly commercial non-essential mail.',
     'If uncertain, prefer Review/Ambiguous with no workflowLabel and archive=false.',
@@ -125,7 +126,7 @@ function normalizeAiWorkflowLabel_(structuralLabel, value) {
     return null;
   }
 
-  if (structuralLabel === CONFIG.labels.review && !value) {
+  if (structuralLabel === CONFIG.labels.review) {
     return null;
   }
 

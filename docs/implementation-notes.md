@@ -52,6 +52,20 @@ Implemented the first version of the workflow priority system.
 - workflow inference is intentionally simple and pattern-driven
 - this should be good enough for a first pass, but will need tuning from real inbox results
 
+## 2026-04-27 - Workflow semantics tightening
+
+Sharpened the long-term meaning of review vs FYI vs notification.
+
+### Changed
+- `Review/Ambiguous` now stays workflow-blank instead of carrying inferred FYI on vague wording
+- `forceFyiSenders` / `fyi-sender` now apply workflow-only `2: FYI` routing instead of treating FYI like a structural label
+- AI review guidance now treats FYI as intentional informational routing, not as a fallback for ambiguous review mail
+
+### Why
+- the previous model still allowed a blurry `Review/Ambiguous + 2: FYI` shape in some paths
+- keeping review plain makes the operator workflow easier to reason about
+- reserving FYI for explicit informational mail makes it a cleaner long-term signal
+
 ## 2026-04-21 - Validation and tuning support
 
 Added practical validation and tuning hooks for Phases 1 and 2.

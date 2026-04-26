@@ -63,6 +63,8 @@ Current loop:
 - operator-friendly approved-rule aliases and add/remove actions are live
 - automation-health auditing was added
 - ambiguous mail no longer auto-gets `2: FYI`
+- `Review/Ambiguous` now stays workflow-blank by default instead of inferring FYI from vague wording
+- `fyi-sender` / `forceFyiSenders` now means explicit workflow-only FYI routing for intentionally informational senders
 - news now defaults to `News/Digest` without a workflow label unless the operator explicitly re-enables FYI/notification in `Preferences`
 - a live repair pass removed false FYI labels from historical mailbox threads
 - a follow-up issue now tracks long-term FYI vs review semantics cleanup: **GitHub issue #8**
@@ -71,8 +73,8 @@ Current loop:
 
 ### Now
 - finish Phase 10 **Option A** polish in Google Sheets
-- refine `2: FYI` vs `Review/Ambiguous` semantics
 - tighten docs so operator guidance matches real runtime behavior
+- keep validating the sharper workflow model: review = unresolved, FYI = explicit info-only, notification = transactional/system updates
 
 ### Next
 - add lightweight escalation/notification for automation-health warnings
@@ -83,6 +85,6 @@ Current loop:
 
 ## Next 3 practical milestones
 
-1. finalize workflow-label semantics for review vs FYI vs notification
-2. improve the control-surface operator UX until the review/import loop feels obvious
+1. improve the control-surface operator UX until the review/import loop feels obvious
+2. keep validating the sharper workflow-label semantics in live use
 3. publish cleaner project documentation for first-time readers and operators

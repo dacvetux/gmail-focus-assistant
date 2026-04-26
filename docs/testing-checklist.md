@@ -70,7 +70,9 @@ Check:
 - `RunLog`
 - real news/newsletter content lands in `News/Digest`
 - news only gets a workflow label if `Preferences.newsWorkflowLabel` is explicitly set
-- ambiguous mail should remain `Review/Ambiguous` unless a real FYI/notification/response signal exists
+- ambiguous mail should remain plain `Review/Ambiguous` with no workflow label
+- `2: FYI` should appear only for intentionally informational routing, not generic ambiguous wording
+- `3: notification` should capture transactional/system/status updates that do not need a response
 - main digest becomes cleaner after news is separated out
 - LinkedIn messaging digests should not appear in `News/Digest`
 
