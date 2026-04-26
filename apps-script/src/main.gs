@@ -9,9 +9,15 @@ const AUTOMATION_TRIGGER_SPECS = [
   { functionName: 'runFrequentProcessingLiveWrapper', hour: 22, minute: 0 },
   { functionName: 'runMorningMainDigestLiveWrapper', hour: 7, minute: 30 },
   { functionName: 'runMorningNewsDigestLiveWrapper', hour: 7, minute: 35 },
+  { functionName: 'runAutomationHealthAuditWrapper', hour: 8, minute: 45 },
   { functionName: 'runEveningMainDigestLiveWrapper', hour: 19, minute: 5 },
-  { functionName: 'runEveningNewsDigestLiveWrapper', hour: 19, minute: 10 }
+  { functionName: 'runEveningNewsDigestLiveWrapper', hour: 19, minute: 10 },
+  { functionName: 'runAutomationHealthAuditWrapper', hour: 19, minute: 20 },
+  { functionName: 'runAutomationHealthAuditWrapper', hour: 22, minute: 20 }
 ];
+
+const AUTOMATION_AUDIT_ALLOWED_DELAY_MINUTES = 45;
+const AUTOMATION_AUDIT_DUE_GRACE_MINUTES = 15;
 
 function processInboxFocusPhase1() {
   return processInboxFocusWithOptions_({
@@ -124,6 +130,71 @@ function runEveningNewsDigestLiveWrapper() {
       return generateNewsDigestEveningFromLogsLive();
     }
   });
+}
+
+function runAutomationHealthAuditWrapper() {
+  return runAutomationWrapper_({
+    wrapperName: 'runAutomationHealthAuditWrapper',
+    lockKey: 'runAutomationHealthAuditWrapper',
+    action: function() {
+      return auditAutomationHealth();
+    }
+  });
+}
+
+function auditAutomationHealth() {
+  const timezone = Session.getScriptTimeZone();
+  const now = new Date();
+  const todayKey = Utilities.formatDate(now, timezone, 'yyyy-MM-dd');
+  const summary = analyzeAutomationHealth_(now, timezone);
+
+  const rows = summary.alerts.length ? summary.alerts.map(alert => ([
+    new Date(),
+    alert.severity,
+    alert.functionName,
+    alert.scheduledLocal || '',
+    alert.status,
+    alert.expectedCount,
+    alert.completedCount,
+    alert.failedCount,
+    alert.skippedCount,
+    alert.matchedRunLocal || '',
+    alert.notes || ''
+  ])) : [[
+    new Date(),
+    'info',
+    '',
+    '',
+    'healthy',
+    summary.expectedDueCount,
+    summary.completedMatchCount,
+    summary.failedCount,
+    summary.skippedCount,
+    '',
+    `No missing or late wrappers detected for ${todayKey}`
+  ]];
+
+  logAutomationHealthRows_(rows);
+
+  logRunSummary_({
+    runType: 'automation-health',
+    mode: 'internal',
+    entryPoint: 'auditAutomationHealth',
+    processedThreads: summary.expectedDueCount,
+    itemCount: summary.alerts.length,
+    outcome: summary.alerts.length ? 'alerts-detected' : 'healthy',
+    notes: `expected-due=${summary.expectedDueCount}; matched=${summary.completedMatchCount}; failed=${summary.failedCount}; skipped=${summary.skippedCount}`
+  });
+
+  return {
+    date: todayKey,
+    expectedDueCount: summary.expectedDueCount,
+    completedMatchCount: summary.completedMatchCount,
+    failedCount: summary.failedCount,
+    skippedCount: summary.skippedCount,
+    alertCount: summary.alerts.length,
+    alerts: summary.alerts
+  };
 }
 
 function processInboxFocusPhase1DryRun() {
@@ -485,3 +556,172 @@ function getManagedAutomationFunctionNames_() {
   return Object.keys(names);
 }
 
+function analyzeAutomationHealth_(now, timezone) {
+  const runRows = readTodayAutomationWrapperRunRows_(now, timezone);
+  const completedByFunction = {};
+  const failedCounts = {};
+  const skippedCounts = {};
+
+  runRows.forEach(row => {
+    const name = row.entryPoint;
+    if (!completedByFunction[name]) completedByFunction[name] = [];
+    if (row.outcome === 'completed') {
+      completedByFunction[name].push({
+        timestamp: row.timestamp,
+        matched: false
+      });
+    }
+    if (row.outcome === 'failed') {
+      failedCounts[name] = (failedCounts[name] || 0) + 1;
+    }
+    if (row.outcome === 'skipped-overlap') {
+      skippedCounts[name] = (skippedCounts[name] || 0) + 1;
+    }
+  });
+
+  Object.keys(completedByFunction).forEach(name => {
+    completedByFunction[name].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+  });
+
+  const alerts = [];
+  let expectedDueCount = 0;
+  let completedMatchCount = 0;
+  const dueCutoff = new Date(now.getTime() - AUTOMATION_AUDIT_DUE_GRACE_MINUTES * 60 * 1000);
+  const earliestLeadMs = 20 * 60 * 1000;
+  const latestLagMs = AUTOMATION_AUDIT_ALLOWED_DELAY_MINUTES * 60 * 1000;
+
+  AUTOMATION_TRIGGER_SPECS.forEach(spec => {
+    if (spec.functionName === 'runAutomationHealthAuditWrapper') {
+      return;
+    }
+
+    const scheduled = buildTodayLocalDate_(now, timezone, spec.hour, spec.minute);
+    if (scheduled.getTime() > dueCutoff.getTime()) {
+      return;
+    }
+
+    expectedDueCount += 1;
+    const candidates = completedByFunction[spec.functionName] || [];
+    const match = candidates.find(candidate => {
+      if (candidate.matched) return false;
+      const delta = candidate.timestamp.getTime() - scheduled.getTime();
+      return delta >= -earliestLeadMs && delta <= latestLagMs;
+    });
+
+    if (match) {
+      match.matched = true;
+      completedMatchCount += 1;
+      return;
+    }
+
+    const nearestRun = findNearestAutomationRun_(candidates, scheduled);
+    const totalCompletedCount = candidates.length;
+    const hadLateRun = Boolean(nearestRun);
+
+    alerts.push({
+      severity: 'warning',
+      functionName: spec.functionName,
+      scheduledLocal: formatLocalDateTime_(scheduled, timezone),
+      matchedRunLocal: nearestRun ? formatLocalDateTime_(nearestRun.timestamp, timezone) : '',
+      status: hadLateRun ? 'late-run' : 'missing-run',
+      expectedCount: 1,
+      completedCount: totalCompletedCount,
+      failedCount: failedCounts[spec.functionName] || 0,
+      skippedCount: skippedCounts[spec.functionName] || 0,
+      notes: hadLateRun
+        ? `Nearest completed wrapper run was outside the ${AUTOMATION_AUDIT_ALLOWED_DELAY_MINUTES}-minute schedule window`
+        : `No completed wrapper run matched within ${AUTOMATION_AUDIT_ALLOWED_DELAY_MINUTES} minutes of schedule`
+    });
+  });
+
+  Object.keys(failedCounts).forEach(name => {
+    if (!failedCounts[name]) return;
+    alerts.push({
+      severity: 'error',
+      functionName: name,
+      scheduledLocal: '',
+      matchedRunLocal: '',
+      status: 'failed-run',
+      expectedCount: 0,
+      completedCount: 0,
+      failedCount: failedCounts[name] || 0,
+      skippedCount: skippedCounts[name] || 0,
+      notes: 'At least one automation wrapper run failed today'
+    });
+  });
+
+  Object.keys(skippedCounts).forEach(name => {
+    if (!skippedCounts[name]) return;
+    alerts.push({
+      severity: 'warning',
+      functionName: name,
+      scheduledLocal: '',
+      matchedRunLocal: '',
+      status: 'skipped-overlap',
+      expectedCount: 0,
+      completedCount: 0,
+      failedCount: failedCounts[name] || 0,
+      skippedCount: skippedCounts[name] || 0,
+      notes: 'At least one automation wrapper run skipped due to lock overlap'
+    });
+  });
+
+  return {
+    expectedDueCount: expectedDueCount,
+    completedMatchCount: completedMatchCount,
+    failedCount: sumObjectValues_(failedCounts),
+    skippedCount: sumObjectValues_(skippedCounts),
+    alerts: alerts
+  };
+}
+
+function readTodayAutomationWrapperRunRows_(now, timezone) {
+  const sheet = getOrCreateRunLogSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return [];
+
+  const todayKey = Utilities.formatDate(now, timezone, 'yyyy-MM-dd');
+  const values = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+  return values.map(row => ({
+    timestamp: row[0],
+    runType: String(row[1] || ''),
+    mode: String(row[2] || ''),
+    entryPoint: String(row[3] || ''),
+    outcome: String(row[6] || ''),
+    notes: String(row[7] || '')
+  })).filter(row => {
+    return row.runType === 'automation-wrapper' &&
+      row.mode === 'internal' &&
+      row.timestamp instanceof Date &&
+      Utilities.formatDate(row.timestamp, timezone, 'yyyy-MM-dd') === todayKey;
+  });
+}
+
+function buildTodayLocalDate_(now, timezone, hour, minute) {
+  const parts = Utilities.formatDate(now, timezone, 'yyyy-MM-dd').split('-');
+  return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), hour, minute || 0, 0, 0);
+}
+
+function formatLocalDateTime_(date, timezone) {
+  return Utilities.formatDate(date, timezone, 'yyyy-MM-dd HH:mm');
+}
+
+function findNearestAutomationRun_(candidates, scheduled) {
+  if (!candidates || !candidates.length) return null;
+
+  let best = null;
+  let bestDelta = null;
+  candidates.forEach(candidate => {
+    const delta = Math.abs(candidate.timestamp.getTime() - scheduled.getTime());
+    if (best === null || delta < bestDelta) {
+      best = candidate;
+      bestDelta = delta;
+    }
+  });
+
+  return best;
+}
+
+function sumObjectValues_(obj) {
+  return Object.keys(obj || {}).reduce((sum, key) => sum + Number(obj[key] || 0), 0);
+}

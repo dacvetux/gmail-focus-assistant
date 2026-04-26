@@ -193,6 +193,8 @@ Core intent:
 - Phase 10 moved another step forward on 2026-04-26: `ApprovedRules` now loads into runtime config during refresh, manual dry-runs also refresh sheet-backed config before execution, and a new `syncApprovedRulesFromTuningSuggestionsPhase10()` path lets operator-approved tuning rows flow into runtime without another code edit
 - later the same morning, the approval loop was widened further: `ApprovedRules` gained operator-friendly aliases like `shipping-sender` plus `add` / `remove` actions, tuning-import provenance became clearer, and the live `willhaben.at` shipping rule now comes from the sheet approval loop rather than hardcoded config
 - willhaben was explicitly reclassified as marketplace/shipping rather than finance for this inbox context; the control surface now seeds `willhaben.at` into approved shipping rules, shipping heuristics recognize `PayLivery` / `willhaben`, and Phase 9 now uses a dedicated marketplace-shipping suggestion category instead of a finance suggestion for that traffic
+- on 2026-04-26, automation-health monitoring was added as a first operational safety layer: a new `AutomationHealthLog` sheet plus `auditAutomationHealth()` now compare wrapper runs against the expected trigger schedule and flag missing, late, failed, or overlap-skipped executions
+- the same investigation exposed a more important operational bug: the Apps Script manifest timezone was still `America/New_York`; it has now been corrected to `Europe/Ljubljana`, and managed triggers were reinstalled so wrapper schedules line up with the intended local morning/evening windows
 
 ## Open questions
 

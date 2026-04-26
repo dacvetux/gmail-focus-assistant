@@ -448,3 +448,25 @@ Connected the spreadsheet approval layer to actual classification behavior and c
 - the spreadsheet needed to become a genuine approval surface, not just a passive note-taking sheet
 - operator-approved tuning should affect runtime without requiring another code edit for each sender
 - willhaben behaves more like marketplace/shipping traffic than finance in this inbox context, so the suggestion and routing model needed to reflect that
+
+## 2026-04-26 - Automation health audit + timezone correction
+
+Added a first operational monitoring layer for wrapper-based automation and fixed a trigger-timezone bug uncovered during live investigation.
+
+### Added or changed
+- corrected `apps-script/appsscript.json` timezone from `America/New_York` to `Europe/Ljubljana`
+- reinstalled managed wrapper triggers after the timezone fix so the configured schedule maps to the intended local times again
+- added `AutomationHealthLog` as a dedicated operational sheet for trigger/wrapper health findings
+- added `auditAutomationHealth()` to compare due wrapper runs against `AUTOMATION_TRIGGER_SPECS` and the day’s `RunLog` wrapper rows
+- added scheduled `runAutomationHealthAuditWrapper` checks after the morning, evening, and late-day automation windows
+- audit output now distinguishes between:
+  - `missing-run`
+  - `late-run`
+  - `failed-run`
+  - `skipped-overlap`
+- the audit also records the nearest completed wrapper time when a run happened late, so operators can see the difference between a full miss and a delayed catch-up/manual recovery
+
+### Why
+- `RunLog` alone was good for post-hoc inspection, but it did not explicitly answer “what should have run by now, and what did not?”
+- the missed morning-digest investigation showed that operational correctness depends on timezone alignment as much as on wrapper safety
+- a small explicit health layer is enough to make future heartbeat/ops checks much more reliable without building a separate monitoring system yet

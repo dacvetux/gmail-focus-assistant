@@ -275,6 +275,55 @@ function flushTuningSuggestions_(rows) {
   sheet.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
 }
 
+function getOrCreateAutomationHealthLogSheet_() {
+  const spreadsheet = getLogSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName('AutomationHealthLog');
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('AutomationHealthLog');
+    sheet.getRange(1, 1, 1, 11).setValues([[
+      'Timestamp',
+      'Severity',
+      'Function Name',
+      'Scheduled Local',
+      'Status',
+      'Expected Count',
+      'Completed Count',
+      'Failed Count',
+      'Skipped Count',
+      'Matched Run Local',
+      'Notes'
+    ]]);
+    return sheet;
+  }
+
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, 11).setValues([[
+      'Timestamp',
+      'Severity',
+      'Function Name',
+      'Scheduled Local',
+      'Status',
+      'Expected Count',
+      'Completed Count',
+      'Failed Count',
+      'Skipped Count',
+      'Matched Run Local',
+      'Notes'
+    ]]);
+  }
+
+  return sheet;
+}
+
+function logAutomationHealthRows_(rows) {
+  if (!rows.length) return;
+
+  const sheet = getOrCreateAutomationHealthLogSheet_();
+  const startRow = sheet.getLastRow() + 1;
+  sheet.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
+}
+
 function logRunSummary_(entry) {
   const sheet = getOrCreateRunLogSheet_();
   const row = [[
