@@ -167,11 +167,11 @@ Core intent:
 
 ## Immediate next steps
 
-1. implement safe Apps Script automation wrapper entrypoints for frequent Phase 1/2 live processing and morning/evening main/news log-window digests
-2. have each wrapper refresh sheet-backed preferences/news settings before running the underlying live path so the spreadsheet control surface governs automation behavior
-3. manually validate each wrapper once, then add Apps Script time triggers for the intended steady-state schedule of 8 processing runs/day between 06:00 and 23:00 plus morning/evening digest runs
-4. keep Phase 4 AI review, broad Phase 5 drafting, Phase 6 live follow-up automation, and Phase 9 auto-apply conservative until the safer automation foundation proves reliable
-5. revisit the known log-backed digest duplicate-entry bug later via the section-candidate construction path (tracked in GitHub issue #1)
+1. continue polishing **Phase 10 Option A** until the Google Sheets operator workflow feels close to final in day-to-day use
+2. finish the remaining FYI/workflow-semantics cleanup, especially around long-term expectations for `Review/Ambiguous`, `2: FYI`, and `3: notification` (tracked in GitHub issue `#8`)
+3. keep docs/testing aligned with the real runtime behavior as the control surface evolves
+4. only enable automation-health email escalation intentionally through `Preferences` after deciding the recipient and desired severity threshold
+5. revisit the known log-backed digest duplicate-entry bug later via the section-candidate construction path (tracked in GitHub issue `#1`)
 
 ## Recent decisions and lessons
 
@@ -200,6 +200,11 @@ Core intent:
 - the next Option A step is now live too: a `ControlSurfaceStatus` dashboard sheet plus `rebuildControlSurfaceStatusPhase10()` and `runPhase10ReviewLoopOptionA()` make the review/import loop much clearer by summarizing pending tuning work and combining approved-suggestion import with runtime refresh in one operator-oriented action
 - the tuning-review queue is now less noisy: `generateTuningSuggestionsPhase9_()` suppresses repeated open `no-suggestions` rows, `pruneTuningSuggestionsQueuePhase10()` can clean existing duplicates, and `ControlSurfaceStatus` now treats retained `no-suggestions` rows as informational placeholders rather than actionable review items
 - suggestion quality was then tightened against the actual last-500-row evidence window: the Phase 9 heuristics now skip senders already covered by approved rules and better recognize obvious single-example commercial/FYI/service cases, which immediately surfaced new actionable commercial candidates like `club@66north.com` and `news@news.conrad.si`
+- FYI semantics were cleaned up on 2026-04-26: ambiguous mail no longer auto-gets `2: FYI`, the AI fallback and review-learning logic were updated accordingly, and a live repair pass removed false FYI labels from 34 existing mailbox threads
+- news now defaults to `News/Digest` without a workflow label, so FYI is reserved for intentionally informational mail rather than being the implicit home for news items
+- the live Sheet control surface now makes workflow semantics explicit, including a visible `newsWorkflowLabel` preference and status rows for review-default vs news-default behavior
+- optional automation-health email escalation was added on 2026-04-27 via sheet-backed preferences, but it is disabled by default, requires an explicit recipient, and deduplicates identical alerts to avoid spam
+- the latest Option A polish pass turned `ControlSurfaceStatus` into more of an operator checklist with explicit `operator-step-1/2/3` rows, while `OperatorGuide` now includes a fast-commands section for the main review/import helpers
 
 ## Open questions
 

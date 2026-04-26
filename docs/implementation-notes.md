@@ -547,3 +547,55 @@ Improved Phase 9 suggestion quality after checking the exact evidence window the
 - the right tuning target is the evidence slice the system actually uses, not a broader historical sample that may look richer but is operationally irrelevant in the moment
 - this makes the queue more likely to surface real next-rule candidates even when the recent review bucket is sparse
 - it also reduces duplicate/operator-fatigue risk by not resurfacing senders already covered through the approval loop
+
+## 2026-04-26 - FYI semantics cleanup and live mailbox repair
+
+Reduced FYI overuse by separating ambiguous review from intentionally informational mail.
+
+### Added or changed
+- changed ambiguous fallback so `Review/Ambiguous` no longer automatically gets `2: FYI`
+- removed automatic FYI assignment from the forced-review path
+- updated the Gemini prompt/fallback so uncertain AI classifications prefer plain review with no workflow label
+- updated Phase 9 tuning so review-learning still works from both legacy `Review/Ambiguous, 2: FYI` rows and new plain `Review/Ambiguous` rows
+- added `repairRecentFyiMislabelsLive()` to reclassify historical false-FYI threads already sitting in the mailbox
+- ran the repair pass live and removed false FYI labels from 34 existing threads
+
+### Why
+- FYI had become overloaded by absorbing ambiguous/review cases rather than only intentional informational mail
+- that made the workflow labels less meaningful and caused false FYI labels to stick because managed decision labels are preserved once applied
+- the live repair path fixed both future behavior and the already-mislabeled mailbox backlog
+
+## 2026-04-26 - News separated from FYI by default
+
+Refined workflow semantics so news stays in its own lane by default.
+
+### Added or changed
+- changed `newsWorkflowLabel` default from `2: FYI` to blank / `null`
+- news now lands in `News/Digest` without a workflow label unless the operator explicitly sets one in `Preferences`
+- updated `Preferences`, `OperatorGuide`, and `ControlSurfaceStatus` to explain the distinction between `Review/Ambiguous`, `2: FYI`, `3: notification`, and workflow-blank news
+- updated the testing checklist so news validation no longer expects `News/Digest, 2: FYI`
+
+### Why
+- this gives FYI a sharper meaning again: intentionally informational mail, not generic read-later news
+- it also makes the operator model cleaner because `News/Digest` is now a separate lane instead of a disguised FYI path
+
+## 2026-04-27 - Optional automation-health alerting and final Option A UX polish
+
+Added a lightweight escalation path plus a clearer Sheet-native operator checklist.
+
+### Added or changed
+- added optional Preferences-driven automation-health alert settings:
+  - `automationHealthAlertEnabled`
+  - `automationHealthAlertRecipient`
+  - `automationHealthAlertMinSeverity`
+- `auditAutomationHealth()` can now send deduplicated alert emails when explicitly enabled and configured
+- alert delivery is safely silent by default and will not send anything with a blank recipient
+- `ControlSurfaceStatus` now shows the latest automation-health state and current alert-email configuration
+- `OperatorGuide` now documents automation-health alert behavior
+- `ControlSurfaceStatus` was upgraded from a metrics-only dashboard into a mini operator checklist with explicit `operator-step-1/2/3` rows
+- `OperatorGuide` now includes an explicit recommended workflow and a small fast-commands section for the main Phase 10 helper functions
+
+### Why
+- automation-health needed a lightweight escalation path, but not one that would surprise the operator by sending mail uninvited
+- the Sheet control surface is stronger when it tells the operator what to do next, not just what the current counts are
+- this extends Option A cleanly without prematurely jumping into a separate HTML UI phase
