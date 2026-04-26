@@ -529,3 +529,21 @@ Reduced low-value noise in the Phase 10 review queue.
 - repeated empty-state rows were making the workbook look busier than it really was
 - the review surface should reflect real operator work, not mechanical evidence that nothing new was found
 - this keeps Option A usable longer while the workflow continues to mature inside Sheets
+
+## 2026-04-26 - Suggestion quality pass against the real 500-row window
+
+Improved Phase 9 suggestion quality after checking the exact evidence window the tuner actually scans.
+
+### Added or changed
+- verified that the current tuner scans the last 500 `DecisionLog` rows, not the broader historical sheet
+- added suppression so senders already effectively covered by `ApprovedRules` are not re-suggested
+- strengthened single-example heuristics for obvious commercial/service/FYI cases while keeping the workflow conservative
+- broadened commercial wording detection enough to catch clear marketing-style subjects seen in the live window
+- validated the change with a fresh dry run, which produced two new actionable commercial candidates:
+  - `club@66north.com`
+  - `news@news.conrad.si`
+
+### Why
+- the right tuning target is the evidence slice the system actually uses, not a broader historical sample that may look richer but is operationally irrelevant in the moment
+- this makes the queue more likely to surface real next-rule candidates even when the recent review bucket is sparse
+- it also reduces duplicate/operator-fatigue risk by not resurfacing senders already covered through the approval loop

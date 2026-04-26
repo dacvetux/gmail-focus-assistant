@@ -15,6 +15,7 @@ function generateTuningSuggestionsPhase9_(options) {
   const rows = readRecentDecisionRows_(CONFIG.tuningSuggestionLookbackRows || 500);
   const suggestions = [];
   const bySender = new Map();
+  const approvedRules = readApprovedRules_();
 
   rows.forEach(row => {
     const from = (row.from || '').trim();
@@ -71,8 +72,12 @@ function generateTuningSuggestionsPhase9_(options) {
       return;
     }
 
+    if (isSenderAlreadyCoveredByApprovedRules_(senderKey, approvedRules)) {
+      return;
+    }
+
     if (
-      (reviewCount >= 2 || looksClearCommercialSenderSuggestion_(entry)) &&
+      (reviewCount >= 2 || looksStrongCommercialSuggestion_(entry, representative)) &&
       looksCommercialSuggestion_(representative)
     ) {
       suggestions.push(buildTuningSuggestionRow_({
@@ -89,7 +94,7 @@ function generateTuningSuggestionsPhase9_(options) {
       return;
     }
 
-    if (looksServiceNotificationSuggestion_(representative)) {
+    if (looksStrongServiceNotificationSuggestion_(entry, representative)) {
       suggestions.push(buildTuningSuggestionRow_({
         category: 'important-service-candidate',
         suggestedChange: 'add to forceImportantSenders',
@@ -295,12 +300,18 @@ function extractSenderKey_(from) {
 
 function looksCommercialSuggestion_(entry) {
   const haystack = `${entry.from}\n${entry.subject}`.toLowerCase();
-  return /(sale|discount|offer|shop|gift|newsletter|promo|marketing|favor\?|geschenke|privoščite|limited edition|available now|coming soon|launch|out now)/i.test(haystack);
+  return /(sale|discount|offer|shop|gift|newsletter|promo|marketing|favor\?|geschenke|privoščite|limited edition|available now|coming soon|launch|out now|everyday essentials|najbolj priljubljeni izdelki|popular products|new arrivals|collection|up to [0-9]+%|% )/i.test(haystack);
 }
 
 function looksClearCommercialSenderSuggestion_(entry) {
   const haystack = `${entry.from}\n${entry.subject}`.toLowerCase();
   return /(marketing@|newsletter@|promo|shop|store|music experience|narwal|warner music|substack)/i.test(haystack);
+}
+
+function looksStrongCommercialSuggestion_(entry, representative) {
+  const haystack = `${entry.from}\n${representative.subject}\n${representative.reason}`.toLowerCase();
+  if (looksClearCommercialSenderSuggestion_(entry)) return true;
+  return /(news@news\.|club@|support@brandyourself|intersport|66north|conrad|warnerrecords|weekend vibe|shop now)/i.test(haystack);
 }
 
 function looksShippingSuggestion_(entry) {
@@ -323,8 +334,14 @@ function looksServiceNotificationSuggestion_(entry) {
   return /(myfritz|monthly report|monatlicher bericht|service report|device report|geräte|fritz|business profile|are you open on|zavarovalnica|obvestilo|insurance|account update|profile)/i.test(haystack);
 }
 
+function looksStrongServiceNotificationSuggestion_(entry, representative) {
+  if (looksServiceNotificationSuggestion_(representative)) return true;
+  const haystack = `${entry.from}\n${representative.subject}\n${representative.reason}`.toLowerCase();
+  return /(security alert|status\.incident|families-noreply@google\.com|accounts\.google\.com|sparkassepay|important notice|pomembno obvestilo)/i.test(haystack);
+}
+
 function looksLowPriorityFyiSuggestion_(entry, representative, reviewCount) {
-  if (reviewCount < 2) {
+  if (reviewCount < 2 && !looksStrongLowPriorityFyiSuggestion_(entry, representative)) {
     return false;
   }
 
@@ -332,10 +349,26 @@ function looksLowPriorityFyiSuggestion_(entry, representative, reviewCount) {
   return /(ollama|openai|developer program|build better|now available|now supports|introducing|spotlight on|release|product update|feature update|roundup|digest)/i.test(haystack);
 }
 
+function looksStrongLowPriorityFyiSuggestion_(entry, representative) {
+  const haystack = `${entry.from}\n${representative.subject}\n${representative.reason}`.toLowerCase();
+  return /(hello@ollama\.com|newsletter|digest|spotlight on|roundup|weekly|daily|techcrunch|reuters|economist)/i.test(haystack);
+}
+
 function buildSuggestionNotes_(options, entry, reviewCount) {
   const mode = options.dryRun ? 'dry-run' : 'live';
   const seenModes = Object.keys(entry.modes || {}).join(', ') || mode;
   return `generated in ${mode} suggestion mode; review-count=${reviewCount}; seen-modes=${seenModes}`;
+}
+
+function isSenderAlreadyCoveredByApprovedRules_(senderKey, approvedRules) {
+  if (!senderKey) return false;
+  const normalized = String(senderKey || '').trim().toLowerCase();
+  return (approvedRules || []).some(rule => {
+    if (!isAffirmativeFlag_(rule.approved)) return false;
+    const target = String(rule.target || '').trim().toLowerCase();
+    if (!target) return false;
+    return normalized === target || normalized.endsWith(`@${target}`) || normalized.endsWith(`.${target}`) || normalized.includes(target);
+  });
 }
 
 function buildTuningSuggestionRow_(entry) {

@@ -199,6 +199,7 @@ Core intent:
 - the first concrete Option A UX pass is now implemented in the live workbook: `setupControlSurfacePhase10()` / `upgradeControlSurfacePhase10OptionA()` now ensure `TuningSuggestions` and `OperatorGuide`, apply header notes, freeze/style key sheets, add dropdown validation for review/action fields, and document the operator workflow directly inside the spreadsheet
 - the next Option A step is now live too: a `ControlSurfaceStatus` dashboard sheet plus `rebuildControlSurfaceStatusPhase10()` and `runPhase10ReviewLoopOptionA()` make the review/import loop much clearer by summarizing pending tuning work and combining approved-suggestion import with runtime refresh in one operator-oriented action
 - the tuning-review queue is now less noisy: `generateTuningSuggestionsPhase9_()` suppresses repeated open `no-suggestions` rows, `pruneTuningSuggestionsQueuePhase10()` can clean existing duplicates, and `ControlSurfaceStatus` now treats retained `no-suggestions` rows as informational placeholders rather than actionable review items
+- suggestion quality was then tightened against the actual last-500-row evidence window: the Phase 9 heuristics now skip senders already covered by approved rules and better recognize obvious single-example commercial/FYI/service cases, which immediately surfaced new actionable commercial candidates like `club@66north.com` and `news@news.conrad.si`
 
 ## Open questions
 
