@@ -34,6 +34,10 @@ function classifyThread_(thread) {
     return buildDecision_('label', CONFIG.labels.newsDigest, false, 'news pattern', CONFIG.newsWorkflowLabel || CONFIG.labels.fyi);
   }
 
+  if (containsAny_(subjectHaystack, CONFIG.forceFyiSenders || [])) {
+    return buildDecision_('label', CONFIG.labels.fyi, false, 'forced FYI sender override', null);
+  }
+
   if (matchesAny_(subjectHaystack, CONFIG.financePatterns)) {
     return buildDecision_('label', CONFIG.labels.importantFinance, false, 'finance pattern', CONFIG.labels.notification);
   }

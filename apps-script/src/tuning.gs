@@ -103,6 +103,21 @@ function generateTuningSuggestionsPhase9_(options) {
       return;
     }
 
+    if (looksLowPriorityFyiSuggestion_(entry, representative, reviewCount)) {
+      suggestions.push(buildTuningSuggestionRow_({
+        category: 'low-priority-fyi-sender-candidate',
+        suggestedChange: 'add to forceFyiSenders',
+        target: senderKey,
+        evidenceCount: reviewCount,
+        confidence: reviewCount >= 3 ? 'high' : 'medium',
+        exampleFrom: representative.from,
+        exampleSubject: representative.subject,
+        reason: representative.reason || 'recurring informational mail still landing in review',
+        notes: buildSuggestionNotes_(options, entry, reviewCount)
+      }));
+      return;
+    }
+
     if (looksShippingSuggestion_(representative)) {
       suggestions.push(buildTuningSuggestionRow_({
         category: 'shipping-pattern-candidate',
@@ -214,12 +229,21 @@ function looksShippingSuggestion_(entry) {
 
 function looksFinanceSuggestion_(entry) {
   const haystack = `${entry.from}\n${entry.subject}`.toLowerCase();
-  return /(invoice|receipt|billing|payment|račun|kartice|card block|bank)/i.test(haystack);
+  return /(invoice|receipt|billing|payment|rechnung|buchung|račun|kartice|card block|bank|paylivery)/i.test(haystack);
 }
 
 function looksServiceNotificationSuggestion_(entry) {
   const haystack = `${entry.from}\n${entry.subject}`.toLowerCase();
-  return /(myfritz|monthly report|monatlicher bericht|service report|device report|geräte|fritz)/i.test(haystack);
+  return /(myfritz|monthly report|monatlicher bericht|service report|device report|geräte|fritz|business profile|are you open on|zavarovalnica|obvestilo|insurance|account update|profile)/i.test(haystack);
+}
+
+function looksLowPriorityFyiSuggestion_(entry, representative, reviewCount) {
+  if (reviewCount < 2) {
+    return false;
+  }
+
+  const haystack = `${entry.from}\n${representative.subject}\n${representative.reason}`.toLowerCase();
+  return /(ollama|openai|developer program|build better|now available|now supports|introducing|spotlight on|release|product update|feature update|roundup|digest)/i.test(haystack);
 }
 
 function buildSuggestionNotes_(options, entry, reviewCount) {

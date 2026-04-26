@@ -17,6 +17,7 @@ const CONFIG = {
     'sparkassepay.si',
     'myfritz.net'
   ],
+  forceFyiSenders: [],
   newsSenders: [
     'newsletters@email.reuters.com',
     'reuters.com',
@@ -243,6 +244,8 @@ const CONFIG = {
     /order confirmation/i,
     /bank declined/i,
     /billing statement/i,
+    /rechnung/i,
+    /buchung/i,
     /elektronski račun/i,
     /elektronska\(e\) specifikacija\(e\)/i,
     /obračunsko obdobje/i,
