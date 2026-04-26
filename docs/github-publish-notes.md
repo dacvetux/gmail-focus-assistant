@@ -1,6 +1,8 @@
 # GitHub Publish Notes
 
-Suggested repository name: `gmail-focus-assistant`
+Suggested product name: `Focuna - Gmail Assistant`
+
+Current repository slug: `gmail-focus-assistant`
 
 Suggested description:
 A rules-first Gmail assistant for calmer inboxes, focused visibility, selective AI, and draft-only email help.

@@ -205,7 +205,7 @@ function generateDigest_(options) {
   if (!options.dryRun && CONFIG.digestRecipient) {
     MailApp.sendEmail({
       to: CONFIG.digestRecipient,
-      subject: `[Gmail Focus Assistant] ${capitalize_(options.type)} digest`,
+      subject: `[Focuna - Gmail Assistant] ${capitalize_(options.type)} digest`,
       body: summary
     });
   }
@@ -266,7 +266,7 @@ function generateNewsDigest_(options) {
     const subjectPrefix = options.type === 'news-morning' ? 'Morning news digest' : 'Evening news digest';
     MailApp.sendEmail({
       to: CONFIG.digestRecipient,
-      subject: `[Gmail Focus Assistant] ${subjectPrefix}`,
+      subject: `[Focuna - Gmail Assistant] ${subjectPrefix}`,
       body: summary
     });
   }
@@ -305,7 +305,7 @@ function generateLogBackedDigest_(options) {
   if (!options.dryRun && CONFIG.digestRecipient) {
     MailApp.sendEmail({
       to: CONFIG.digestRecipient,
-      subject: `[Gmail Focus Assistant] ${buildLogDigestSubject_(options.type)}`,
+      subject: `[Focuna - Gmail Assistant] ${buildLogDigestSubject_(options.type)}`,
       body: summary
     });
   }
@@ -339,7 +339,7 @@ function generateFollowUpDigestPhase6_(options) {
   if (!options.dryRun && CONFIG.digestRecipient) {
     MailApp.sendEmail({
       to: CONFIG.digestRecipient,
-      subject: '[Gmail Focus Assistant] Follow-up digest',
+      subject: '[Focuna - Gmail Assistant] Follow-up digest',
       body: summary
     });
   }

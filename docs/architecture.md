@@ -2,7 +2,7 @@
 
 ## Overview
 
-Gmail Focus Assistant is a hybrid system:
+Focuna - Gmail Assistant is a hybrid system:
 
 1. **Rules-first ingestion**
    - sender/domain checks

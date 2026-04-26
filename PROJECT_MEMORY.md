@@ -1,4 +1,4 @@
-# PROJECT_MEMORY.md - Gmail Focus Assistant
+# PROJECT_MEMORY.md - Focuna - Gmail Assistant
 
 This file tracks the project state, decisions, progress, and next steps.
 
@@ -47,7 +47,7 @@ Core intent:
 - phase 4 selective AI review implemented and validated for ambiguous mail
 - phase 5 first narrow draft-only implementation added for `1: to respond` threads
 - phase 6 follow-up tracking implementation added with `FollowUpLog` output and query-based validation entrypoints
-- `CONFIG.logSpreadsheetId` is now set to the main Gmail Focus Assistant log sheet
+- `CONFIG.logSpreadsheetId` is now set to the main Focuna - Gmail Assistant log sheet
 - main phase entrypoints exist
 
 ## Planned phases
@@ -106,7 +106,7 @@ Core intent:
 - validated Phase 4 output and accepted it as complete for v1 with a narrow operational scope
 - documented Phase 4 completion and pushed that state to GitHub
 - started Phase 5 as a draft-only assistant with `DraftLog` logging and Gemini-backed draft generation
-- set `CONFIG.logSpreadsheetId` to the main Gmail Focus Assistant log sheet in code
+- set `CONFIG.logSpreadsheetId` to the main Focuna - Gmail Assistant log sheet in code
 - iteratively tightened Phase 5 after dry-run logs showed noisy bulk newsletters, promos, and job alerts entering the draft flow
 - added sender and subject exclusions, stricter actionable gating, retry/fallback model handling, and a newer flash/lite model stack for drafts
 - simplified Phase 5 to a strict gate that only admits strongly actionable threads

@@ -285,7 +285,7 @@ Applied one more conservative routing correction based on the refreshed morning 
 
 ## 2026-04-24 - Phase 8 news layer started
 
-Started the first version of a separate news lane inside Gmail Focus Assistant.
+Started the first version of a separate news lane inside Focuna - Gmail Assistant.
 
 ### Added or changed
 - added a new structural label: `News/Digest`

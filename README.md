@@ -1,6 +1,8 @@
-# Gmail Focus Assistant
+# Focuna - Gmail Assistant
 
 A rules-first Gmail assistant designed to make the inbox calmer, more focused, and more useful.
+
+Formerly called Gmail Focus Assistant.
 
 ## Goal
 

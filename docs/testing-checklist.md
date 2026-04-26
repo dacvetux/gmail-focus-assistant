@@ -1,6 +1,6 @@
 # Testing Checklist
 
-Use this as the current validation runbook for Gmail Focus Assistant.
+Use this as the current validation runbook for Focuna - Gmail Assistant.
 
 ## Core processing
 

@@ -1,6 +1,6 @@
 # Apps Script
 
-This folder contains the Google Apps Script implementation for Gmail Focus Assistant.
+This folder contains the Google Apps Script implementation for Focuna - Gmail Assistant.
 
 ## Intended modules
 

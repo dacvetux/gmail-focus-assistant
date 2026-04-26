@@ -12,7 +12,7 @@
 - start phase 7 operational reporting and conservative tuning
 
 ## Next phase: Phase 8 - News layer
-- add a separate `News/Digest` lane inside Gmail Focus Assistant
+- add a separate `News/Digest` lane inside Focuna - Gmail Assistant
 - distinguish read-later news/newsletters from urgent mail and generic commercial junk
 - add morning and evening news digest entrypoints
 - keep the first version explainable and label-driven
