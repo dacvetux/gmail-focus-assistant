@@ -616,26 +616,34 @@ function buildLogBackedDigestSummary_(rows, options) {
     }
   });
 
+  const normalizedSections = {
+    toRespond: dedupeRenderedDigestEntries_(sections.toRespond),
+    notifications: dedupeRenderedDigestEntries_(sections.notifications),
+    opportunities: dedupeRenderedDigestEntries_(sections.opportunities),
+    review: dedupeRenderedDigestEntries_(sections.review),
+    news: dedupeRenderedDigestEntries_(sections.news)
+  };
+
   if (sourceType === 'news') {
-    const summary = renderLogDigestSection_('News digest', sections.news) || 'No notable news items in this window.';
+    const summary = renderLogDigestSection_('News digest', normalizedSections.news) || 'No notable news items in this window.';
     return {
       summary: summary,
-      itemCount: sections.news.length,
-      sections: sections
+      itemCount: normalizedSections.news.length,
+      sections: normalizedSections
     };
   }
 
   const renderedSections = [
-    renderLogDigestSection_('Needs response', sections.toRespond),
-    renderLogDigestSection_('Important notifications', sections.notifications),
-    renderLogDigestSection_('Opportunities', sections.opportunities),
-    renderLogDigestSection_('Review later', sections.review)
+    renderLogDigestSection_('Needs response', normalizedSections.toRespond),
+    renderLogDigestSection_('Important notifications', normalizedSections.notifications),
+    renderLogDigestSection_('Opportunities', normalizedSections.opportunities),
+    renderLogDigestSection_('Review later', normalizedSections.review)
   ];
 
   return {
     summary: renderedSections.filter(Boolean).join('\n\n').trim() || 'No notable items in this window.',
-    itemCount: sections.toRespond.length + sections.notifications.length + sections.opportunities.length + sections.review.length,
-    sections: sections
+    itemCount: normalizedSections.toRespond.length + normalizedSections.notifications.length + normalizedSections.opportunities.length + normalizedSections.review.length,
+    sections: normalizedSections
   };
 }
 
@@ -643,7 +651,7 @@ function renderLogDigestSection_(title, entries) {
   if (!entries || !entries.length) return '';
 
   const limit = CONFIG.digestThreadLimitPerSection || 8;
-  const sorted = dedupeRenderedDigestEntries_(entries).sort((a, b) => {
+  const sorted = (entries || []).slice().sort((a, b) => {
     const aTime = coerceLogDate_(a.timestamp);
     const bTime = coerceLogDate_(b.timestamp);
     return (bTime ? bTime.getTime() : 0) - (aTime ? aTime.getTime() : 0);
@@ -788,9 +796,15 @@ function dedupeRenderedDigestEntries_(entries) {
 }
 
 function buildRenderedDigestEntryKey_(entry) {
+  const compactFrom = normalizeDigestKeyPart_(compactSender_((entry && entry.from) || ''));
+  const subject = normalizeDigestKeyPart_(entry && entry.subject);
+  if (compactFrom || subject) {
+    return `display:${compactFrom}|${subject}`;
+  }
+
   if (entry && entry.threadId) {
     return `thread:${entry.threadId}`;
   }
 
-  return `display:${normalizeDigestKeyPart_(compactSender_((entry && entry.from) || ''))}|${normalizeDigestKeyPart_(entry && entry.subject)}`;
+  return 'display:';
 }
