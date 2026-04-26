@@ -1,68 +1,73 @@
 # Focuna - Gmail Assistant
 
-A rules-first Gmail assistant designed to make the inbox calmer, more focused, and more useful.
+A rules-first Gmail assistant for calmer inboxes, focused visibility, selective AI, and draft-only email help.
 
 Formerly called Gmail Focus Assistant.
 
-## Goal
+## What it is
 
-Make important mail visible at first glance while pushing promotions, newsletters, and low-value updates out of the way.
+Focuna is a Gmail + Google Apps Script system that:
+- classifies inbox threads with explainable rules first
+- uses AI only for narrow ambiguous-review cases
+- produces main and news digests
+- offers draft-only reply assistance
+- tracks follow-up state conservatively
+- logs behavior into a spreadsheet for tuning and operations
 
-This project is intentionally **not** a black-box full-AI email agent. It uses:
-- deterministic Gmail and Apps Script rules first
-- selective AI only for ambiguous cases
-- draft-only reply assistance
-- auditable logs and documentation
+It is intentionally **not** a black-box autonomous email agent.
+
+## Current state
+
+Implemented and in active use:
+- **Phases 1-4:** rules-first classification, priority labeling, digests, selective AI review
+- **Phase 5:** draft-only reply assistance in a narrow, validated form
+- **Phase 6:** visibility-first follow-up tracking and digest surfacing
+- **Phase 7:** operational reporting and live tuning via `RunLog`
+- **Phase 8:** separate `News/Digest` lane with dedicated morning/evening news digests
+- **Phase 9:** recommendation-first tuning suggestions via `TuningSuggestions`
+- **Phase 10:** spreadsheet control surface with runtime-loaded preferences, digest/news settings, and approved-rule application
+
+Recent operational status:
+- `clasp run` execution and API-executable deployment are working again
+- live wrapper automation and time triggers are in place
+- approved sheet rules now affect runtime behavior
+- operator-friendly approved-rule aliases such as `shipping-sender` are supported
 
 ## Principles
 
-- Important mail should be easy to see
-- Promotions should not dominate the inbox
-- Rules beat AI for obvious cases
+- important mail should be easy to see
+- promotions should not dominate the inbox
+- rules beat AI for obvious cases
 - AI should be narrow, reviewable, and optional
-- No auto-send
-- Preserve manual workflow labels
-
-## Planned Phases
-
-1. Inbox calming and visibility control
-2. Priority labeling system
-3. Daily briefing and digest
-4. Selective AI classification
-5. Draft assistant
-6. Follow-up memory
-7. Continuous tuning
+- no auto-send
+- preserve manual workflow labels
+- keep behavior auditable through logs and docs
 
 ## Repository layout
 
-- `docs/` project docs and design notes
-- `apps-script/` Google Apps Script source
+- `apps-script/` Google Apps Script implementation
+- `docs/` architecture, roadmap, phase notes, and runbooks
 - `scripts/` local helper scripts
 - `PROJECT_MEMORY.md` ongoing project state and decisions
 
-## Roadmap
+## Key docs
 
-See `docs/roadmap.md` for the phased build direction.
-
-## Current implementation
-
-Phases 1 through 6 now have working narrow implementations, with later phases kept intentionally conservative and visibility-first where appropriate. See:
-- `docs/phase-1.md`
-- `docs/phase-2.md`
-- `docs/phase-3.md`
-- `docs/phase-4.md`
-- `docs/phase-5.md`
-- `docs/phase-6.md`
-- `docs/testing-phase-1.md`
+- `docs/architecture.md`
+- `docs/roadmap.md`
+- `docs/phases.md`
+- `docs/implementation-notes.md`
+- `docs/testing-checklist.md`
 - `docs/deployment.md`
 - `docs/first-run-checklist.md`
-- `docs/implementation-notes.md`
 - `PROJECT_MEMORY.md`
+
+## Scope / non-goals
+
+- no autonomous sending
+- no opaque AI-first handling of the whole inbox
+- no silent rule mutation without review
+- no attempt to replace manual judgment for important mail
 
 ## License
 
 MIT, see `LICENSE`.
-
-## Status
-
-Phases 1 through 4 are implemented in usable v1 form. Phase 5 has produced multiple successful targeted end-to-end dry-run drafts on clearly reply-worthy threads; in unattended mode it remains intentionally sparse under a strict gate, and query-based on-demand drafting is the preferred practical path. Phase 6 now has a narrow visibility-first v1 implementation with query-based validation, `FollowUpLog`, and digest surfacing, and has been lightly validated on real threads with conservative results. Phase 7 has started with `RunLog` operational reporting plus an initial review-bucket cleanup pass based on real dry-run output.
