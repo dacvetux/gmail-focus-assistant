@@ -470,3 +470,24 @@ Added a first operational monitoring layer for wrapper-based automation and fixe
 - `RunLog` alone was good for post-hoc inspection, but it did not explicitly answer “what should have run by now, and what did not?”
 - the missed morning-digest investigation showed that operational correctness depends on timezone alignment as much as on wrapper safety
 - a small explicit health layer is enough to make future heartbeat/ops checks much more reliable without building a separate monitoring system yet
+
+## 2026-04-26 - Phase 10 Option A workbook UX pass
+
+Executed the first explicit UX-polish pass for the Sheets-based control surface.
+
+### Added or changed
+- `setupControlSurfacePhase10()` now also ensures `TuningSuggestions` and a new `OperatorGuide` sheet
+- added `upgradeControlSurfacePhase10OptionA()` as an explicit workbook-upgrade entrypoint
+- added `OperatorGuide` with the recommended operator workflow and allowed values/examples for each control-surface sheet
+- applied workbook UX improvements across the live Sheets surface:
+  - frozen header rows
+  - consistent header styling
+  - more readable column widths
+  - header notes/tooltips for operator guidance
+  - dropdown validation for yes/no, news/exclude, add/remove, category values, and tuning-review statuses
+- normalized some blank control-surface defaults for operator-facing fields like approved-rule actions and tuning-suggestion status
+
+### Why
+- the project explicitly chose Option A first, so the Sheets workflow needed to become easier to operate without requiring a separate UI yet
+- this makes the workbook more like a real operator console and less like a raw data dump
+- it also helps clarify the workflow that a later Option B HTML UI should eventually crystallize rather than invent from scratch

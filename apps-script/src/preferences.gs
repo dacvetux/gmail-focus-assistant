@@ -4,21 +4,49 @@ function setupControlSurfacePhase10() {
   getOrCreateDigestSettingsSheet_();
   getOrCreateNewsSourcesSheet_();
   getOrCreateApprovedRulesSheet_();
+  getOrCreateTuningSuggestionsSheet_();
+  getOrCreateOperatorGuideSheet_();
+  const uxSummary = applyControlSurfaceOptionAUx_();
 
   logRunSummary_({
     runType: 'control-surface',
     mode: 'internal',
     entryPoint: 'setupControlSurfacePhase10',
     processedThreads: 0,
-    itemCount: 4,
+    itemCount: uxSummary.sheetCount,
     outcome: 'sheets-ready',
-    notes: 'Preferences, DigestSettings, NewsSources, ApprovedRules ensured'
+    notes: uxSummary.notes
   });
 
   return {
     spreadsheetId: spreadsheet.getId(),
-    sheetsReady: ['Preferences', 'DigestSettings', 'NewsSources', 'ApprovedRules']
+    sheetsReady: uxSummary.sheetsReady,
+    validationsApplied: uxSummary.validationsApplied,
+    guideUpdated: uxSummary.guideUpdated
   };
+}
+
+function upgradeControlSurfacePhase10OptionA() {
+  getOrCreatePreferencesSheet_();
+  getOrCreateDigestSettingsSheet_();
+  getOrCreateNewsSourcesSheet_();
+  getOrCreateApprovedRulesSheet_();
+  getOrCreateTuningSuggestionsSheet_();
+  getOrCreateOperatorGuideSheet_();
+
+  const summary = applyControlSurfaceOptionAUx_();
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'upgradeControlSurfacePhase10OptionA',
+    processedThreads: 0,
+    itemCount: summary.validationsApplied,
+    outcome: 'option-a-ux-ready',
+    notes: summary.notes
+  });
+
+  return summary;
 }
 
 function getPreferenceValue_(key, fallbackValue) {
@@ -135,6 +163,30 @@ function getOrCreateApprovedRulesSheet_() {
     sheet.getRange(2, 1, 1, 7).setValues([['shipping-sender', 'willhaben.at', 'add', 'yes', 'seeded', new Date(), 'Marketplace / PayLivery transactional mail should route to shipping']]);
   }
 
+  return sheet;
+}
+
+function getOrCreateOperatorGuideSheet_() {
+  const spreadsheet = getLogSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName('OperatorGuide');
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('OperatorGuide');
+  }
+
+  const rows = [
+    ['Section', 'What this sheet is for', 'How to use it', 'Allowed values / examples', 'Notes'],
+    ['Preferences', 'Top-level runtime parameters', 'Edit Value and keep Enabled=yes for active settings', 'dryRun=true/false; maxThreads=100', 'Use this for global behavior, not sender-specific tuning'],
+    ['DigestSettings', 'Enable/disable digest types and per-digest limits', 'Set Enabled to yes/no and tune thread limits conservatively', 'morning, evening, news-morning, news-evening', 'If disabled, wrappers log digest-disabled instead of sending'],
+    ['NewsSources', 'Explicit allow/exclude list for news senders', 'One sender per row; Action=news or exclude', 'Type=sender; Action=news|exclude; Enabled=yes|no', 'Use exclude for digest traffic that looks newsletter-like but should stay out'],
+    ['TuningSuggestions', 'Review queue for proposed sender/routing changes', 'Change Status from new to approved/rejected/superseded after review', 'Status=new|approved|rejected|imported|already-imported|skipped|superseded', 'Approved rows can be imported into ApprovedRules'],
+    ['ApprovedRules', 'Runtime rules already approved by the operator', 'One rule per row; keep Approved=yes for active rules', 'Category=shipping-sender/commercial-sender/important-sender/fyi-sender/news-sender/news-exclude-sender; Action=add|remove', 'This is the live Option A control surface that affects runtime config'],
+    ['Recommended workflow', 'Use Sheets as the primary operator UI for now', '1) review TuningSuggestions 2) mark approved/rejected 3) run syncApprovedRulesFromTuningSuggestionsPhase10 4) refresh config / let wrappers refresh automatically', 'Option A now; Option B HTML UI later', 'Only move to the HTML phase once this workflow feels ~90% finalized']
+  ];
+
+  sheet.clearContents();
+  sheet.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
+  styleControlSurfaceSheet_(sheet, [140, 260, 320, 320, 260]);
   return sheet;
 }
 
@@ -338,6 +390,179 @@ function syncApprovedRulesFromTuningSuggestionsPhase10() {
     importedCount: importedCount,
     skippedCount: skippedCount
   };
+}
+
+function applyControlSurfaceOptionAUx_() {
+  const preferencesSheet = getOrCreatePreferencesSheet_();
+  const digestSettingsSheet = getOrCreateDigestSettingsSheet_();
+  const newsSourcesSheet = getOrCreateNewsSourcesSheet_();
+  const approvedRulesSheet = getOrCreateApprovedRulesSheet_();
+  const tuningSuggestionsSheet = getOrCreateTuningSuggestionsSheet_();
+  const operatorGuideSheet = getOrCreateOperatorGuideSheet_();
+
+  let validationsApplied = 0;
+  validationsApplied += configurePreferencesSheetUx_(preferencesSheet);
+  validationsApplied += configureDigestSettingsSheetUx_(digestSettingsSheet);
+  validationsApplied += configureNewsSourcesSheetUx_(newsSourcesSheet);
+  validationsApplied += configureApprovedRulesSheetUx_(approvedRulesSheet);
+  validationsApplied += configureTuningSuggestionsSheetUx_(tuningSuggestionsSheet);
+  styleControlSurfaceSheet_(operatorGuideSheet, [140, 260, 320, 320, 260]);
+
+  return {
+    sheetsReady: ['Preferences', 'DigestSettings', 'NewsSources', 'ApprovedRules', 'TuningSuggestions', 'OperatorGuide'],
+    sheetCount: 6,
+    validationsApplied: validationsApplied,
+    guideUpdated: true,
+    notes: `Option A UX prepared across 6 sheets; validations-applied=${validationsApplied}`
+  };
+}
+
+function configurePreferencesSheetUx_(sheet) {
+  styleControlSurfaceSheet_(sheet, [220, 160, 380, 100]);
+  setHeaderNotes_(sheet, {
+    1: 'Stable config key read by runtime refresh.',
+    2: 'Editable value. Booleans accept true/false/yes/no. Numbers accept numeric text.',
+    3: 'Why this setting exists and how it affects behavior.',
+    4: 'Only enabled rows are applied at runtime.'
+  });
+
+  const rowCount = Math.max(1, sheet.getMaxRows() - 1);
+  setDropdownValidation_(sheet, 2, 4, rowCount, ['yes', 'no']);
+  return 1;
+}
+
+function configureDigestSettingsSheetUx_(sheet) {
+  styleControlSurfaceSheet_(sheet, [150, 100, 260, 120, 320]);
+  setHeaderNotes_(sheet, {
+    1: 'Canonical digest type. Keep existing values unless code adds a new digest.',
+    2: 'Set to yes/no to allow or disable this digest type.',
+    3: 'Optional Gmail search hint retained for operator context.',
+    4: 'Per-digest thread limit override. Leave blank to fall back to config.',
+    5: 'Human notes for why this digest is enabled or constrained.'
+  });
+
+  const rowCount = Math.max(1, sheet.getMaxRows() - 1);
+  setDropdownValidation_(sheet, 2, 2, rowCount, ['yes', 'no']);
+  return 1;
+}
+
+function configureNewsSourcesSheetUx_(sheet) {
+  styleControlSurfaceSheet_(sheet, [260, 100, 120, 100, 320]);
+  setHeaderNotes_(sheet, {
+    1: 'Sender email/domain fragment used for news routing.',
+    2: 'Currently only sender rows are supported.',
+    3: 'news = include in news lane, exclude = explicitly keep out of news lane.',
+    4: 'Only enabled rows are applied at runtime.',
+    5: 'Short explanation for future review.'
+  });
+
+  const rowCount = Math.max(1, sheet.getMaxRows() - 1);
+  setDropdownValidation_(sheet, 2, 2, rowCount, ['sender']);
+  setDropdownValidation_(sheet, 2, 3, rowCount, ['news', 'exclude']);
+  setDropdownValidation_(sheet, 2, 4, rowCount, ['yes', 'no']);
+  return 3;
+}
+
+function configureApprovedRulesSheetUx_(sheet) {
+  styleControlSurfaceSheet_(sheet, [180, 220, 120, 110, 130, 120, 360]);
+  setHeaderNotes_(sheet, {
+    1: 'Operator-friendly rule category. These map into runtime config arrays.',
+    2: 'Usually a sender/domain fragment to add or remove.',
+    3: 'add = include in runtime config; remove = subtract from runtime config.',
+    4: 'Only affirmative values are applied at runtime. Prefer yes/no for clarity.',
+    5: 'Trace whether the row was seeded, imported, or added manually.',
+    6: 'Date the rule was created or imported.',
+    7: 'Context, rationale, or provenance for future review.'
+  });
+
+  const rowCount = Math.max(1, sheet.getMaxRows() - 1);
+  setDropdownValidation_(sheet, 2, 1, rowCount, [
+    'shipping-sender',
+    'commercial-sender',
+    'important-sender',
+    'fyi-sender',
+    'news-sender',
+    'news-exclude-sender'
+  ]);
+  setDropdownValidation_(sheet, 2, 3, rowCount, ['add', 'remove']);
+  setDropdownValidation_(sheet, 2, 4, rowCount, ['yes', 'no']);
+  normalizeBlankCellRange_(sheet, 2, 3, 'add');
+  return 3;
+}
+
+function configureTuningSuggestionsSheetUx_(sheet) {
+  styleControlSurfaceSheet_(sheet, [120, 210, 220, 220, 120, 100, 240, 280, 320, 140, 360]);
+  setHeaderNotes_(sheet, {
+    2: 'Suggestion family generated from recent evidence.',
+    3: 'Human-readable recommendation. This is not applied automatically.',
+    4: 'Usually the sender/domain to review.',
+    5: 'How many supporting review-bucket examples were seen.',
+    6: 'Heuristic confidence only; still requires operator judgment.',
+    7: 'Representative From field from the evidence set.',
+    8: 'Representative subject from the evidence set.',
+    9: 'Reason the suggestion exists.',
+    10: 'Operator workflow state. Move from new -> approved/rejected/superseded.',
+    11: 'Freeform operator notes plus import provenance.'
+  });
+
+  const rowCount = Math.max(1, sheet.getMaxRows() - 1);
+  setDropdownValidation_(sheet, 2, 10, rowCount, [
+    'new',
+    'approved',
+    'rejected',
+    'imported',
+    'already-imported',
+    'skipped',
+    'superseded',
+    'reclassified-shipping'
+  ]);
+  normalizeBlankCellRange_(sheet, 2, 10, 'new');
+  return 1;
+}
+
+function styleControlSurfaceSheet_(sheet, widths) {
+  if (!sheet) return;
+  sheet.setFrozenRows(1);
+  sheet.getRange(1, 1, 1, sheet.getLastColumn() || widths.length).setFontWeight('bold').setBackground('#d9ead3');
+  (widths || []).forEach((width, index) => {
+    sheet.setColumnWidth(index + 1, width);
+  });
+}
+
+function setHeaderNotes_(sheet, notesByColumn) {
+  Object.keys(notesByColumn || {}).forEach(key => {
+    const column = Number(key);
+    if (!Number.isFinite(column) || column < 1) return;
+    sheet.getRange(1, column).setNote(notesByColumn[key]);
+  });
+}
+
+function setDropdownValidation_(sheet, startRow, column, rowCount, values) {
+  if (!sheet || !values || !values.length) return;
+  const validation = SpreadsheetApp.newDataValidation()
+    .requireValueInList(values, true)
+    .setAllowInvalid(true)
+    .build();
+  sheet.getRange(startRow, column, rowCount, 1).setDataValidation(validation);
+}
+
+function normalizeBlankCellRange_(sheet, startRow, column, defaultValue) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < startRow) return;
+  const range = sheet.getRange(startRow, column, lastRow - startRow + 1, 1);
+  const values = range.getDisplayValues();
+  let changed = false;
+
+  values.forEach(row => {
+    if (!String(row[0] || '').trim()) {
+      row[0] = defaultValue;
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    range.setValues(values);
+  }
 }
 
 function readDigestSettingsMap_() {

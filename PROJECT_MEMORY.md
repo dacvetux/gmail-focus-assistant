@@ -195,6 +195,8 @@ Core intent:
 - willhaben was explicitly reclassified as marketplace/shipping rather than finance for this inbox context; the control surface now seeds `willhaben.at` into approved shipping rules, shipping heuristics recognize `PayLivery` / `willhaben`, and Phase 9 now uses a dedicated marketplace-shipping suggestion category instead of a finance suggestion for that traffic
 - on 2026-04-26, automation-health monitoring was added as a first operational safety layer: a new `AutomationHealthLog` sheet plus `auditAutomationHealth()` now compare wrapper runs against the expected trigger schedule and flag missing, late, failed, or overlap-skipped executions
 - the same investigation exposed a more important operational bug: the Apps Script manifest timezone was still `America/New_York`; it has now been corrected to `Europe/Ljubljana`, and managed triggers were reinstalled so wrapper schedules line up with the intended local morning/evening windows
+- Phase 10 UX direction is now explicit: keep improving **Option A** (the existing Google Sheets control surface) until the operator workflow is finalized and about 90% clear/ready, and only then open a separate later phase for **Option B**, a dedicated HTML UI on top of the stabilized model
+- the first concrete Option A UX pass is now implemented in the live workbook: `setupControlSurfacePhase10()` / `upgradeControlSurfacePhase10OptionA()` now ensure `TuningSuggestions` and `OperatorGuide`, apply header notes, freeze/style key sheets, add dropdown validation for review/action fields, and document the operator workflow directly inside the spreadsheet
 
 ## Open questions
 

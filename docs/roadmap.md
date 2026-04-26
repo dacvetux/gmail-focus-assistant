@@ -32,7 +32,15 @@
 - approved sender rules can now load from `ApprovedRules` into runtime config
 - tuning suggestions can now be promoted into approved rules via a sheet-based review loop
 - `ApprovedRules` now supports operator-friendly category aliases plus `add` / `remove` actions
-- the next meaningful Phase 10 improvement is polishing operator UX and widening the supported approval actions further, not building a separate GUI yet
+- the next meaningful Phase 10 improvement is polishing operator UX inside the existing Google Sheets control surface first (Option A)
+- explicit product decision: stay with Option A until the operator workflow is finalized and roughly 90% clear/ready, then introduce Option B as a separate later phase with a standalone HTML/web UI
++
++### Phase 10 UX deployment path
++- **Option A (now):** improve the existing Google Sheets control surface and treat it as the primary operator UI while workflow semantics are still evolving
++- use this period to stabilize statuses, approval actions, validation rules, helper views, and operator terminology
++- **graduation rule:** only move on once the operator workflow feels finalized and about 90% clear/ready in real use
++- **Option B (later separate phase):** build a dedicated HTML UI (preferably starting with Apps Script HTML, sidebar, or web app) on top of the stabilized Sheets-backed model
++- the HTML UI should crystallize a proven workflow, not invent one too early
 
 ## Later
 - strengthen follow-up intelligence once real waiting-on-them mailbox state exists
