@@ -6,6 +6,7 @@ function setupControlSurfacePhase10() {
   getOrCreateApprovedRulesSheet_();
   getOrCreateTuningSuggestionsSheet_();
   getOrCreateOperatorGuideSheet_();
+  getOrCreateControlSurfaceStatusSheet_();
   const uxSummary = applyControlSurfaceOptionAUx_();
 
   logRunSummary_({
@@ -33,6 +34,7 @@ function upgradeControlSurfacePhase10OptionA() {
   getOrCreateApprovedRulesSheet_();
   getOrCreateTuningSuggestionsSheet_();
   getOrCreateOperatorGuideSheet_();
+  getOrCreateControlSurfaceStatusSheet_();
 
   const summary = applyControlSurfaceOptionAUx_();
 
@@ -47,6 +49,28 @@ function upgradeControlSurfacePhase10OptionA() {
   });
 
   return summary;
+}
+
+function runPhase10ReviewLoopOptionA() {
+  const syncSummary = syncApprovedRulesFromTuningSuggestionsPhase10();
+  const refreshSummary = refreshConfigFromPreferencesPhase10_({ suppressLog: true });
+  const statusSummary = rebuildControlSurfaceStatusPhase10();
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'runPhase10ReviewLoopOptionA',
+    processedThreads: statusSummary.tuningSummary.totalRows,
+    itemCount: syncSummary.importedCount,
+    outcome: syncSummary.importedCount ? 'review-loop-applied' : 'review-loop-no-imports',
+    notes: `approved-pending=${statusSummary.tuningSummary.approved}; imported=${syncSummary.importedCount}; approved-rules-configured=${refreshSummary.approvedRulesConfigured}`
+  });
+
+  return {
+    syncSummary: syncSummary,
+    refreshSummary: refreshSummary,
+    statusSummary: statusSummary
+  };
 }
 
 function getPreferenceValue_(key, fallbackValue) {
@@ -181,12 +205,25 @@ function getOrCreateOperatorGuideSheet_() {
     ['NewsSources', 'Explicit allow/exclude list for news senders', 'One sender per row; Action=news or exclude', 'Type=sender; Action=news|exclude; Enabled=yes|no', 'Use exclude for digest traffic that looks newsletter-like but should stay out'],
     ['TuningSuggestions', 'Review queue for proposed sender/routing changes', 'Change Status from new to approved/rejected/superseded after review', 'Status=new|approved|rejected|imported|already-imported|skipped|superseded', 'Approved rows can be imported into ApprovedRules'],
     ['ApprovedRules', 'Runtime rules already approved by the operator', 'One rule per row; keep Approved=yes for active rules', 'Category=shipping-sender/commercial-sender/important-sender/fyi-sender/news-sender/news-exclude-sender; Action=add|remove', 'This is the live Option A control surface that affects runtime config'],
-    ['Recommended workflow', 'Use Sheets as the primary operator UI for now', '1) review TuningSuggestions 2) mark approved/rejected 3) run syncApprovedRulesFromTuningSuggestionsPhase10 4) refresh config / let wrappers refresh automatically', 'Option A now; Option B HTML UI later', 'Only move to the HTML phase once this workflow feels ~90% finalized']
+    ['ControlSurfaceStatus', 'Small operator dashboard for the current review/import state', 'Rebuild via rebuildControlSurfaceStatusPhase10() or runPhase10ReviewLoopOptionA()', 'Shows pending/new/approved/imported counts plus next-action guidance', 'Use this first before reviewing or importing'],
+    ['Recommended workflow', 'Use Sheets as the primary operator UI for now', '1) review ControlSurfaceStatus 2) review TuningSuggestions 3) mark approved/rejected 4) run runPhase10ReviewLoopOptionA() 5) confirm status sheet updated', 'Option A now; Option B HTML UI later', 'Only move to the HTML phase once this workflow feels ~90% finalized']
   ];
 
   sheet.clearContents();
   sheet.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
   styleControlSurfaceSheet_(sheet, [140, 260, 320, 320, 260]);
+  return sheet;
+}
+
+function getOrCreateControlSurfaceStatusSheet_() {
+  const spreadsheet = getLogSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName('ControlSurfaceStatus');
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('ControlSurfaceStatus');
+  }
+
+  rebuildControlSurfaceStatusSheet_(sheet);
   return sheet;
 }
 
@@ -399,6 +436,7 @@ function applyControlSurfaceOptionAUx_() {
   const approvedRulesSheet = getOrCreateApprovedRulesSheet_();
   const tuningSuggestionsSheet = getOrCreateTuningSuggestionsSheet_();
   const operatorGuideSheet = getOrCreateOperatorGuideSheet_();
+  const controlSurfaceStatusSheet = getOrCreateControlSurfaceStatusSheet_();
 
   let validationsApplied = 0;
   validationsApplied += configurePreferencesSheetUx_(preferencesSheet);
@@ -407,14 +445,33 @@ function applyControlSurfaceOptionAUx_() {
   validationsApplied += configureApprovedRulesSheetUx_(approvedRulesSheet);
   validationsApplied += configureTuningSuggestionsSheetUx_(tuningSuggestionsSheet);
   styleControlSurfaceSheet_(operatorGuideSheet, [140, 260, 320, 320, 260]);
+  styleControlSurfaceSheet_(controlSurfaceStatusSheet, [180, 180, 420, 420]);
+  rebuildControlSurfaceStatusSheet_(controlSurfaceStatusSheet);
 
   return {
-    sheetsReady: ['Preferences', 'DigestSettings', 'NewsSources', 'ApprovedRules', 'TuningSuggestions', 'OperatorGuide'],
-    sheetCount: 6,
+    sheetsReady: ['Preferences', 'DigestSettings', 'NewsSources', 'ApprovedRules', 'TuningSuggestions', 'OperatorGuide', 'ControlSurfaceStatus'],
+    sheetCount: 7,
     validationsApplied: validationsApplied,
     guideUpdated: true,
-    notes: `Option A UX prepared across 6 sheets; validations-applied=${validationsApplied}`
+    notes: `Option A UX prepared across 7 sheets; validations-applied=${validationsApplied}`
   };
+}
+
+function rebuildControlSurfaceStatusPhase10() {
+  const sheet = getOrCreateControlSurfaceStatusSheet_();
+  const summary = rebuildControlSurfaceStatusSheet_(sheet);
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'rebuildControlSurfaceStatusPhase10',
+    processedThreads: summary.tuningSummary.totalRows,
+    itemCount: summary.tuningSummary.pending,
+    outcome: 'status-refreshed',
+    notes: `pending=${summary.tuningSummary.pending}; approved=${summary.tuningSummary.approved}; approved-rules=${summary.approvedRulesSummary.totalRows}`
+  });
+
+  return summary;
 }
 
 function configurePreferencesSheetUx_(sheet) {
@@ -563,6 +620,123 @@ function normalizeBlankCellRange_(sheet, startRow, column, defaultValue) {
   if (changed) {
     range.setValues(values);
   }
+}
+
+function rebuildControlSurfaceStatusSheet_(sheet) {
+  const tuningSummary = summarizeTuningSuggestions_();
+  const approvedRulesSummary = summarizeApprovedRules_();
+  const nextAction = buildControlSurfaceNextAction_(tuningSummary);
+
+  const rows = [
+    ['Metric', 'Value', 'Meaning', 'Next action'],
+    ['last-updated', formatControlSurfaceTimestamp_(new Date()), 'When this dashboard was last rebuilt', nextAction],
+    ['tuning-total-rows', tuningSummary.totalRows, 'Total non-header rows currently in TuningSuggestions', ''],
+    ['tuning-new', tuningSummary.newCount, 'Suggestions not yet reviewed', tuningSummary.newCount ? 'Review these first in TuningSuggestions.' : ''],
+    ['tuning-approved-pending-import', tuningSummary.approved, 'Suggestions marked approved and ready to import into ApprovedRules', tuningSummary.approved ? 'Run runPhase10ReviewLoopOptionA() to import and refresh runtime.' : ''],
+    ['tuning-rejected', tuningSummary.rejected, 'Suggestions explicitly rejected by operator review', ''],
+    ['tuning-imported', tuningSummary.imported, 'Suggestions already imported into ApprovedRules', ''],
+    ['tuning-superseded-or-reclassified', tuningSummary.superseded, 'Suggestions intentionally replaced by a better decision/path', ''],
+    ['approved-rules-total', approvedRulesSummary.totalRows, 'Total rows in ApprovedRules', ''],
+    ['approved-rules-active', approvedRulesSummary.activeRows, 'Rows currently enabled for runtime use', ''],
+    ['review-loop-state', nextAction, 'Simple operator-oriented status message', 'Use this as the default starting point for Option A workflow']
+  ];
+
+  sheet.clearContents();
+  sheet.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
+  styleControlSurfaceSheet_(sheet, [220, 140, 360, 420]);
+  setHeaderNotes_(sheet, {
+    1: 'Status metric or queue label.',
+    2: 'Current value observed in the workbook.',
+    3: 'What the metric means operationally.',
+    4: 'Recommended next operator action.'
+  });
+
+  return {
+    tuningSummary: {
+      totalRows: tuningSummary.totalRows,
+      pending: tuningSummary.newCount + tuningSummary.approved,
+      approved: tuningSummary.approved,
+      imported: tuningSummary.imported,
+      rejected: tuningSummary.rejected,
+      superseded: tuningSummary.superseded,
+      newCount: tuningSummary.newCount
+    },
+    approvedRulesSummary: approvedRulesSummary,
+    nextAction: nextAction
+  };
+}
+
+function summarizeTuningSuggestions_() {
+  const sheet = getOrCreateTuningSuggestionsSheet_();
+  const lastRow = sheet.getLastRow();
+  const summary = {
+    totalRows: Math.max(0, lastRow - 1),
+    newCount: 0,
+    approved: 0,
+    rejected: 0,
+    imported: 0,
+    superseded: 0,
+    alreadyImported: 0,
+    skipped: 0
+  };
+
+  if (lastRow <= 1) return summary;
+
+  const values = sheet.getRange(2, 10, lastRow - 1, 1).getDisplayValues();
+  values.forEach(row => {
+    const status = String(row[0] || '').trim().toLowerCase();
+    if (!status || status === 'new') {
+      summary.newCount += 1;
+      return;
+    }
+    if (status === 'approved') {
+      summary.approved += 1;
+      return;
+    }
+    if (status === 'rejected') {
+      summary.rejected += 1;
+      return;
+    }
+    if (status === 'imported') {
+      summary.imported += 1;
+      return;
+    }
+    if (status === 'already-imported') {
+      summary.alreadyImported += 1;
+      return;
+    }
+    if (status === 'skipped') {
+      summary.skipped += 1;
+      return;
+    }
+    if (status === 'superseded' || status === 'reclassified-shipping') {
+      summary.superseded += 1;
+    }
+  });
+
+  return summary;
+}
+
+function summarizeApprovedRules_() {
+  const rows = readApprovedRules_();
+  return {
+    totalRows: rows.length,
+    activeRows: rows.filter(row => isAffirmativeFlag_(row.approved)).length
+  };
+}
+
+function buildControlSurfaceNextAction_(tuningSummary) {
+  if (tuningSummary.approved) {
+    return `There are ${tuningSummary.approved} approved suggestions waiting for import.`;
+  }
+  if (tuningSummary.newCount) {
+    return `There are ${tuningSummary.newCount} new suggestions waiting for review.`;
+  }
+  return 'No pending review/import work right now.';
+}
+
+function formatControlSurfaceTimestamp_(date) {
+  return Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
 }
 
 function readDigestSettingsMap_() {

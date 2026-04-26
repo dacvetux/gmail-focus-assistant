@@ -491,3 +491,26 @@ Executed the first explicit UX-polish pass for the Sheets-based control surface.
 - the project explicitly chose Option A first, so the Sheets workflow needed to become easier to operate without requiring a separate UI yet
 - this makes the workbook more like a real operator console and less like a raw data dump
 - it also helps clarify the workflow that a later Option B HTML UI should eventually crystallize rather than invent from scratch
+
+## 2026-04-26 - Phase 10 Option A review-loop dashboard
+
+Added a small but meaningful operator-flow improvement on top of the workbook UX pass.
+
+### Added or changed
+- added `ControlSurfaceStatus` as a lightweight dashboard sheet for the current control-surface state
+- added `rebuildControlSurfaceStatusPhase10()` to summarize:
+  - new tuning suggestions
+  - approved suggestions pending import
+  - imported/rejected/superseded counts
+  - approved-rules totals
+  - a simple next-action message
+- added `runPhase10ReviewLoopOptionA()` as a more operator-friendly helper that:
+  - imports approved tuning suggestions into `ApprovedRules`
+  - refreshes runtime config
+  - rebuilds the status dashboard
+- updated `OperatorGuide` so the default Option A workflow now starts from `ControlSurfaceStatus`
+
+### Why
+- the first workbook polish made the sheets clearer, but the operator still had to mentally stitch together queue state and next actions
+- this adds a simple “what should I do now?” layer without leaving the Sheets-first model
+- it also gets closer to the eventual HTML phase by proving the actual operator loop in a cheap, reversible way first
