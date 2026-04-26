@@ -32,7 +32,7 @@ function classifyThread_(thread, options) {
   }
 
   if (isNewsThread_(from, subjectHaystack)) {
-    return buildDecision_('label', CONFIG.labels.newsDigest, false, 'news pattern', CONFIG.newsWorkflowLabel || CONFIG.labels.fyi);
+    return buildDecision_('label', CONFIG.labels.newsDigest, false, 'news pattern', CONFIG.newsWorkflowLabel || null);
   }
 
   if (containsAny_(subjectHaystack, CONFIG.forceFyiSenders || [])) {

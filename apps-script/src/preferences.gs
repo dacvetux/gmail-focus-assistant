@@ -127,9 +127,11 @@ function getOrCreatePreferencesSheet_() {
       ['digestThreadLimitPerSection', '8', 'Main digest items shown per section', 'yes'],
       ['newsDigestThreadLimit', '12', 'News digest items shown', 'yes'],
       ['digestRecipient', '', 'Optional recipient for live digest emails', 'yes'],
-      ['newsWorkflowLabel', '2: FYI', 'Workflow label used for news items', 'yes']
+      ['newsWorkflowLabel', '', 'Optional workflow label for news items; leave blank to keep news separate from FYI/notification', 'yes']
     ]);
   }
+
+  normalizePreferenceRowsPhase10_(sheet);
 
   return sheet;
 }
@@ -200,12 +202,13 @@ function getOrCreateOperatorGuideSheet_() {
 
   const rows = [
     ['Section', 'What this sheet is for', 'How to use it', 'Allowed values / examples', 'Notes'],
-    ['Preferences', 'Top-level runtime parameters', 'Edit Value and keep Enabled=yes for active settings', 'dryRun=true/false; maxThreads=100', 'Use this for global behavior, not sender-specific tuning'],
+    ['Preferences', 'Top-level runtime parameters', 'Edit Value and keep Enabled=yes for active settings', 'dryRun=true/false; maxThreads=100; newsWorkflowLabel=(blank)|3: notification|2: FYI', 'Use this for global behavior, not sender-specific tuning'],
     ['DigestSettings', 'Enable/disable digest types and per-digest limits', 'Set Enabled to yes/no and tune thread limits conservatively', 'morning, evening, news-morning, news-evening', 'If disabled, wrappers log digest-disabled instead of sending'],
     ['NewsSources', 'Explicit allow/exclude list for news senders', 'One sender per row; Action=news or exclude', 'Type=sender; Action=news|exclude; Enabled=yes|no', 'Use exclude for digest traffic that looks newsletter-like but should stay out'],
     ['TuningSuggestions', 'Review queue for proposed sender/routing changes', 'Change Status from new to approved/rejected/superseded after review', 'Status=new|approved|rejected|imported|already-imported|skipped|superseded', 'Approved rows can be imported into ApprovedRules'],
     ['ApprovedRules', 'Runtime rules already approved by the operator', 'One rule per row; keep Approved=yes for active rules', 'Category=shipping-sender/commercial-sender/important-sender/fyi-sender/news-sender/news-exclude-sender; Action=add|remove', 'This is the live Option A control surface that affects runtime config'],
     ['ControlSurfaceStatus', 'Small operator dashboard for the current review/import state', 'Rebuild via rebuildControlSurfaceStatusPhase10() or runPhase10ReviewLoopOptionA()', 'Shows pending/new/approved/imported counts plus next-action guidance', 'Use this first before reviewing or importing'],
+    ['Workflow label semantics', 'Clarify when to use review vs FYI vs notification', 'Treat Review/Ambiguous as unresolved mail, FYI as intentionally informational, and notification as low-response transactional/system updates', 'Review/Ambiguous != FYI; News/Digest can stay workflow-blank', 'Default news behavior should stay separate unless the operator explicitly wants FYI/notification'],
     ['Recommended workflow', 'Use Sheets as the primary operator UI for now', '1) review ControlSurfaceStatus 2) review TuningSuggestions 3) mark approved/rejected 4) run runPhase10ReviewLoopOptionA() 5) confirm status sheet updated', 'Option A now; Option B HTML UI later', 'Only move to the HTML phase once this workflow feels ~90% finalized']
   ];
 
@@ -485,6 +488,7 @@ function configurePreferencesSheetUx_(sheet) {
 
   const rowCount = Math.max(1, sheet.getMaxRows() - 1);
   setDropdownValidation_(sheet, 2, 4, rowCount, ['yes', 'no']);
+  applyPreferenceValueValidations_(sheet);
   return 1;
 }
 
@@ -626,10 +630,13 @@ function rebuildControlSurfaceStatusSheet_(sheet) {
   const tuningSummary = summarizeTuningSuggestions_();
   const approvedRulesSummary = summarizeApprovedRules_();
   const nextAction = buildControlSurfaceNextAction_(tuningSummary);
+  const newsWorkflowLabel = CONFIG.newsWorkflowLabel ? CONFIG.newsWorkflowLabel : '(blank)';
 
   const rows = [
     ['Metric', 'Value', 'Meaning', 'Next action'],
     ['last-updated', formatControlSurfaceTimestamp_(new Date()), 'When this dashboard was last rebuilt', nextAction],
+    ['workflow-review-default', 'Review/Ambiguous', 'Ambiguous mail should stay review-only unless there is a real workflow signal', 'Use this as the baseline mental model for operator review'],
+    ['workflow-news-label', newsWorkflowLabel, 'Current workflow label applied to News/Digest items; blank keeps news separate from FYI/notification', CONFIG.newsWorkflowLabel ? 'Keep only if this is an intentional operator choice.' : 'Recommended default: leave blank unless you explicitly want FYI/notification on news.'],
     ['tuning-total-rows', tuningSummary.totalRows, 'Total non-header rows currently in TuningSuggestions', ''],
     ['tuning-new-actionable', tuningSummary.newCount, 'Real suggestions not yet reviewed', tuningSummary.newCount ? 'Review these first in TuningSuggestions.' : ''],
     ['tuning-no-suggestions-placeholders', tuningSummary.noSuggestionsOpen, 'Informational no-suggestions rows retained as queue anchors, not real review work', ''],
@@ -839,7 +846,7 @@ function refreshConfigFromPreferencesPhase10_(options) {
   CONFIG.digestThreadLimitPerSection = getPreferenceValue_('digestThreadLimitPerSection', CONFIG.digestThreadLimitPerSection);
   CONFIG.newsDigestThreadLimit = getPreferenceValue_('newsDigestThreadLimit', CONFIG.newsDigestThreadLimit);
   CONFIG.digestRecipient = getPreferenceValue_('digestRecipient', CONFIG.digestRecipient);
-  CONFIG.newsWorkflowLabel = getPreferenceValue_('newsWorkflowLabel', CONFIG.newsWorkflowLabel);
+  CONFIG.newsWorkflowLabel = getOptionalWorkflowPreferenceValue_('newsWorkflowLabel', CONFIG.newsWorkflowLabel);
 
   const newsConfig = readNewsSourceConfig_();
   CONFIG.newsSenders = newsConfig.senders;
@@ -872,4 +879,60 @@ function refreshConfigFromPreferencesPhase10_(options) {
     approvedRulesApplied: approvedRulesSummary.appliedCount,
     approvedRulesConfigured: approvedRulesSummary.approvedCount
   };
+}
+
+function normalizePreferenceRowsPhase10_(sheet) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return;
+
+  const range = sheet.getRange(2, 1, lastRow - 1, 4);
+  const values = range.getDisplayValues();
+  let changed = false;
+
+  values.forEach(row => {
+    const key = String(row[0] || '').trim();
+    if (key !== 'newsWorkflowLabel') return;
+
+    row[2] = 'Optional workflow label for news items; leave blank to keep news separate from FYI/notification';
+    if (String(row[1] || '').trim() === '2: FYI') {
+      row[1] = '';
+    }
+    changed = true;
+  });
+
+  if (changed) {
+    range.setValues(values);
+  }
+}
+
+function applyPreferenceValueValidations_(sheet) {
+  if (!sheet) return;
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return;
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 2).getDisplayValues();
+  values.forEach((row, index) => {
+    const key = String(row[0] || '').trim();
+    const rowNumber = index + 2;
+
+    if (key === 'dryRun' || key === 'enableAiForReview') {
+      setDropdownValidation_(sheet, rowNumber, 2, 1, ['true', 'false']);
+      return;
+    }
+
+    if (key === 'newsWorkflowLabel') {
+      setDropdownValidation_(sheet, rowNumber, 2, 1, ['', '3: notification', '2: FYI']);
+    }
+  });
+}
+
+function getOptionalWorkflowPreferenceValue_(key, fallbackValue) {
+  const map = readPreferencesMap_();
+  if (!Object.prototype.hasOwnProperty.call(map, key)) {
+    return fallbackValue;
+  }
+
+  const value = String(map[key] || '').trim();
+  if (!value) return null;
+  return value;
 }

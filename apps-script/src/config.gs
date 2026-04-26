@@ -42,7 +42,7 @@ const CONFIG = {
     /ted conferences via linkedin/i,
     /via linkedin/i
   ],
-  newsWorkflowLabel: '2: FYI',
+  newsWorkflowLabel: null,
   forceCommercialSenders: [
     'qwertee.com',
     'steampowered.com',

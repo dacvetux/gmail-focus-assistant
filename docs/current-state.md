@@ -63,6 +63,7 @@ Current loop:
 - operator-friendly approved-rule aliases and add/remove actions are live
 - automation-health auditing was added
 - ambiguous mail no longer auto-gets `2: FYI`
+- news now defaults to `News/Digest` without a workflow label unless the operator explicitly re-enables FYI/notification in `Preferences`
 - a live repair pass removed false FYI labels from historical mailbox threads
 - a follow-up issue now tracks long-term FYI vs review semantics cleanup: **GitHub issue #8**
 
