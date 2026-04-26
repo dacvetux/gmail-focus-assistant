@@ -165,21 +165,24 @@ function generateTuningSuggestionsPhase9_(options) {
     }
   });
 
-  if (!suggestions.length) {
-    suggestions.push(buildTuningSuggestionRow_({
-      category: 'no-suggestions',
-      suggestedChange: 'none',
-      target: '',
-      evidenceCount: 0,
-      confidence: 'low',
-      exampleFrom: '',
-      exampleSubject: '',
-      reason: 'No suggestion candidates found in recent decision rows.',
-      notes: ''
-    }));
+  const hadSuggestionRows = suggestions.length > 0;
+  if (!hadSuggestionRows) {
+    if (shouldAppendNoSuggestionsRow_()) {
+      suggestions.push(buildTuningSuggestionRow_({
+        category: 'no-suggestions',
+        suggestedChange: 'none',
+        target: '',
+        evidenceCount: 0,
+        confidence: 'low',
+        exampleFrom: '',
+        exampleSubject: '',
+        reason: 'No suggestion candidates found in recent decision rows.',
+        notes: 'suppressed-repeat=no'
+      }));
+    }
   }
 
-  flushTuningSuggestions_(suggestions);
+  flushTuningSuggestionsDeduped_(suggestions);
 
   logRunSummary_({
     runType: 'tuning-suggestions',
@@ -187,14 +190,76 @@ function generateTuningSuggestionsPhase9_(options) {
     entryPoint: options.dryRun ? 'generateTuningSuggestionsPhase9DryRun' : 'generateTuningSuggestionsPhase9Live',
     processedThreads: rows.length,
     itemCount: suggestions.filter(row => row[1] !== 'no-suggestions').length,
-    outcome: suggestions[0][1] === 'no-suggestions' ? 'no-suggestions' : 'suggestions-generated',
-    notes: `rows-scanned=${rows.length}; lookback-rows=${CONFIG.tuningSuggestionLookbackRows || 500}`
+    outcome: hadSuggestionRows ? 'suggestions-generated' : 'no-suggestions',
+    notes: `rows-scanned=${rows.length}; lookback-rows=${CONFIG.tuningSuggestionLookbackRows || 500}; no-suggestion-row-appended=${suggestions.some(row => row[1] === 'no-suggestions') ? 'yes' : 'no'}`
   });
 
   return {
     mode: options.dryRun ? 'dry-run' : 'live',
     scannedRows: rows.length,
     suggestionCount: suggestions.filter(row => row[1] !== 'no-suggestions').length
+  };
+}
+
+function pruneTuningSuggestionsQueuePhase10() {
+  const sheet = getOrCreateTuningSuggestionsSheet_();
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow <= 1) {
+    logRunSummary_({
+      runType: 'control-surface',
+      mode: 'internal',
+      entryPoint: 'pruneTuningSuggestionsQueuePhase10',
+      processedThreads: 0,
+      itemCount: 0,
+      outcome: 'queue-empty',
+      notes: 'No tuning suggestions rows to prune'
+    });
+    return { prunedCount: 0, retainedNoSuggestionsCount: 0 };
+  }
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 11).getDisplayValues();
+  let retainedNoSuggestionsCount = 0;
+  let prunedCount = 0;
+
+  values.forEach((row, index) => {
+    const rowNumber = index + 2;
+    const category = String(row[1] || '').trim().toLowerCase();
+    const status = String(row[9] || '').trim().toLowerCase();
+    const notes = String(row[10] || '').trim();
+
+    if (category !== 'no-suggestions') {
+      return;
+    }
+
+    if (retainedNoSuggestionsCount === 0 && (!status || status === 'new')) {
+      retainedNoSuggestionsCount += 1;
+      if (!notes.includes('queue-anchor')) {
+        sheet.getRange(rowNumber, 11).setValue(notes ? `${notes}; queue-anchor` : 'queue-anchor');
+      }
+      return;
+    }
+
+    sheet.getRange(rowNumber, 10).setValue('skipped');
+    if (!notes.includes('pruned duplicate no-suggestions row')) {
+      sheet.getRange(rowNumber, 11).setValue(notes ? `${notes}; pruned duplicate no-suggestions row` : 'pruned duplicate no-suggestions row');
+    }
+    prunedCount += 1;
+  });
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'pruneTuningSuggestionsQueuePhase10',
+    processedThreads: values.length,
+    itemCount: prunedCount,
+    outcome: prunedCount ? 'queue-pruned' : 'queue-already-clean',
+    notes: `pruned=${prunedCount}; retained-no-suggestions=${retainedNoSuggestionsCount}`
+  });
+
+  return {
+    prunedCount: prunedCount,
+    retainedNoSuggestionsCount: retainedNoSuggestionsCount
   };
 }
 
@@ -287,4 +352,35 @@ function buildTuningSuggestionRow_(entry) {
     'new',
     entry.notes || ''
   ]][0];
+}
+
+function shouldAppendNoSuggestionsRow_() {
+  const sheet = getOrCreateTuningSuggestionsSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return true;
+
+  const scanCount = Math.min(25, lastRow - 1);
+  const values = sheet.getRange(lastRow - scanCount + 1, 2, scanCount, 10).getDisplayValues();
+  for (let i = values.length - 1; i >= 0; i -= 1) {
+    const row = values[i];
+    const category = String(row[0] || '').trim().toLowerCase();
+    const status = String(row[8] || '').trim().toLowerCase();
+    if (category === 'no-suggestions' && (!status || status === 'new')) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function flushTuningSuggestionsDeduped_(rows) {
+  if (!rows.length) return;
+
+  const filtered = rows.filter(row => {
+    if (String(row[1] || '').trim().toLowerCase() !== 'no-suggestions') return true;
+    return shouldAppendNoSuggestionsRow_();
+  });
+
+  if (!filtered.length) return;
+  flushTuningSuggestions_(filtered);
 }

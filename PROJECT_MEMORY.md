@@ -198,6 +198,7 @@ Core intent:
 - Phase 10 UX direction is now explicit: keep improving **Option A** (the existing Google Sheets control surface) until the operator workflow is finalized and about 90% clear/ready, and only then open a separate later phase for **Option B**, a dedicated HTML UI on top of the stabilized model
 - the first concrete Option A UX pass is now implemented in the live workbook: `setupControlSurfacePhase10()` / `upgradeControlSurfacePhase10OptionA()` now ensure `TuningSuggestions` and `OperatorGuide`, apply header notes, freeze/style key sheets, add dropdown validation for review/action fields, and document the operator workflow directly inside the spreadsheet
 - the next Option A step is now live too: a `ControlSurfaceStatus` dashboard sheet plus `rebuildControlSurfaceStatusPhase10()` and `runPhase10ReviewLoopOptionA()` make the review/import loop much clearer by summarizing pending tuning work and combining approved-suggestion import with runtime refresh in one operator-oriented action
+- the tuning-review queue is now less noisy: `generateTuningSuggestionsPhase9_()` suppresses repeated open `no-suggestions` rows, `pruneTuningSuggestionsQueuePhase10()` can clean existing duplicates, and `ControlSurfaceStatus` now treats retained `no-suggestions` rows as informational placeholders rather than actionable review items
 
 ## Open questions
 

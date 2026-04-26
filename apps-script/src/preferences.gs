@@ -631,7 +631,8 @@ function rebuildControlSurfaceStatusSheet_(sheet) {
     ['Metric', 'Value', 'Meaning', 'Next action'],
     ['last-updated', formatControlSurfaceTimestamp_(new Date()), 'When this dashboard was last rebuilt', nextAction],
     ['tuning-total-rows', tuningSummary.totalRows, 'Total non-header rows currently in TuningSuggestions', ''],
-    ['tuning-new', tuningSummary.newCount, 'Suggestions not yet reviewed', tuningSummary.newCount ? 'Review these first in TuningSuggestions.' : ''],
+    ['tuning-new-actionable', tuningSummary.newCount, 'Real suggestions not yet reviewed', tuningSummary.newCount ? 'Review these first in TuningSuggestions.' : ''],
+    ['tuning-no-suggestions-placeholders', tuningSummary.noSuggestionsOpen, 'Informational no-suggestions rows retained as queue anchors, not real review work', ''],
     ['tuning-approved-pending-import', tuningSummary.approved, 'Suggestions marked approved and ready to import into ApprovedRules', tuningSummary.approved ? 'Run runPhase10ReviewLoopOptionA() to import and refresh runtime.' : ''],
     ['tuning-rejected', tuningSummary.rejected, 'Suggestions explicitly rejected by operator review', ''],
     ['tuning-imported', tuningSummary.imported, 'Suggestions already imported into ApprovedRules', ''],
@@ -659,7 +660,8 @@ function rebuildControlSurfaceStatusSheet_(sheet) {
       imported: tuningSummary.imported,
       rejected: tuningSummary.rejected,
       superseded: tuningSummary.superseded,
-      newCount: tuningSummary.newCount
+      newCount: tuningSummary.newCount,
+      noSuggestionsOpen: tuningSummary.noSuggestionsOpen
     },
     approvedRulesSummary: approvedRulesSummary,
     nextAction: nextAction
@@ -672,6 +674,7 @@ function summarizeTuningSuggestions_() {
   const summary = {
     totalRows: Math.max(0, lastRow - 1),
     newCount: 0,
+    noSuggestionsOpen: 0,
     approved: 0,
     rejected: 0,
     imported: 0,
@@ -682,34 +685,39 @@ function summarizeTuningSuggestions_() {
 
   if (lastRow <= 1) return summary;
 
-  const values = sheet.getRange(2, 10, lastRow - 1, 1).getDisplayValues();
+  const values = sheet.getRange(2, 2, lastRow - 1, 9).getDisplayValues();
   values.forEach(row => {
-    const status = String(row[0] || '').trim().toLowerCase();
-    if (!status || status === 'new') {
+    const category = String(row[0] || '').trim().toLowerCase();
+    const normalizedStatus = String(row[8] || '').trim().toLowerCase();
+    if (!normalizedStatus || normalizedStatus === 'new') {
+      if (category === 'no-suggestions') {
+        summary.noSuggestionsOpen += 1;
+        return;
+      }
       summary.newCount += 1;
       return;
     }
-    if (status === 'approved') {
+    if (normalizedStatus === 'approved') {
       summary.approved += 1;
       return;
     }
-    if (status === 'rejected') {
+    if (normalizedStatus === 'rejected') {
       summary.rejected += 1;
       return;
     }
-    if (status === 'imported') {
+    if (normalizedStatus === 'imported') {
       summary.imported += 1;
       return;
     }
-    if (status === 'already-imported') {
+    if (normalizedStatus === 'already-imported') {
       summary.alreadyImported += 1;
       return;
     }
-    if (status === 'skipped') {
+    if (normalizedStatus === 'skipped') {
       summary.skipped += 1;
       return;
     }
-    if (status === 'superseded' || status === 'reclassified-shipping') {
+    if (normalizedStatus === 'superseded' || normalizedStatus === 'reclassified-shipping') {
       summary.superseded += 1;
     }
   });
@@ -731,6 +739,9 @@ function buildControlSurfaceNextAction_(tuningSummary) {
   }
   if (tuningSummary.newCount) {
     return `There are ${tuningSummary.newCount} new suggestions waiting for review.`;
+  }
+  if (tuningSummary.noSuggestionsOpen) {
+    return 'No actionable tuning suggestions right now.';
   }
   return 'No pending review/import work right now.';
 }

@@ -514,3 +514,18 @@ Added a small but meaningful operator-flow improvement on top of the workbook UX
 - the first workbook polish made the sheets clearer, but the operator still had to mentally stitch together queue state and next actions
 - this adds a simple “what should I do now?” layer without leaving the Sheets-first model
 - it also gets closer to the eventual HTML phase by proving the actual operator loop in a cheap, reversible way first
+
+## 2026-04-26 - Tuning queue noise cleanup
+
+Reduced low-value noise in the Phase 10 review queue.
+
+### Added or changed
+- `generateTuningSuggestionsPhase9_()` now suppresses repeated open `no-suggestions` placeholders instead of appending them on every empty run
+- added `pruneTuningSuggestionsQueuePhase10()` to mark duplicate `no-suggestions` rows as `skipped` while retaining one queue-anchor placeholder for operator context
+- updated `ControlSurfaceStatus` so retained `no-suggestions` placeholders are counted separately from actionable new suggestions
+- the next-action message now reports `No actionable tuning suggestions right now.` when the queue contains only placeholders and already-superseded items
+
+### Why
+- repeated empty-state rows were making the workbook look busier than it really was
+- the review surface should reflect real operator work, not mechanical evidence that nothing new was found
+- this keeps Option A usable longer while the workflow continues to mature inside Sheets
