@@ -1,5 +1,5 @@
 function classifyThread_(thread) {
-  const labels = thread.getLabels().map(label => label.getName());
+  const labels = getSafeLabelNames_(thread);
   const lastMessage = thread.getMessages()[thread.getMessageCount() - 1];
   const from = ((lastMessage && lastMessage.getFrom()) || '').toLowerCase();
   const subject = ((lastMessage && lastMessage.getSubject()) || '').toLowerCase();
@@ -151,6 +151,24 @@ function buildDecision_(action, label, archive, reason, workflowLabel) {
     reason: reason,
     workflowLabel: workflowLabel || null
   };
+}
+
+function getSafeLabelNames_(thread) {
+  try {
+    return thread.getLabels().reduce((names, label) => {
+      try {
+        const name = label && label.getName && label.getName();
+        if (name) {
+          names.push(name);
+        }
+      } catch (error) {
+        // Ignore stale or unreadable label handles on individual threads.
+      }
+      return names;
+    }, []);
+  } catch (error) {
+    return [];
+  }
 }
 
 function matchesAny_(text, patterns) {
