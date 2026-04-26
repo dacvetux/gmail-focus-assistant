@@ -259,6 +259,7 @@ function generateFollowUpDigestPhase6Live() {
 }
 
 function processInboxFocusWithOptions_(options) {
+  refreshConfigFromPreferencesPhase10_({ suppressLog: true });
   const threads = selectThreadsForProcessing_(options);
   const logRows = [];
   const previousDryRun = CONFIG.dryRun;
@@ -483,5 +484,4 @@ function getManagedAutomationFunctionNames_() {
   });
   return Object.keys(names);
 }
-
 

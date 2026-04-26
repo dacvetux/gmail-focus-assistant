@@ -27,6 +27,12 @@
 - add tabs such as `Preferences`, `DigestSettings`, `NewsSources`, and `TuningSuggestions`
 - let operators review or approve safe tuning suggestions without editing code directly
 
+### Current status update
+- sheet-backed preferences, digest settings, and news-source controls are live
+- approved sender rules can now load from `ApprovedRules` into runtime config
+- tuning suggestions can now be promoted into approved rules via a sheet-based review loop
+- the next meaningful Phase 10 improvement is polishing operator UX and widening the supported approval actions, not building a separate GUI yet
+
 ## Later
 - strengthen follow-up intelligence once real waiting-on-them mailbox state exists
 - add accepted-suggestion semi-automation only after suggestion quality is trustworthy

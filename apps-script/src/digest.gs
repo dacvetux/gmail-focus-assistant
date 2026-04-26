@@ -163,6 +163,7 @@ function generateNewsDigestEveningLive() {
 }
 
 function generateDigest_(options) {
+  refreshConfigFromPreferencesPhase10_({ suppressLog: true });
   const mode = options.dryRun ? 'dry-run' : 'live';
   const digestSettings = getDigestSetting_(options.type);
 
@@ -230,6 +231,7 @@ function generateDigest_(options) {
 }
 
 function generateNewsDigest_(options) {
+  refreshConfigFromPreferencesPhase10_({ suppressLog: true });
   const mode = options.dryRun ? 'dry-run' : 'live';
   const digestSettings = getDigestSetting_(options.type);
 
@@ -290,6 +292,7 @@ function generateNewsDigest_(options) {
 }
 
 function generateLogBackedDigest_(options) {
+  refreshConfigFromPreferencesPhase10_({ suppressLog: true });
   const mode = options.dryRun ? 'dry-run' : 'live';
   const windowConfig = getDigestWindowConfig_(options.type);
   const rows = readDecisionRowsForWindow_(windowConfig.start, windowConfig.end);

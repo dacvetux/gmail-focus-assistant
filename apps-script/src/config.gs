@@ -118,7 +118,8 @@ const CONFIG = {
     'meinesendung@post.at',
     'amazon.de',
     'notice.aliexpress.com',
-    'noreply.nesy.service@expressone.si'
+    'noreply.nesy.service@expressone.si',
+    'willhaben.at'
   ],
   forceCalendarSenders: [
     'alenka.iskra@gmail.com',
@@ -245,7 +246,6 @@ const CONFIG = {
     /bank declined/i,
     /billing statement/i,
     /rechnung/i,
-    /buchung/i,
     /elektronski račun/i,
     /elektronska\(e\) specifikacija\(e\)/i,
     /obračunsko obdobje/i,
@@ -266,7 +266,9 @@ const CONFIG = {
     /delivery attempted/i,
     /in zustellung/i,
     /sendung/i,
-    /paket/i
+    /paket/i,
+    /paylivery/i,
+    /willhaben/i
   ],
   calendarPatterns: [
     /invitation:/i,

@@ -419,3 +419,29 @@ Connected the new spreadsheet control surface to actual digest/news behavior and
 - Phase 10 needed to become a real operator surface, not just sheet scaffolding
 - news-source control belongs in the sheet if Phase 8 is going to stay maintainable
 - digest timing/scope knobs are among the highest-value settings to expose before building any heavier UI
+
+## 2026-04-26 - Phase 10 approved-rules runtime loop and marketplace tuning
+
+Connected the spreadsheet approval layer to actual classification behavior and corrected a live tuning misread around willhaben.
+
+### Added or changed
+- `ApprovedRules` now seeds a `willhaben.at` shipping rule so marketplace / PayLivery traffic is treated as transactional shipping instead of finance
+- `refreshConfigFromPreferencesPhase10()` now applies approved sender rules from the sheet into runtime for:
+  - `forceCommercialSenders`
+  - `forceImportantSenders`
+  - `forceShippingSenders`
+  - `forceFyiSenders`
+  - `newsSenders`
+  - `newsExcludedSenders`
+- added `syncApprovedRulesFromTuningSuggestionsPhase10()` so operator-approved `TuningSuggestions` rows can be imported into `ApprovedRules`
+- manual dry-run processing, digest, and tuning entrypoints now refresh sheet-backed config before running, so the control surface governs on-demand execution instead of only wrapper-based automation
+- corrected Phase 9 marketplace logic:
+  - `willhaben` / `PayLivery` now bias toward shipping suggestions
+  - removed the overly broad finance signal from `buchung`
+  - removed `PayLivery` from finance suggestion heuristics
+- added a dedicated `marketplace-shipping-candidate` suggestion type for clearer operator review
+
+### Why
+- the spreadsheet needed to become a genuine approval surface, not just a passive note-taking sheet
+- operator-approved tuning should affect runtime without requiring another code edit for each sender
+- willhaben behaves more like marketplace/shipping traffic than finance in this inbox context, so the suggestion and routing model needed to reflect that

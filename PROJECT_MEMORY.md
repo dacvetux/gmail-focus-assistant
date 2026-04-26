@@ -167,11 +167,31 @@ Core intent:
 
 ## Immediate next steps
 
-1. start Phase 8 by adding a separate `News/Digest` lane plus morning/evening news digests inside Gmail Focus Assistant
-2. start Phase 9 by building a recommendation-first tuning assistant that scans logs and proposes safe rule/config changes instead of hand-patching every sender
-3. start Phase 10 by using the existing Google Sheets log workbook as the first control surface for preferences, digest settings, news sources, and tuning suggestions
-4. keep Phase 6 visibility-first, with no automatic follow-up sending, until real waiting-on-them mailbox state is available
-5. only consider semi-automatic rule application after the tuning assistant has proved reliable in suggestion mode
+1. implement safe Apps Script automation wrapper entrypoints for frequent Phase 1/2 live processing and morning/evening main/news log-window digests
+2. have each wrapper refresh sheet-backed preferences/news settings before running the underlying live path so the spreadsheet control surface governs automation behavior
+3. manually validate each wrapper once, then add Apps Script time triggers for the intended steady-state schedule of 8 processing runs/day between 06:00 and 23:00 plus morning/evening digest runs
+4. keep Phase 4 AI review, broad Phase 5 drafting, Phase 6 live follow-up automation, and Phase 9 auto-apply conservative until the safer automation foundation proves reliable
+5. revisit the known log-backed digest duplicate-entry bug later via the section-candidate construction path (tracked in GitHub issue #1)
+
+## Recent decisions and lessons
+
+- limited live use confirmed the system is viable in production, but it exposed that mailbox-state digests become incomplete once live processing runs more frequently during the day
+- the correct digest architecture for automation is now explicit time-window reporting backed primarily by `DecisionLog`, with mailbox-state digests retained as fallback/validation during the transition
+- the improved log-window notes in `RunLog` (window label plus local and UTC timestamps) materially improved live operability and should be kept as the standard format
+- duplicate suppression for log-backed digests is harder than expected: row-level dedupe and final render-level dedupe were both insufficient for at least one visible duplicate case, which strongly suggests the remaining bug is in section candidate construction rather than raw log reading or final formatting
+- the duplicate-visible-entry problem is documented in GitHub issue `#1`
+- the agreed automation-wrapper/trigger phase is documented in GitHub issue `#2`
+- safe Apps Script live wrappers were implemented in commit `a8fec34` (`Add safe live automation wrappers`) and validated successfully in production for frequent processing plus morning main/news digests
+- the wrapper layer now refreshes sheet-backed config before each run, adds overlap protection with `LockService`, and produces wrapper-level `RunLog` records that make trigger behavior easier to audit
+- the successful wrapper-validation milestone is documented in GitHub issue `#3`
+- the proposed staged trigger rollout and concrete schedule are documented in GitHub issue `#4`
+- the rollout is now active: evening wrappers were validated successfully and `installAutomationTriggers()` created 12 managed wrapper-based time triggers
+- issue `#5` now includes the completion update for evening-wrapper validation plus trigger installation
+- a first post-rollout live tuning pass was applied in commit `16de8f9` (`Tune sender overrides from live log review`) and documented in GitHub issue `#6`
+- local and deployed Apps Script execution setup is now fixed for `clasp run`: the project was linked to standard GCP project `gen-lang-client-0280209098`, manifest execution API access was enabled, `clasp` was re-authenticated with a user OAuth client, and the API executable was redeployed successfully
+- a live Phase 4 dry-run failure on 2026-04-26 turned out not to be Gemini but a stale Gmail label handle; classification now uses defensive label-name extraction so one bad label object cannot crash a full AI-review run
+- Phase 10 moved another step forward on 2026-04-26: `ApprovedRules` now loads into runtime config during refresh, manual dry-runs also refresh sheet-backed config before execution, and a new `syncApprovedRulesFromTuningSuggestionsPhase10()` path lets operator-approved tuning rows flow into runtime without another code edit
+- willhaben was explicitly reclassified as marketplace/shipping rather than finance for this inbox context; the control surface now seeds `willhaben.at` into approved shipping rules, shipping heuristics recognize `PayLivery` / `willhaben`, and Phase 9 now uses a dedicated marketplace-shipping suggestion category instead of a finance suggestion for that traffic
 
 ## Open questions
 

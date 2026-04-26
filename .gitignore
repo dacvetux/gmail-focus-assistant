@@ -21,6 +21,7 @@ credentials/
 # Apps Script local tooling
 .clasp.json
 .clasprc.json
+client_secret*.json
 node_modules/
 
 # Temporary files

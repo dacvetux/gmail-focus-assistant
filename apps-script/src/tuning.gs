@@ -11,6 +11,7 @@ function generateTuningSuggestionsPhase9Live() {
 }
 
 function generateTuningSuggestionsPhase9_(options) {
+  refreshConfigFromPreferencesPhase10_({ suppressLog: true });
   const rows = readRecentDecisionRows_(CONFIG.tuningSuggestionLookbackRows || 500);
   const suggestions = [];
   const bySender = new Map();
@@ -113,6 +114,21 @@ function generateTuningSuggestionsPhase9_(options) {
         exampleFrom: representative.from,
         exampleSubject: representative.subject,
         reason: representative.reason || 'recurring informational mail still landing in review',
+        notes: buildSuggestionNotes_(options, entry, reviewCount)
+      }));
+      return;
+    }
+
+    if (looksMarketplaceTransactionalSuggestion_(representative)) {
+      suggestions.push(buildTuningSuggestionRow_({
+        category: 'marketplace-shipping-candidate',
+        suggestedChange: 'add to forceShippingSenders',
+        target: senderKey,
+        evidenceCount: reviewCount,
+        confidence: 'high',
+        exampleFrom: representative.from,
+        exampleSubject: representative.subject,
+        reason: representative.reason || 'marketplace transactional mail should route to shipping/notification handling',
         notes: buildSuggestionNotes_(options, entry, reviewCount)
       }));
       return;
@@ -224,12 +240,17 @@ function looksClearCommercialSenderSuggestion_(entry) {
 
 function looksShippingSuggestion_(entry) {
   const haystack = `${entry.from}\n${entry.subject}`.toLowerCase();
-  return /(delivery|tracking|shipment|package|dostavi|express one|sendung|paket)/i.test(haystack);
+  return /(delivery|tracking|shipment|package|dostavi|express one|sendung|paket|paylivery|willhaben)/i.test(haystack);
 }
 
 function looksFinanceSuggestion_(entry) {
   const haystack = `${entry.from}\n${entry.subject}`.toLowerCase();
-  return /(invoice|receipt|billing|payment|rechnung|buchung|račun|kartice|card block|bank|paylivery)/i.test(haystack);
+  return /(invoice|receipt|billing|payment|rechnung|račun|kartice|card block|bank)/i.test(haystack);
+}
+
+function looksMarketplaceTransactionalSuggestion_(entry) {
+  const haystack = `${entry.from}\n${entry.subject}`.toLowerCase();
+  return /(willhaben|paylivery|marketplace|classifieds)/i.test(haystack);
 }
 
 function looksServiceNotificationSuggestion_(entry) {
