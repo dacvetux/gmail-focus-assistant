@@ -426,6 +426,8 @@ Connected the spreadsheet approval layer to actual classification behavior and c
 
 ### Added or changed
 - `ApprovedRules` now seeds a `willhaben.at` shipping rule so marketplace / PayLivery traffic is treated as transactional shipping instead of finance
+- `ApprovedRules` now supports friendlier operator-facing categories such as `shipping-sender`, `commercial-sender`, `important-sender`, `fyi-sender`, `news-sender`, and `news-exclude-sender`
+- approved rules now support both `add` and `remove` actions at runtime instead of add-only behavior
 - `refreshConfigFromPreferencesPhase10()` now applies approved sender rules from the sheet into runtime for:
   - `forceCommercialSenders`
   - `forceImportantSenders`
@@ -434,6 +436,7 @@ Connected the spreadsheet approval layer to actual classification behavior and c
   - `newsSenders`
   - `newsExcludedSenders`
 - added `syncApprovedRulesFromTuningSuggestionsPhase10()` so operator-approved `TuningSuggestions` rows can be imported into `ApprovedRules`
+- imported tuning suggestions now carry clearer provenance notes and import/update their row status more explicitly (`imported`, `already-imported`, `skipped`)
 - manual dry-run processing, digest, and tuning entrypoints now refresh sheet-backed config before running, so the control surface governs on-demand execution instead of only wrapper-based automation
 - corrected Phase 9 marketplace logic:
   - `willhaben` / `PayLivery` now bias toward shipping suggestions

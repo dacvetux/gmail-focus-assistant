@@ -191,6 +191,7 @@ Core intent:
 - local and deployed Apps Script execution setup is now fixed for `clasp run`: the project was linked to standard GCP project `gen-lang-client-0280209098`, manifest execution API access was enabled, `clasp` was re-authenticated with a user OAuth client, and the API executable was redeployed successfully
 - a live Phase 4 dry-run failure on 2026-04-26 turned out not to be Gemini but a stale Gmail label handle; classification now uses defensive label-name extraction so one bad label object cannot crash a full AI-review run
 - Phase 10 moved another step forward on 2026-04-26: `ApprovedRules` now loads into runtime config during refresh, manual dry-runs also refresh sheet-backed config before execution, and a new `syncApprovedRulesFromTuningSuggestionsPhase10()` path lets operator-approved tuning rows flow into runtime without another code edit
+- later the same morning, the approval loop was widened further: `ApprovedRules` gained operator-friendly aliases like `shipping-sender` plus `add` / `remove` actions, tuning-import provenance became clearer, and the live `willhaben.at` shipping rule now comes from the sheet approval loop rather than hardcoded config
 - willhaben was explicitly reclassified as marketplace/shipping rather than finance for this inbox context; the control surface now seeds `willhaben.at` into approved shipping rules, shipping heuristics recognize `PayLivery` / `willhaben`, and Phase 9 now uses a dedicated marketplace-shipping suggestion category instead of a finance suggestion for that traffic
 
 ## Open questions

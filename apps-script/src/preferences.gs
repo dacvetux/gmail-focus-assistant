@@ -127,12 +127,12 @@ function getOrCreateApprovedRulesSheet_() {
   if (!sheet) {
     sheet = spreadsheet.insertSheet('ApprovedRules');
     sheet.getRange(1, 1, 1, 7).setValues([['Category', 'Target', 'Action', 'Approved', 'Applied In Code', 'Added On', 'Notes']]);
-    sheet.getRange(2, 1, 1, 7).setValues([['forceShippingSenders', 'willhaben.at', 'add', 'yes', 'seeded', new Date(), 'Marketplace / PayLivery transactional mail should route to shipping']]);
+    sheet.getRange(2, 1, 1, 7).setValues([['shipping-sender', 'willhaben.at', 'add', 'yes', 'seeded', new Date(), 'Marketplace / PayLivery transactional mail should route to shipping']]);
     return sheet;
   }
 
   if (sheet.getLastRow() === 1) {
-    sheet.getRange(2, 1, 1, 7).setValues([['forceShippingSenders', 'willhaben.at', 'add', 'yes', 'seeded', new Date(), 'Marketplace / PayLivery transactional mail should route to shipping']]);
+    sheet.getRange(2, 1, 1, 7).setValues([['shipping-sender', 'willhaben.at', 'add', 'yes', 'seeded', new Date(), 'Marketplace / PayLivery transactional mail should route to shipping']]);
   }
 
   return sheet;
@@ -156,6 +156,35 @@ function readApprovedRules_() {
   }));
 }
 
+function isAffirmativeFlag_(value) {
+  return !value || value === 'yes' || value === 'true' || value === '1' || value === 'approved' || value === 'approve';
+}
+
+function resolveApprovedRuleConfigField_(category) {
+  switch (String(category || '').trim()) {
+    case 'commercial-sender':
+    case 'forceCommercialSenders':
+      return 'forceCommercialSenders';
+    case 'important-sender':
+    case 'forceImportantSenders':
+      return 'forceImportantSenders';
+    case 'shipping-sender':
+    case 'forceShippingSenders':
+      return 'forceShippingSenders';
+    case 'fyi-sender':
+    case 'forceFyiSenders':
+      return 'forceFyiSenders';
+    case 'news-sender':
+    case 'newsSenders':
+      return 'newsSenders';
+    case 'news-exclude-sender':
+    case 'newsExcludedSenders':
+      return 'newsExcludedSenders';
+    default:
+      return '';
+  }
+}
+
 function appendUniqueConfigValue_(fieldName, value) {
   if (!fieldName || !value) return false;
   if (!Array.isArray(CONFIG[fieldName])) return false;
@@ -164,49 +193,56 @@ function appendUniqueConfigValue_(fieldName, value) {
   return true;
 }
 
-function applyApprovedRulesToConfig_() {
-  const allowedCategories = [
-    'forceCommercialSenders',
-    'forceImportantSenders',
-    'forceShippingSenders',
-    'forceFyiSenders',
-    'newsSenders',
-    'newsExcludedSenders'
-  ];
+function removeConfigValue_(fieldName, value) {
+  if (!fieldName || !value) return false;
+  if (!Array.isArray(CONFIG[fieldName])) return false;
+  const originalLength = CONFIG[fieldName].length;
+  CONFIG[fieldName] = CONFIG[fieldName].filter(entry => entry !== value);
+  return CONFIG[fieldName].length !== originalLength;
+}
 
+function applyApprovedRuleAction_(fieldName, action, target) {
+  if (action === 'remove' || action === 'delete') {
+    return removeConfigValue_(fieldName, target);
+  }
+
+  return appendUniqueConfigValue_(fieldName, target);
+}
+
+function applyApprovedRulesToConfig_() {
   const rows = readApprovedRules_();
   let appliedCount = 0;
 
   rows.forEach(row => {
-    if (!row.category || !row.target) return;
-    if (!allowedCategories.includes(row.category)) return;
-    if (row.action && row.action !== 'add') return;
-    if (row.approved && row.approved !== 'yes' && row.approved !== 'true' && row.approved !== '1') return;
+    const fieldName = resolveApprovedRuleConfigField_(row.category);
+    if (!fieldName || !row.target) return;
+    if (row.action && row.action !== 'add' && row.action !== 'remove' && row.action !== 'delete') return;
+    if (!isAffirmativeFlag_(row.approved)) return;
 
-    if (appendUniqueConfigValue_(row.category, row.target)) {
+    if (applyApprovedRuleAction_(fieldName, row.action || 'add', row.target)) {
       appliedCount += 1;
     }
   });
 
   return {
     appliedCount: appliedCount,
-    approvedCount: rows.filter(row => row.approved === 'yes' || row.approved === 'true' || row.approved === '1').length
+    approvedCount: rows.filter(row => isAffirmativeFlag_(row.approved)).length
   };
 }
 
 function mapTuningSuggestionCategoryToApprovedRule_(category) {
   switch (category) {
     case 'commercial-override-candidate':
-      return 'forceCommercialSenders';
+      return 'commercial-sender';
     case 'important-service-candidate':
-      return 'forceImportantSenders';
+      return 'important-sender';
     case 'low-priority-fyi-sender-candidate':
-      return 'forceFyiSenders';
+      return 'fyi-sender';
     case 'shipping-pattern-candidate':
     case 'marketplace-shipping-candidate':
-      return 'forceShippingSenders';
+      return 'shipping-sender';
     case 'finance-pattern-candidate':
-      return 'forceImportantSenders';
+      return 'important-sender';
     default:
       return '';
   }
@@ -250,17 +286,21 @@ function syncApprovedRulesFromTuningSuggestionsPhase10() {
     const status = String(row[9] || '').trim().toLowerCase();
     const notes = String(row[10] || '').trim();
     const approvedCategory = mapTuningSuggestionCategoryToApprovedRule_(category);
+    const rowNumber = index + 2;
+    const importNotePrefix = `Imported ${new Date().toISOString().slice(0, 10)} from tuning suggestion category ${category}`;
 
-    if (status !== 'approved') return;
+    if (!isAffirmativeFlag_(status)) return;
     if (!approvedCategory || !target) {
-      tuningSheet.getRange(index + 2, 10).setValue('skipped');
+      tuningSheet.getRange(rowNumber, 10).setValue('skipped');
+      tuningSheet.getRange(rowNumber, 11).setValue(notes ? `${notes}; unsupported approved action` : 'unsupported approved action');
       skippedCount += 1;
       return;
     }
 
     const key = `${approvedCategory}::${target}`;
     if (existingKeys[key]) {
-      tuningSheet.getRange(index + 2, 10).setValue('already-imported');
+      tuningSheet.getRange(rowNumber, 10).setValue('already-imported');
+      tuningSheet.getRange(rowNumber, 11).setValue(notes ? `${notes}; already imported into ApprovedRules` : 'already imported into ApprovedRules');
       skippedCount += 1;
       return;
     }
@@ -272,9 +312,10 @@ function syncApprovedRulesFromTuningSuggestionsPhase10() {
       'yes',
       'runtime',
       new Date(),
-      notes || `Imported from tuning suggestion category ${category}`
+      notes ? `${notes}; ${importNotePrefix}` : importNotePrefix
     ]);
-    tuningSheet.getRange(index + 2, 10).setValue('imported');
+    tuningSheet.getRange(rowNumber, 10).setValue('imported');
+    tuningSheet.getRange(rowNumber, 11).setValue(notes ? `${notes}; imported into ApprovedRules` : 'imported into ApprovedRules');
     existingKeys[key] = true;
     importedCount += 1;
   });

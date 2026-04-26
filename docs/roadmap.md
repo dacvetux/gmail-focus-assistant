@@ -31,7 +31,8 @@
 - sheet-backed preferences, digest settings, and news-source controls are live
 - approved sender rules can now load from `ApprovedRules` into runtime config
 - tuning suggestions can now be promoted into approved rules via a sheet-based review loop
-- the next meaningful Phase 10 improvement is polishing operator UX and widening the supported approval actions, not building a separate GUI yet
+- `ApprovedRules` now supports operator-friendly category aliases plus `add` / `remove` actions
+- the next meaningful Phase 10 improvement is polishing operator UX and widening the supported approval actions further, not building a separate GUI yet
 
 ## Later
 - strengthen follow-up intelligence once real waiting-on-them mailbox state exists

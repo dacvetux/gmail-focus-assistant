@@ -118,8 +118,7 @@ const CONFIG = {
     'meinesendung@post.at',
     'amazon.de',
     'notice.aliexpress.com',
-    'noreply.nesy.service@expressone.si',
-    'willhaben.at'
+    'noreply.nesy.service@expressone.si'
   ],
   forceCalendarSenders: [
     'alenka.iskra@gmail.com',
