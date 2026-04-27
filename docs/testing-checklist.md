@@ -2,6 +2,8 @@
 
 Use this as the current validation runbook for Focuna - Gmail Assistant.
 
+For the compact Option A operator loop, run `runPhase10ValidationCheckpoint()` first. It refreshes config, runs the core dry-runs, and writes a quick-pass summary to `ValidationStatus`.
+
 ## Core processing
 
 Run:
@@ -89,6 +91,13 @@ Check:
 - no noisy flood of low-value suggestions
 
 ## Suggested validation order for a full checkpoint
+
+Fast path:
+1. `runPhase10ValidationCheckpoint()`
+2. inspect `ValidationStatus`
+3. drop into the detailed steps below only if a check fails or looks suspicious
+
+Detailed path:
 
 1. `processInboxFocusPhase1DryRun()`
 2. `processInboxFocusPhase4AiReviewDryRun()`

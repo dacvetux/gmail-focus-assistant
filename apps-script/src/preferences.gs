@@ -7,6 +7,7 @@ function setupControlSurfacePhase10() {
   getOrCreateTuningSuggestionsSheet_();
   getOrCreateOperatorGuideSheet_();
   getOrCreateControlSurfaceStatusSheet_();
+  getOrCreateValidationStatusSheet_();
   const uxSummary = applyControlSurfaceOptionAUx_();
 
   logRunSummary_({
@@ -35,6 +36,7 @@ function upgradeControlSurfacePhase10OptionA() {
   getOrCreateTuningSuggestionsSheet_();
   getOrCreateOperatorGuideSheet_();
   getOrCreateControlSurfaceStatusSheet_();
+  getOrCreateValidationStatusSheet_();
 
   const summary = applyControlSurfaceOptionAUx_();
 
@@ -69,6 +71,66 @@ function runPhase10ReviewLoopOptionA() {
   return {
     syncSummary: syncSummary,
     refreshSummary: refreshSummary,
+    statusSummary: statusSummary
+  };
+}
+
+function runPhase10ValidationCheckpoint() {
+  const refreshSummary = refreshConfigFromPreferencesPhase10_({ suppressLog: true });
+  const checks = [
+    { key: 'phase1-dry-run', label: 'Phase 1 dry-run', runner: processInboxFocusPhase1DryRun },
+    { key: 'phase4-ai-review-dry-run', label: 'Phase 4 AI review dry-run', runner: processInboxFocusPhase4AiReviewDryRun },
+    { key: 'morning-digest-dry-run', label: 'Morning digest dry-run', runner: generateMorningDigestDryRun },
+    { key: 'news-morning-digest-dry-run', label: 'News morning digest dry-run', runner: generateNewsDigestMorningDryRun },
+    { key: 'tuning-suggestions-dry-run', label: 'Tuning suggestions dry-run', runner: generateTuningSuggestionsPhase9DryRun }
+  ];
+
+  const rows = [];
+  let successCount = 0;
+  let failureCount = 0;
+
+  checks.forEach(check => {
+    try {
+      const result = check.runner();
+      const summary = summarizeValidationCheckpointResult_(result);
+      rows.push([
+        check.key,
+        check.label,
+        'ok',
+        summary.primaryValue,
+        summary.notes,
+        formatControlSurfaceTimestamp_(new Date())
+      ]);
+      successCount += 1;
+    } catch (error) {
+      rows.push([
+        check.key,
+        check.label,
+        'error',
+        '',
+        truncateRunNote_(error && error.message ? error.message : String(error), 300),
+        formatControlSurfaceTimestamp_(new Date())
+      ]);
+      failureCount += 1;
+    }
+  });
+
+  const validationSummary = rebuildValidationStatusSheet_(getOrCreateValidationStatusSheet_(), rows);
+  const statusSummary = rebuildControlSurfaceStatusPhase10();
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'runPhase10ValidationCheckpoint',
+    processedThreads: checks.length,
+    itemCount: successCount,
+    outcome: failureCount ? 'validation-checkpoint-failed' : 'validation-checkpoint-ok',
+    notes: `success=${successCount}; failed=${failureCount}; approved-rules-configured=${refreshSummary.approvedRulesConfigured}`
+  });
+
+  return {
+    refreshSummary: refreshSummary,
+    validationSummary: validationSummary,
     statusSummary: statusSummary
   };
 }
@@ -211,10 +273,11 @@ function getOrCreateOperatorGuideSheet_() {
     ['TuningSuggestions', 'Review queue for proposed sender/routing changes', 'Change Status from new to approved/rejected/superseded after review', 'Status=new|approved|rejected|imported|already-imported|skipped|superseded', 'Approved rows can be imported into ApprovedRules'],
     ['ApprovedRules', 'Runtime rules already approved by the operator', 'One rule per row; keep Approved=yes for active rules', 'Category=shipping-sender/commercial-sender/important-sender/fyi-sender/news-sender/news-exclude-sender; Action=add|remove', 'fyi-sender adds workflow-only FYI routing for intentionally informational senders'],
     ['ControlSurfaceStatus', 'Small operator dashboard for the current review/import state', 'Rebuild via rebuildControlSurfaceStatusPhase10() or runPhase10ReviewLoopOptionA()', 'Shows pending/new/approved/imported counts plus next-action guidance', 'Use this first before reviewing or importing'],
+    ['ValidationStatus', 'Compact last-checkpoint view for the core dry-run validation loop', 'Refresh via runPhase10ValidationCheckpoint()', 'Shows ok/error plus key result for Phase 1, AI review, digests, and tuning suggestions', 'Use this after changes when you want a quick confidence pass without reading raw logs first'],
     ['Workflow label semantics', 'Clarify when to use review vs FYI vs notification', 'Treat Review/Ambiguous as unresolved mail, FYI as intentionally informational, and notification as low-response transactional/system updates', 'Review/Ambiguous should stay workflow-blank; News/Digest can stay workflow-blank', 'Default news behavior should stay separate unless the operator explicitly wants FYI/notification'],
     ['Automation health alerts', 'Optional lightweight escalation for wrapper failures or missed schedules', 'Enable only if you want email alerts; blank recipient keeps the feature safely silent', 'automationHealthAlertEnabled=false by default; min severity=warning|error', 'Repeated identical alerts are deduplicated to avoid spam'],
-    ['Recommended workflow', 'Use Sheets as the primary operator UI for now', '1) review ControlSurfaceStatus 2) review TuningSuggestions 3) mark approved/rejected/superseded 4) run runPhase10ReviewLoopOptionA() 5) run rebuildControlSurfaceStatusPhase10() if needed 6) confirm status sheet updated', 'Option A now; Option B HTML UI later', 'Only move to the HTML phase once this workflow feels ~90% finalized'],
-    ['Fast commands', 'Exact helper functions for the operator loop', 'Use these when you want a quick refresh/import cycle without digging through code', 'rebuildControlSurfaceStatusPhase10(); runPhase10ReviewLoopOptionA(); refreshConfigFromPreferencesPhase10()', 'These are the main Option A operator commands today']
+    ['Recommended workflow', 'Use Sheets as the primary operator UI for now', '1) review ControlSurfaceStatus 2) review TuningSuggestions 3) mark approved/rejected/superseded 4) run runPhase10ReviewLoopOptionA() 5) run runPhase10ValidationCheckpoint() 6) confirm ValidationStatus and ControlSurfaceStatus updated', 'Option A now; Option B HTML UI later', 'Only move to the HTML phase once this workflow feels ~90% finalized'],
+    ['Fast commands', 'Exact helper functions for the operator loop', 'Use these when you want a quick refresh/import cycle without digging through code', 'rebuildControlSurfaceStatusPhase10(); runPhase10ReviewLoopOptionA(); runPhase10ValidationCheckpoint(); refreshConfigFromPreferencesPhase10()', 'These are the main Option A operator commands today']
   ];
 
   sheet.clearContents();
@@ -232,6 +295,18 @@ function getOrCreateControlSurfaceStatusSheet_() {
   }
 
   rebuildControlSurfaceStatusSheet_(sheet);
+  return sheet;
+}
+
+function getOrCreateValidationStatusSheet_() {
+  const spreadsheet = getLogSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName('ValidationStatus');
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('ValidationStatus');
+  }
+
+  ensureValidationStatusHeader_(sheet);
   return sheet;
 }
 
@@ -445,6 +520,7 @@ function applyControlSurfaceOptionAUx_() {
   const tuningSuggestionsSheet = getOrCreateTuningSuggestionsSheet_();
   const operatorGuideSheet = getOrCreateOperatorGuideSheet_();
   const controlSurfaceStatusSheet = getOrCreateControlSurfaceStatusSheet_();
+  const validationStatusSheet = getOrCreateValidationStatusSheet_();
 
   let validationsApplied = 0;
   validationsApplied += configurePreferencesSheetUx_(preferencesSheet);
@@ -455,13 +531,14 @@ function applyControlSurfaceOptionAUx_() {
   styleControlSurfaceSheet_(operatorGuideSheet, [140, 260, 320, 320, 260]);
   styleControlSurfaceSheet_(controlSurfaceStatusSheet, [180, 180, 420, 420]);
   rebuildControlSurfaceStatusSheet_(controlSurfaceStatusSheet);
+  configureValidationStatusSheetUx_(validationStatusSheet);
 
   return {
-    sheetsReady: ['Preferences', 'DigestSettings', 'NewsSources', 'ApprovedRules', 'TuningSuggestions', 'OperatorGuide', 'ControlSurfaceStatus'],
-    sheetCount: 7,
-    validationsApplied: validationsApplied,
+    sheetsReady: ['Preferences', 'DigestSettings', 'NewsSources', 'ApprovedRules', 'TuningSuggestions', 'OperatorGuide', 'ControlSurfaceStatus', 'ValidationStatus'],
+    sheetCount: 8,
+    validationsApplied: validationsApplied + 1,
     guideUpdated: true,
-    notes: `Option A UX prepared across 7 sheets; validations-applied=${validationsApplied}`
+    notes: `Option A UX prepared across 8 sheets; validations-applied=${validationsApplied + 1}`
   };
 }
 
@@ -586,6 +663,81 @@ function configureTuningSuggestionsSheetUx_(sheet) {
   return 1;
 }
 
+function ensureValidationStatusHeader_(sheet) {
+  if (!sheet) return;
+  const header = [['Check Key', 'Check', 'Status', 'Key Result', 'Notes', 'Last Run']];
+  sheet.getRange(1, 1, 1, header[0].length).setValues(header);
+}
+
+function configureValidationStatusSheetUx_(sheet) {
+  ensureValidationStatusHeader_(sheet);
+  styleControlSurfaceSheet_(sheet, [220, 220, 100, 160, 420, 150]);
+  setHeaderNotes_(sheet, {
+    1: 'Stable internal check identifier.',
+    2: 'Human-readable validation step.',
+    3: 'ok or error.',
+    4: 'Compact primary result to scan quickly.',
+    5: 'Extra notes or failure detail.',
+    6: 'When this row was last refreshed.'
+  });
+  return 1;
+}
+
+function summarizeValidationCheckpointResult_(result) {
+  if (!result) {
+    return { primaryValue: '', notes: 'no result returned' };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(result, 'processedThreads')) {
+    const primaryParts = [`processed=${result.processedThreads}`];
+    if (Object.prototype.hasOwnProperty.call(result, 'itemCount')) primaryParts.push(`items=${result.itemCount}`);
+    const notes = [result.outcome || '', result.summary || '', result.notes || ''].filter(Boolean).join('; ');
+    return {
+      primaryValue: primaryParts.join('; '),
+      notes: truncateRunNote_(notes, 300)
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(result, 'itemCount')) {
+    const primaryParts = [`items=${result.itemCount}`];
+    if (result.type) primaryParts.push(`type=${result.type}`);
+    const notes = [result.summary || '', result.mode || '', result.outcome || ''].filter(Boolean).join('; ');
+    return {
+      primaryValue: primaryParts.join('; '),
+      notes: truncateRunNote_(notes, 300)
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(result, 'suggestionCount')) {
+    return {
+      primaryValue: `suggestions=${result.suggestionCount}`,
+      notes: truncateRunNote_(`rows-scanned=${result.scannedRows || ''}; mode=${result.mode || ''}`, 300)
+    };
+  }
+
+  return {
+    primaryValue: truncateRunNote_(JSON.stringify(result).slice(0, 120), 120),
+    notes: 'generic result summary'
+  };
+}
+
+function rebuildValidationStatusSheet_(sheet, rows) {
+  ensureValidationStatusHeader_(sheet);
+  const values = rows && rows.length ? rows : [];
+  const maxRowsToClear = Math.max(sheet.getLastRow() - 1, values.length, 1);
+  sheet.getRange(2, 1, maxRowsToClear, 6).clearContent();
+  if (values.length) {
+    sheet.getRange(2, 1, values.length, values[0].length).setValues(values);
+  }
+  configureValidationStatusSheetUx_(sheet);
+
+  return {
+    totalChecks: values.length,
+    successCount: values.filter(row => row[2] === 'ok').length,
+    failureCount: values.filter(row => row[2] === 'error').length
+  };
+}
+
 function styleControlSurfaceSheet_(sheet, widths) {
   if (!sheet) return;
   sheet.setFrozenRows(1);
@@ -643,7 +795,7 @@ function rebuildControlSurfaceStatusSheet_(sheet) {
     ['last-updated', formatControlSurfaceTimestamp_(new Date()), 'When this dashboard was last rebuilt', nextAction],
     ['operator-step-1', tuningSummary.newCount ? 'review TuningSuggestions' : 'check ControlSurfaceStatus', 'First operator action in the Phase 10 loop', tuningSummary.newCount ? 'Open TuningSuggestions and classify each new row as approved, rejected, or superseded.' : 'No fresh review work right now; use this sheet as the quick system overview.'],
     ['operator-step-2', tuningSummary.approved ? 'run review/import loop' : 'no import work pending', 'Second operator action after review', tuningSummary.approved ? 'Run runPhase10ReviewLoopOptionA() to import approved suggestions and refresh runtime.' : 'Import step is clear right now.'],
-    ['operator-step-3', 'refresh + validate', 'Final operator action after changes', 'Run rebuildControlSurfaceStatusPhase10() and a dry-run if you want a quick confidence check.'],
+    ['operator-step-3', 'refresh + validate', 'Final operator action after changes', 'Run runPhase10ValidationCheckpoint() for a compact confidence pass, then review ValidationStatus if anything fails.'],
     ['workflow-review-default', 'Review/Ambiguous', 'Ambiguous mail should stay review-only and workflow-blank unless another rule classifies it more confidently', 'Use this as the baseline mental model for operator review'],
     ['workflow-fyi-default', 'explicit only', 'FYI should be assigned intentionally for informational mail, not inferred from generic ambiguity', 'Use ApprovedRules fyi-sender or explicit model output when you really want FYI.'],
     ['workflow-news-label', newsWorkflowLabel, 'Current workflow label applied to News/Digest items; blank keeps news separate from FYI/notification', CONFIG.newsWorkflowLabel ? 'Keep only if this is an intentional operator choice.' : 'Recommended default: leave blank unless you explicitly want FYI/notification on news.'],

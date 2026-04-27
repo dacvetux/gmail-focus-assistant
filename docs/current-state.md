@@ -46,6 +46,7 @@ Important tabs:
 - `ApprovedRules`
 - `TuningSuggestions`
 - `ControlSurfaceStatus`
+- `ValidationStatus`
 - `OperatorGuide`
 - `AutomationHealthLog`
 
@@ -54,8 +55,8 @@ Current loop:
 2. review suggestions in `TuningSuggestions`
 3. approve or reject as needed
 4. import approved suggestions into `ApprovedRules`
-5. refresh runtime config
-6. validate with dry-runs and `RunLog`
+5. run `runPhase10ValidationCheckpoint()`
+6. inspect `ValidationStatus` / `RunLog` if anything looks off
 
 ## Recent important changes
 
@@ -64,6 +65,7 @@ Current loop:
 - operator-friendly approved-rule aliases and add/remove actions are live
 - automation-health auditing was added
 - trigger reinstall now reconciles stale unmanaged clock triggers instead of only deleting known managed handlers
+- a new `ValidationStatus` sheet plus `runPhase10ValidationCheckpoint()` provide a one-shot Option A confidence pass after review/import changes
 - ambiguous mail no longer auto-gets `2: FYI`
 - `Review/Ambiguous` now stays workflow-blank by default instead of inferring FYI from vague wording
 - `fyi-sender` / `forceFyiSenders` now means explicit workflow-only FYI routing for intentionally informational senders
