@@ -5,6 +5,7 @@ function setupControlSurfacePhase10() {
   getOrCreateNewsSourcesSheet_();
   getOrCreateApprovedRulesSheet_();
   getOrCreateTuningSuggestionsSheet_();
+  getOrCreateTuningReviewQueueSheet_();
   getOrCreateOperatorGuideSheet_();
   getOrCreateControlSurfaceStatusSheet_();
   getOrCreateValidationStatusSheet_();
@@ -35,6 +36,7 @@ function upgradeControlSurfacePhase10OptionA() {
   getOrCreateNewsSourcesSheet_();
   getOrCreateApprovedRulesSheet_();
   getOrCreateTuningSuggestionsSheet_();
+  getOrCreateTuningReviewQueueSheet_();
   getOrCreateOperatorGuideSheet_();
   getOrCreateControlSurfaceStatusSheet_();
   getOrCreateValidationStatusSheet_();
@@ -58,6 +60,7 @@ function upgradeControlSurfacePhase10OptionA() {
 function runPhase10ReviewLoopOptionA() {
   const syncSummary = syncApprovedRulesFromTuningSuggestionsPhase10();
   const refreshSummary = refreshConfigFromPreferencesPhase10_({ suppressLog: true });
+  const tuningReviewQueueSummary = rebuildTuningReviewQueueSheet_(getOrCreateTuningReviewQueueSheet_());
   const statusSummary = rebuildControlSurfaceStatusPhase10();
 
   logRunSummary_({
@@ -73,6 +76,7 @@ function runPhase10ReviewLoopOptionA() {
   return {
     syncSummary: syncSummary,
     refreshSummary: refreshSummary,
+    tuningReviewQueueSummary: tuningReviewQueueSummary,
     statusSummary: statusSummary
   };
 }
@@ -118,6 +122,7 @@ function runPhase10ValidationCheckpoint() {
   });
 
   const validationSummary = rebuildValidationStatusSheet_(getOrCreateValidationStatusSheet_(), rows);
+  const tuningReviewQueueSummary = rebuildTuningReviewQueueSheet_(getOrCreateTuningReviewQueueSheet_());
   const workflowAuditSummary = rebuildWorkflowAuditSheet_(getOrCreateWorkflowAuditSheet_());
   const statusSummary = rebuildControlSurfaceStatusPhase10();
 
@@ -134,6 +139,7 @@ function runPhase10ValidationCheckpoint() {
   return {
     refreshSummary: refreshSummary,
     validationSummary: validationSummary,
+    tuningReviewQueueSummary: tuningReviewQueueSummary,
     workflowAuditSummary: workflowAuditSummary,
     statusSummary: statusSummary
   };
@@ -150,6 +156,22 @@ function rebuildWorkflowAuditPhase10() {
     itemCount: summary.warningCount,
     outcome: summary.warningCount ? 'workflow-audit-warning' : 'workflow-audit-ok',
     notes: `rows=${summary.rowsScanned}; warnings=${summary.warningCount}; review-only=${summary.reviewOnlyCount}; notification=${summary.notificationCount}`
+  });
+
+  return summary;
+}
+
+function rebuildTuningReviewQueuePhase10() {
+  const summary = rebuildTuningReviewQueueSheet_(getOrCreateTuningReviewQueueSheet_());
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'rebuildTuningReviewQueuePhase10',
+    processedThreads: summary.totalRows,
+    itemCount: summary.actionableRows,
+    outcome: summary.actionableRows ? 'tuning-review-queue-ready' : 'tuning-review-queue-empty',
+    notes: `actionable=${summary.actionableRows}; new=${summary.newRows}; approved=${summary.approvedRows}`
   });
 
   return summary;
@@ -291,14 +313,15 @@ function getOrCreateOperatorGuideSheet_() {
     ['DigestSettings', 'Enable/disable digest types and per-digest limits', 'Set Enabled to yes/no and tune thread limits conservatively', 'morning, evening, news-morning, news-evening', 'If disabled, wrappers log digest-disabled instead of sending'],
     ['NewsSources', 'Explicit allow/exclude list for news senders', 'One sender per row; Action=news or exclude', 'Type=sender; Action=news|exclude; Enabled=yes|no', 'Use exclude for digest traffic that looks newsletter-like but should stay out'],
     ['TuningSuggestions', 'Review queue for proposed sender/routing changes', 'Change Status from new to approved/rejected/superseded after review', 'Status=new|approved|rejected|imported|already-imported|skipped|superseded', 'Approved rows can be imported into ApprovedRules'],
+    ['TuningReviewQueue', 'Compact operator queue built from actionable TuningSuggestions rows', 'Refresh via rebuildTuningReviewQueuePhase10() or runPhase10ReviewLoopOptionA()', 'Shows only new/approved rows plus next-action guidance and source row links', 'Use this when you want the work queue without the full historical suggestion sheet'],
     ['ApprovedRules', 'Runtime rules already approved by the operator', 'One rule per row; keep Approved=yes for active rules', 'Category=shipping-sender/commercial-sender/important-sender/fyi-sender/news-sender/news-exclude-sender; Action=add|remove', 'fyi-sender adds workflow-only FYI routing for intentionally informational senders'],
     ['ControlSurfaceStatus', 'Small operator dashboard for the current review/import state', 'Rebuild via rebuildControlSurfaceStatusPhase10() or runPhase10ReviewLoopOptionA()', 'Shows pending/new/approved/imported counts plus next-action guidance', 'Use this first before reviewing or importing'],
     ['ValidationStatus', 'Compact last-checkpoint view for the core dry-run validation loop', 'Refresh via runPhase10ValidationCheckpoint()', 'Shows ok/error plus key result for Phase 1, AI review, digests, and tuning suggestions', 'Use this after changes when you want a quick confidence pass without reading raw logs first'],
     ['WorkflowAudit', 'Recent DecisionLog semantics audit for review/FYI/notification/news behavior', 'Refresh via rebuildWorkflowAuditPhase10() or runPhase10ValidationCheckpoint()', 'Shows whether recent rows match the intended workflow semantics model plus example rows', 'Use this when Phase 10 semantics feel blurry or after any routing/label change'],
     ['Workflow label semantics', 'Clarify when to use review vs FYI vs notification', 'Treat Review/Ambiguous as unresolved mail, FYI as intentionally informational, and notification as low-response transactional/system updates', 'Review/Ambiguous should stay workflow-blank; News/Digest can stay workflow-blank', 'Default news behavior should stay separate unless the operator explicitly wants FYI/notification'],
     ['Automation health alerts', 'Optional lightweight escalation for wrapper failures or missed schedules', 'Enable only if you want email alerts; blank recipient keeps the feature safely silent', 'automationHealthAlertEnabled=false by default; min severity=warning|error', 'Repeated identical alerts are deduplicated to avoid spam'],
-    ['Recommended workflow', 'Use Sheets as the primary operator UI for now', '1) review ControlSurfaceStatus 2) review TuningSuggestions 3) mark approved/rejected/superseded 4) run runPhase10ReviewLoopOptionA() 5) run runPhase10ValidationCheckpoint() 6) confirm ValidationStatus, WorkflowAudit, and ControlSurfaceStatus updated', 'Option A now; Option B HTML UI later', 'Only move to the HTML phase once this workflow feels ~90% finalized'],
-    ['Fast commands', 'Exact helper functions for the operator loop', 'Use these when you want a quick refresh/import cycle without digging through code', 'rebuildControlSurfaceStatusPhase10(); rebuildWorkflowAuditPhase10(); runPhase10ReviewLoopOptionA(); runPhase10ValidationCheckpoint(); refreshConfigFromPreferencesPhase10()', 'These are the main Option A operator commands today']
+    ['Recommended workflow', 'Use Sheets as the primary operator UI for now', '1) review ControlSurfaceStatus 2) review TuningReviewQueue 3) update source rows in TuningSuggestions as approved/rejected/superseded 4) run runPhase10ReviewLoopOptionA() 5) run runPhase10ValidationCheckpoint() 6) confirm ValidationStatus, WorkflowAudit, TuningReviewQueue, and ControlSurfaceStatus updated', 'Option A now; Option B HTML UI later', 'Only move to the HTML phase once this workflow feels ~90% finalized'],
+    ['Fast commands', 'Exact helper functions for the operator loop', 'Use these when you want a quick refresh/import cycle without digging through code', 'rebuildControlSurfaceStatusPhase10(); rebuildTuningReviewQueuePhase10(); rebuildWorkflowAuditPhase10(); runPhase10ReviewLoopOptionA(); runPhase10ValidationCheckpoint(); refreshConfigFromPreferencesPhase10()', 'These are the main Option A operator commands today']
   ];
 
   sheet.clearContents();
@@ -328,6 +351,26 @@ function getOrCreateValidationStatusSheet_() {
   }
 
   ensureValidationStatusHeader_(sheet);
+  return sheet;
+}
+
+function getOrCreateTuningReviewQueueSheet_() {
+  const spreadsheet = getLogSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName('TuningReviewQueue');
+
+  if (!sheet) {
+    try {
+      sheet = spreadsheet.insertSheet('TuningReviewQueue');
+    } catch (error) {
+      if (!/already exists/i.test(String(error && error.message ? error.message : error))) {
+        throw error;
+      }
+      sheet = spreadsheet.getSheetByName('TuningReviewQueue') || spreadsheet.getSheets().find(candidate => candidate.getName() === 'TuningReviewQueue');
+      if (!sheet) throw error;
+    }
+  }
+
+  ensureTuningReviewQueueHeader_(sheet);
   return sheet;
 }
 
@@ -551,6 +594,7 @@ function applyControlSurfaceOptionAUx_() {
   const newsSourcesSheet = getOrCreateNewsSourcesSheet_();
   const approvedRulesSheet = getOrCreateApprovedRulesSheet_();
   const tuningSuggestionsSheet = getOrCreateTuningSuggestionsSheet_();
+  const tuningReviewQueueSheet = getOrCreateTuningReviewQueueSheet_();
   const operatorGuideSheet = getOrCreateOperatorGuideSheet_();
   const controlSurfaceStatusSheet = getOrCreateControlSurfaceStatusSheet_();
   const validationStatusSheet = getOrCreateValidationStatusSheet_();
@@ -562,19 +606,21 @@ function applyControlSurfaceOptionAUx_() {
   validationsApplied += configureNewsSourcesSheetUx_(newsSourcesSheet);
   validationsApplied += configureApprovedRulesSheetUx_(approvedRulesSheet);
   validationsApplied += configureTuningSuggestionsSheetUx_(tuningSuggestionsSheet);
+  validationsApplied += configureTuningReviewQueueSheetUx_(tuningReviewQueueSheet);
   styleControlSurfaceSheet_(operatorGuideSheet, [140, 260, 320, 320, 260]);
   styleControlSurfaceSheet_(controlSurfaceStatusSheet, [180, 180, 420, 420]);
   rebuildControlSurfaceStatusSheet_(controlSurfaceStatusSheet);
+  rebuildTuningReviewQueueSheet_(tuningReviewQueueSheet);
   configureValidationStatusSheetUx_(validationStatusSheet);
   configureWorkflowAuditSheetUx_(workflowAuditSheet);
   rebuildWorkflowAuditSheet_(workflowAuditSheet);
 
   return {
-    sheetsReady: ['Preferences', 'DigestSettings', 'NewsSources', 'ApprovedRules', 'TuningSuggestions', 'OperatorGuide', 'ControlSurfaceStatus', 'ValidationStatus', 'WorkflowAudit'],
-    sheetCount: 9,
+    sheetsReady: ['Preferences', 'DigestSettings', 'NewsSources', 'ApprovedRules', 'TuningSuggestions', 'TuningReviewQueue', 'OperatorGuide', 'ControlSurfaceStatus', 'ValidationStatus', 'WorkflowAudit'],
+    sheetCount: 10,
     validationsApplied: validationsApplied + 2,
     guideUpdated: true,
-    notes: `Option A UX prepared across 9 sheets; validations-applied=${validationsApplied + 2}`
+    notes: `Option A UX prepared across 10 sheets; validations-applied=${validationsApplied + 2}`
   };
 }
 
@@ -696,6 +742,30 @@ function configureTuningSuggestionsSheetUx_(sheet) {
     'reclassified-shipping'
   ]);
   normalizeBlankCellRange_(sheet, 2, 10, 'new');
+  return 1;
+}
+
+function ensureTuningReviewQueueHeader_(sheet) {
+  if (!sheet) return;
+  const header = [['Queue Status', 'Next Action', 'Suggestion Category', 'Suggested Change', 'Target', 'Evidence', 'Confidence', 'Example Subject', 'Source Row', 'Notes']];
+  sheet.getRange(1, 1, 1, header[0].length).setValues(header);
+}
+
+function configureTuningReviewQueueSheetUx_(sheet) {
+  ensureTuningReviewQueueHeader_(sheet);
+  styleControlSurfaceSheet_(sheet, [120, 180, 220, 220, 220, 90, 100, 320, 90, 420]);
+  setHeaderNotes_(sheet, {
+    1: 'Current actionable queue state copied from TuningSuggestions.',
+    2: 'What the operator should do next for this row.',
+    3: 'Suggestion family generated by the tuner.',
+    4: 'Recommended config/routing change.',
+    5: 'Usually the sender/domain fragment under review.',
+    6: 'How many supporting examples were seen.',
+    7: 'Heuristic confidence only.',
+    8: 'Representative subject for quick scanning.',
+    9: 'Original row number in TuningSuggestions to edit.',
+    10: 'Existing notes/provenance carried over from the source row.'
+  });
   return 1;
 }
 
@@ -837,6 +907,79 @@ function rebuildWorkflowAuditSheet_(sheet) {
   };
 }
 
+function rebuildTuningReviewQueueSheet_(sheet) {
+  ensureTuningReviewQueueHeader_(sheet);
+  const queueRows = readTuningReviewQueueRows_();
+  const values = queueRows.length ? queueRows : [[
+    'info',
+    'No actionable tuning suggestions right now.',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    'Review queue is clear; generate new suggestions or continue validation work.'
+  ]];
+
+  const maxRowsToClear = Math.max(sheet.getLastRow() - 1, values.length, 1);
+  sheet.getRange(2, 1, maxRowsToClear, 10).clearContent();
+  sheet.getRange(2, 1, values.length, values[0].length).setValues(values);
+  configureTuningReviewQueueSheetUx_(sheet);
+
+  const summary = summarizeTuningReviewQueueRows_(queueRows);
+  return summary;
+}
+
+function readTuningReviewQueueRows_() {
+  const sheet = getOrCreateTuningSuggestionsSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return [];
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 11).getDisplayValues();
+  const queueRows = [];
+
+  values.forEach((row, index) => {
+    const status = String(row[9] || '').trim().toLowerCase() || 'new';
+    if (status !== 'new' && status !== 'approved') return;
+    const category = String(row[1] || '').trim().toLowerCase();
+    if (category === 'no-suggestions') return;
+
+    queueRows.push([
+      status,
+      status === 'approved' ? 'Run runPhase10ReviewLoopOptionA() to import this approved row.' : 'Review in TuningSuggestions and mark approved/rejected/superseded.',
+      row[1] || '',
+      row[2] || '',
+      row[3] || '',
+      row[4] || '',
+      row[5] || '',
+      row[7] || '',
+      index + 2,
+      row[10] || ''
+    ]);
+  });
+
+  return queueRows.sort((left, right) => {
+    const leftPriority = left[0] === 'approved' ? 0 : 1;
+    const rightPriority = right[0] === 'approved' ? 0 : 1;
+    if (leftPriority !== rightPriority) return leftPriority - rightPriority;
+    const leftEvidence = Number(left[5] || 0);
+    const rightEvidence = Number(right[5] || 0);
+    if (leftEvidence !== rightEvidence) return rightEvidence - leftEvidence;
+    return String(left[4] || '').localeCompare(String(right[4] || ''));
+  });
+}
+
+function summarizeTuningReviewQueueRows_(rows) {
+  return {
+    totalRows: (rows || []).length,
+    actionableRows: (rows || []).length,
+    approvedRows: (rows || []).filter(row => row[0] === 'approved').length,
+    newRows: (rows || []).filter(row => row[0] === 'new').length
+  };
+}
+
 function summarizeWorkflowAuditBucket_(rows, predicate) {
   const matches = (rows || []).filter(row => predicate(row));
   return {
@@ -924,7 +1067,7 @@ function rebuildControlSurfaceStatusSheet_(sheet) {
   const rows = [
     ['Metric', 'Value', 'Meaning', 'Next action'],
     ['last-updated', formatControlSurfaceTimestamp_(new Date()), 'When this dashboard was last rebuilt', nextAction],
-    ['operator-step-1', tuningSummary.newCount ? 'review TuningSuggestions' : 'check ControlSurfaceStatus', 'First operator action in the Phase 10 loop', tuningSummary.newCount ? 'Open TuningSuggestions and classify each new row as approved, rejected, or superseded.' : 'No fresh review work right now; use this sheet as the quick system overview.'],
+    ['operator-step-1', tuningSummary.newCount ? 'review TuningReviewQueue' : 'check ControlSurfaceStatus', 'First operator action in the Phase 10 loop', tuningSummary.newCount ? 'Open TuningReviewQueue, then update the referenced source rows in TuningSuggestions as approved, rejected, or superseded.' : 'No fresh review work right now; use this sheet as the quick system overview.'],
     ['operator-step-2', tuningSummary.approved ? 'run review/import loop' : 'no import work pending', 'Second operator action after review', tuningSummary.approved ? 'Run runPhase10ReviewLoopOptionA() to import approved suggestions and refresh runtime.' : 'Import step is clear right now.'],
     ['operator-step-3', 'refresh + validate', 'Final operator action after changes', 'Run runPhase10ValidationCheckpoint() for a compact confidence pass, then review ValidationStatus if anything fails.'],
     ['workflow-review-default', 'Review/Ambiguous', 'Ambiguous mail should stay review-only and workflow-blank unless another rule classifies it more confidently', 'Use this as the baseline mental model for operator review'],

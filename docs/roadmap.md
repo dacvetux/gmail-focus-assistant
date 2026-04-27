@@ -26,7 +26,7 @@ The main active roadmap focus is now **Phase 10 Option A**: making the Google Sh
 - approved sender rules now load from `ApprovedRules` into runtime config
 - tuning suggestions can be promoted into approved rules via a sheet-based review loop
 - `ApprovedRules` supports operator-friendly category aliases plus `add` / `remove` actions
-- `ControlSurfaceStatus`, `ValidationStatus`, `WorkflowAudit`, `OperatorGuide`, and `AutomationHealthLog` are live
+- `ControlSurfaceStatus`, `ValidationStatus`, `WorkflowAudit`, `TuningReviewQueue`, `OperatorGuide`, and `AutomationHealthLog` are live
 - automation-health auditing is live
 - ambiguous mail no longer auto-gets `2: FYI`; review and FYI semantics are being cleaned up further
 
