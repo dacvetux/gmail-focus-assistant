@@ -20,6 +20,7 @@ Implemented and actively usable:
 Operationally live now:
 - Apps Script API execution and `clasp run` are working again
 - wrapper automation and managed triggers are installed
+- trigger inventory / cleanup support now exists for stale unmanaged clock triggers
 - automation-health auditing is live
 - script timezone is corrected to `Europe/Ljubljana`
 - approved sheet rules affect runtime behavior
@@ -62,6 +63,7 @@ Current loop:
 - approved rules now form a real runtime loop rather than passive sheet data
 - operator-friendly approved-rule aliases and add/remove actions are live
 - automation-health auditing was added
+- trigger reinstall now reconciles stale unmanaged clock triggers instead of only deleting known managed handlers
 - ambiguous mail no longer auto-gets `2: FYI`
 - `Review/Ambiguous` now stays workflow-blank by default instead of inferring FYI from vague wording
 - `fyi-sender` / `forceFyiSenders` now means explicit workflow-only FYI routing for intentionally informational senders

@@ -22,6 +22,16 @@ clasp status
 clasp push
 ```
 
+Useful operational helpers after deploy:
+
+```bash
+clasp run listProjectTriggers
+clasp run deleteUnmanagedClockTriggers
+clasp run installAutomationTriggers
+```
+
+`installAutomationTriggers()` now reconciles the project clock-trigger set by deleting both managed wrappers and stale unmanaged clock triggers before recreating the intended schedule.
+
 ## First-run setup
 
 In `src/config.gs`, set:

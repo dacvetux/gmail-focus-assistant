@@ -28,7 +28,10 @@ function processInboxFocusPhase1() {
 }
 
 function installAutomationTriggers() {
-  const deletedCount = deleteAutomationTriggers_();
+  const cleanup = deleteAutomationTriggers_({
+    deleteManagedTriggers: true,
+    deleteUnmanagedClockTriggers: true
+  });
   const created = AUTOMATION_TRIGGER_SPECS.map(spec => createDailyAutomationTrigger_(spec));
 
   logRunSummary_({
@@ -38,32 +41,56 @@ function installAutomationTriggers() {
     processedThreads: 0,
     itemCount: created.length,
     outcome: 'installed',
-    notes: `deleted-existing=${deletedCount}; created=${created.length}`
+    notes: `deleted-managed=${cleanup.deletedManagedCount}; deleted-unmanaged-clock=${cleanup.deletedUnmanagedClockCount}; created=${created.length}`
   });
 
   return {
-    deletedExisting: deletedCount,
+    deletedManagedCount: cleanup.deletedManagedCount,
+    deletedUnmanagedClockCount: cleanup.deletedUnmanagedClockCount,
     createdCount: created.length,
     triggers: created
   };
 }
 
 function deleteAutomationTriggers() {
-  const deletedCount = deleteAutomationTriggers_();
+  const cleanup = deleteAutomationTriggers_({
+    deleteManagedTriggers: true,
+    deleteUnmanagedClockTriggers: false
+  });
 
   logRunSummary_({
     runType: 'automation-triggers',
     mode: 'internal',
     entryPoint: 'deleteAutomationTriggers',
     processedThreads: 0,
-    itemCount: deletedCount,
-    outcome: deletedCount ? 'deleted' : 'no-managed-triggers',
-    notes: `deleted=${deletedCount}`
+    itemCount: cleanup.deletedManagedCount,
+    outcome: cleanup.deletedManagedCount ? 'deleted' : 'no-managed-triggers',
+    notes: `deleted-managed=${cleanup.deletedManagedCount}`
   });
 
   return {
-    deletedCount: deletedCount
+    deletedManagedCount: cleanup.deletedManagedCount,
+    deletedUnmanagedClockCount: cleanup.deletedUnmanagedClockCount
   };
+}
+
+function deleteUnmanagedClockTriggers() {
+  const cleanup = deleteAutomationTriggers_({
+    deleteManagedTriggers: false,
+    deleteUnmanagedClockTriggers: true
+  });
+
+  logRunSummary_({
+    runType: 'automation-triggers',
+    mode: 'internal',
+    entryPoint: 'deleteUnmanagedClockTriggers',
+    processedThreads: 0,
+    itemCount: cleanup.deletedUnmanagedClockCount,
+    outcome: cleanup.deletedUnmanagedClockCount ? 'deleted-unmanaged-clock-triggers' : 'no-unmanaged-clock-triggers',
+    notes: `deleted-unmanaged-clock=${cleanup.deletedUnmanagedClockCount}`
+  });
+
+  return cleanup;
 }
 
 function listAutomationTriggers() {
@@ -77,6 +104,23 @@ function listAutomationTriggers() {
     itemCount: triggers.length,
     outcome: 'listed',
     notes: `managed-triggers=${triggers.length}`
+  });
+
+  return triggers;
+}
+
+function listProjectTriggers() {
+  const triggers = listProjectTriggers_();
+  const unmanagedClockCount = triggers.filter(trigger => trigger.isClockTrigger && !trigger.isManagedAutomationTrigger).length;
+
+  logRunSummary_({
+    runType: 'automation-triggers',
+    mode: 'internal',
+    entryPoint: 'listProjectTriggers',
+    processedThreads: 0,
+    itemCount: triggers.length,
+    outcome: 'listed-all',
+    notes: `all=${triggers.length}; managed=${triggers.filter(trigger => trigger.isManagedAutomationTrigger).length}; unmanaged-clock=${unmanagedClockCount}`
   });
 
   return triggers;
@@ -643,33 +687,66 @@ function createDailyAutomationTrigger_(spec) {
   };
 }
 
-function deleteAutomationTriggers_() {
-  const managedNames = getManagedAutomationFunctionNames_();
-  let deletedCount = 0;
+function deleteAutomationTriggers_(options) {
+  const settings = options || {};
+  const deleteManagedTriggers = settings.deleteManagedTriggers !== false;
+  const deleteUnmanagedClockTriggers = Boolean(settings.deleteUnmanagedClockTriggers);
+  let deletedManagedCount = 0;
+  let deletedUnmanagedClockCount = 0;
 
-  ScriptApp.getProjectTriggers().forEach(trigger => {
-    if (managedNames.indexOf(trigger.getHandlerFunction()) === -1) {
+  listProjectTriggers_().forEach(trigger => {
+    if (trigger.isManagedAutomationTrigger) {
+      if (!deleteManagedTriggers) return;
+      ScriptApp.deleteTrigger(trigger.trigger);
+      deletedManagedCount += 1;
       return;
     }
 
-    ScriptApp.deleteTrigger(trigger);
-    deletedCount += 1;
+    if (deleteUnmanagedClockTriggers && trigger.isClockTrigger) {
+      ScriptApp.deleteTrigger(trigger.trigger);
+      deletedUnmanagedClockCount += 1;
+    }
   });
 
-  return deletedCount;
+  return {
+    deletedManagedCount: deletedManagedCount,
+    deletedUnmanagedClockCount: deletedUnmanagedClockCount
+  };
 }
 
 function listManagedAutomationTriggers_() {
+  return listProjectTriggers_()
+    .filter(trigger => trigger.isManagedAutomationTrigger)
+    .map(buildTriggerSummary_);
+}
+
+function listProjectTriggers_() {
   const managedNames = getManagedAutomationFunctionNames_();
 
-  return ScriptApp.getProjectTriggers()
-    .filter(trigger => managedNames.indexOf(trigger.getHandlerFunction()) !== -1)
-    .map(trigger => ({
-      functionName: trigger.getHandlerFunction(),
+  return ScriptApp.getProjectTriggers().map(trigger => {
+    const functionName = trigger.getHandlerFunction();
+    const triggerSource = String(trigger.getTriggerSource());
+    return {
+      trigger: trigger,
+      functionName: functionName,
       eventType: String(trigger.getEventType()),
-      triggerSource: String(trigger.getTriggerSource()),
-      uniqueId: trigger.getUniqueId ? trigger.getUniqueId() : ''
-    }));
+      triggerSource: triggerSource,
+      uniqueId: trigger.getUniqueId ? trigger.getUniqueId() : '',
+      isManagedAutomationTrigger: managedNames.indexOf(functionName) !== -1,
+      isClockTrigger: triggerSource === 'CLOCK'
+    };
+  });
+}
+
+function buildTriggerSummary_(trigger) {
+  return {
+    functionName: trigger.functionName,
+    eventType: trigger.eventType,
+    triggerSource: trigger.triggerSource,
+    uniqueId: trigger.uniqueId,
+    isManagedAutomationTrigger: trigger.isManagedAutomationTrigger,
+    isClockTrigger: trigger.isClockTrigger
+  };
 }
 
 function getManagedAutomationFunctionNames_() {
