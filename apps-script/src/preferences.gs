@@ -8,6 +8,7 @@ function setupControlSurfacePhase10() {
   getOrCreateOperatorGuideSheet_();
   getOrCreateControlSurfaceStatusSheet_();
   getOrCreateValidationStatusSheet_();
+  getOrCreateWorkflowAuditSheet_();
   const uxSummary = applyControlSurfaceOptionAUx_();
 
   logRunSummary_({
@@ -37,6 +38,7 @@ function upgradeControlSurfacePhase10OptionA() {
   getOrCreateOperatorGuideSheet_();
   getOrCreateControlSurfaceStatusSheet_();
   getOrCreateValidationStatusSheet_();
+  getOrCreateWorkflowAuditSheet_();
 
   const summary = applyControlSurfaceOptionAUx_();
 
@@ -116,6 +118,7 @@ function runPhase10ValidationCheckpoint() {
   });
 
   const validationSummary = rebuildValidationStatusSheet_(getOrCreateValidationStatusSheet_(), rows);
+  const workflowAuditSummary = rebuildWorkflowAuditSheet_(getOrCreateWorkflowAuditSheet_());
   const statusSummary = rebuildControlSurfaceStatusPhase10();
 
   logRunSummary_({
@@ -125,14 +128,31 @@ function runPhase10ValidationCheckpoint() {
     processedThreads: checks.length,
     itemCount: successCount,
     outcome: failureCount ? 'validation-checkpoint-failed' : 'validation-checkpoint-ok',
-    notes: `success=${successCount}; failed=${failureCount}; approved-rules-configured=${refreshSummary.approvedRulesConfigured}`
+    notes: `success=${successCount}; failed=${failureCount}; workflow-warning=${workflowAuditSummary.warningCount}; approved-rules-configured=${refreshSummary.approvedRulesConfigured}`
   });
 
   return {
     refreshSummary: refreshSummary,
     validationSummary: validationSummary,
+    workflowAuditSummary: workflowAuditSummary,
     statusSummary: statusSummary
   };
+}
+
+function rebuildWorkflowAuditPhase10() {
+  const summary = rebuildWorkflowAuditSheet_(getOrCreateWorkflowAuditSheet_());
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'rebuildWorkflowAuditPhase10',
+    processedThreads: summary.rowsScanned,
+    itemCount: summary.warningCount,
+    outcome: summary.warningCount ? 'workflow-audit-warning' : 'workflow-audit-ok',
+    notes: `rows=${summary.rowsScanned}; warnings=${summary.warningCount}; review-only=${summary.reviewOnlyCount}; notification=${summary.notificationCount}`
+  });
+
+  return summary;
 }
 
 function getPreferenceValue_(key, fallbackValue) {
@@ -274,10 +294,11 @@ function getOrCreateOperatorGuideSheet_() {
     ['ApprovedRules', 'Runtime rules already approved by the operator', 'One rule per row; keep Approved=yes for active rules', 'Category=shipping-sender/commercial-sender/important-sender/fyi-sender/news-sender/news-exclude-sender; Action=add|remove', 'fyi-sender adds workflow-only FYI routing for intentionally informational senders'],
     ['ControlSurfaceStatus', 'Small operator dashboard for the current review/import state', 'Rebuild via rebuildControlSurfaceStatusPhase10() or runPhase10ReviewLoopOptionA()', 'Shows pending/new/approved/imported counts plus next-action guidance', 'Use this first before reviewing or importing'],
     ['ValidationStatus', 'Compact last-checkpoint view for the core dry-run validation loop', 'Refresh via runPhase10ValidationCheckpoint()', 'Shows ok/error plus key result for Phase 1, AI review, digests, and tuning suggestions', 'Use this after changes when you want a quick confidence pass without reading raw logs first'],
+    ['WorkflowAudit', 'Recent DecisionLog semantics audit for review/FYI/notification/news behavior', 'Refresh via rebuildWorkflowAuditPhase10() or runPhase10ValidationCheckpoint()', 'Shows whether recent rows match the intended workflow semantics model plus example rows', 'Use this when Phase 10 semantics feel blurry or after any routing/label change'],
     ['Workflow label semantics', 'Clarify when to use review vs FYI vs notification', 'Treat Review/Ambiguous as unresolved mail, FYI as intentionally informational, and notification as low-response transactional/system updates', 'Review/Ambiguous should stay workflow-blank; News/Digest can stay workflow-blank', 'Default news behavior should stay separate unless the operator explicitly wants FYI/notification'],
     ['Automation health alerts', 'Optional lightweight escalation for wrapper failures or missed schedules', 'Enable only if you want email alerts; blank recipient keeps the feature safely silent', 'automationHealthAlertEnabled=false by default; min severity=warning|error', 'Repeated identical alerts are deduplicated to avoid spam'],
-    ['Recommended workflow', 'Use Sheets as the primary operator UI for now', '1) review ControlSurfaceStatus 2) review TuningSuggestions 3) mark approved/rejected/superseded 4) run runPhase10ReviewLoopOptionA() 5) run runPhase10ValidationCheckpoint() 6) confirm ValidationStatus and ControlSurfaceStatus updated', 'Option A now; Option B HTML UI later', 'Only move to the HTML phase once this workflow feels ~90% finalized'],
-    ['Fast commands', 'Exact helper functions for the operator loop', 'Use these when you want a quick refresh/import cycle without digging through code', 'rebuildControlSurfaceStatusPhase10(); runPhase10ReviewLoopOptionA(); runPhase10ValidationCheckpoint(); refreshConfigFromPreferencesPhase10()', 'These are the main Option A operator commands today']
+    ['Recommended workflow', 'Use Sheets as the primary operator UI for now', '1) review ControlSurfaceStatus 2) review TuningSuggestions 3) mark approved/rejected/superseded 4) run runPhase10ReviewLoopOptionA() 5) run runPhase10ValidationCheckpoint() 6) confirm ValidationStatus, WorkflowAudit, and ControlSurfaceStatus updated', 'Option A now; Option B HTML UI later', 'Only move to the HTML phase once this workflow feels ~90% finalized'],
+    ['Fast commands', 'Exact helper functions for the operator loop', 'Use these when you want a quick refresh/import cycle without digging through code', 'rebuildControlSurfaceStatusPhase10(); rebuildWorkflowAuditPhase10(); runPhase10ReviewLoopOptionA(); runPhase10ValidationCheckpoint(); refreshConfigFromPreferencesPhase10()', 'These are the main Option A operator commands today']
   ];
 
   sheet.clearContents();
@@ -307,6 +328,18 @@ function getOrCreateValidationStatusSheet_() {
   }
 
   ensureValidationStatusHeader_(sheet);
+  return sheet;
+}
+
+function getOrCreateWorkflowAuditSheet_() {
+  const spreadsheet = getLogSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName('WorkflowAudit');
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('WorkflowAudit');
+  }
+
+  ensureWorkflowAuditHeader_(sheet);
   return sheet;
 }
 
@@ -521,6 +554,7 @@ function applyControlSurfaceOptionAUx_() {
   const operatorGuideSheet = getOrCreateOperatorGuideSheet_();
   const controlSurfaceStatusSheet = getOrCreateControlSurfaceStatusSheet_();
   const validationStatusSheet = getOrCreateValidationStatusSheet_();
+  const workflowAuditSheet = getOrCreateWorkflowAuditSheet_();
 
   let validationsApplied = 0;
   validationsApplied += configurePreferencesSheetUx_(preferencesSheet);
@@ -532,13 +566,15 @@ function applyControlSurfaceOptionAUx_() {
   styleControlSurfaceSheet_(controlSurfaceStatusSheet, [180, 180, 420, 420]);
   rebuildControlSurfaceStatusSheet_(controlSurfaceStatusSheet);
   configureValidationStatusSheetUx_(validationStatusSheet);
+  configureWorkflowAuditSheetUx_(workflowAuditSheet);
+  rebuildWorkflowAuditSheet_(workflowAuditSheet);
 
   return {
-    sheetsReady: ['Preferences', 'DigestSettings', 'NewsSources', 'ApprovedRules', 'TuningSuggestions', 'OperatorGuide', 'ControlSurfaceStatus', 'ValidationStatus'],
-    sheetCount: 8,
-    validationsApplied: validationsApplied + 1,
+    sheetsReady: ['Preferences', 'DigestSettings', 'NewsSources', 'ApprovedRules', 'TuningSuggestions', 'OperatorGuide', 'ControlSurfaceStatus', 'ValidationStatus', 'WorkflowAudit'],
+    sheetCount: 9,
+    validationsApplied: validationsApplied + 2,
     guideUpdated: true,
-    notes: `Option A UX prepared across 8 sheets; validations-applied=${validationsApplied + 1}`
+    notes: `Option A UX prepared across 9 sheets; validations-applied=${validationsApplied + 2}`
   };
 }
 
@@ -683,6 +719,26 @@ function configureValidationStatusSheetUx_(sheet) {
   return 1;
 }
 
+function ensureWorkflowAuditHeader_(sheet) {
+  if (!sheet) return;
+  const header = [['Audit Key', 'Status', 'Count', 'Example', 'Notes', 'Last Updated']];
+  sheet.getRange(1, 1, 1, header[0].length).setValues(header);
+}
+
+function configureWorkflowAuditSheetUx_(sheet) {
+  ensureWorkflowAuditHeader_(sheet);
+  styleControlSurfaceSheet_(sheet, [220, 120, 90, 420, 420, 150]);
+  setHeaderNotes_(sheet, {
+    1: 'Stable audit row identifier.',
+    2: 'ok, warning, or info.',
+    3: 'Recent DecisionLog count for this bucket.',
+    4: 'One representative recent row for operator context.',
+    5: 'Why this matters or what to do next.',
+    6: 'When the audit was last rebuilt.'
+  });
+  return 1;
+}
+
 function summarizeValidationCheckpointResult_(result) {
   if (!result) {
     return { primaryValue: '', notes: 'no result returned' };
@@ -736,6 +792,81 @@ function rebuildValidationStatusSheet_(sheet, rows) {
     successCount: values.filter(row => row[2] === 'ok').length,
     failureCount: values.filter(row => row[2] === 'error').length
   };
+}
+
+function rebuildWorkflowAuditSheet_(sheet) {
+  ensureWorkflowAuditHeader_(sheet);
+  const rows = readRecentDecisionRows_(200);
+  const now = formatControlSurfaceTimestamp_(new Date());
+
+  const reviewOnly = summarizeWorkflowAuditBucket_(rows, row => hasExactAppliedLabels_(row.appliedLabels, [CONFIG.labels.review]));
+  const legacyReviewFyi = summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.review) && hasAppliedLabel_(row.appliedLabels, CONFIG.labels.fyi));
+  const explicitFyi = summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.fyi) && !hasAppliedLabel_(row.appliedLabels, CONFIG.labels.review));
+  const notification = summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.notification));
+  const newsBlank = summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.newsDigest) && !hasAnyAppliedLabel_(row.appliedLabels, [CONFIG.labels.toRespond, CONFIG.labels.fyi, CONFIG.labels.notification]));
+  const newsWithWorkflow = summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.newsDigest) && hasAnyAppliedLabel_(row.appliedLabels, [CONFIG.labels.toRespond, CONFIG.labels.fyi, CONFIG.labels.notification]));
+  const archivedReview = summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.review) && String(row.archived || '').trim().toLowerCase() === 'yes');
+
+  const values = [
+    ['last-updated', 'info', '', '', 'When this workflow semantics audit was rebuilt.', now],
+    ['rows-scanned', rows.length ? 'info' : 'warning', rows.length, '', rows.length ? 'Recent DecisionLog rows inspected for workflow semantics drift.' : 'No recent DecisionLog rows found; run a dry-run or live processing pass first.', now],
+    ['review-only', 'info', reviewOnly.count, reviewOnly.example, 'Expected baseline for unresolved ambiguous mail: review-only and workflow-blank.', now],
+    ['legacy-review-plus-fyi', legacyReviewFyi.count ? 'warning' : 'ok', legacyReviewFyi.count, legacyReviewFyi.example, legacyReviewFyi.count ? 'Older `Review/Ambiguous, 2: FYI` shape still appeared in recent logs; review whether a remaining path still emits it.' : 'No recent legacy review+FYI rows found.', now],
+    ['explicit-fyi', 'info', explicitFyi.count, explicitFyi.example, 'FYI should be intentional informational routing, not generic ambiguity fallback.', now],
+    ['notification', 'info', notification.count, notification.example, 'Notification should capture low-response transactional/system/status updates.', now],
+    ['news-blank-workflow', newsBlank.count ? 'ok' : 'info', newsBlank.count, newsBlank.example, 'Default healthy shape when News/Digest stays separate from workflow labels.', now],
+    ['news-with-workflow', newsWithWorkflow.count && !CONFIG.newsWorkflowLabel ? 'warning' : 'info', newsWithWorkflow.count, newsWithWorkflow.example, CONFIG.newsWorkflowLabel ? `News workflow label is intentionally set to ${CONFIG.newsWorkflowLabel}.` : 'Should usually stay at zero unless the operator intentionally enabled a news workflow label.', now],
+    ['archived-review', archivedReview.count ? 'warning' : 'ok', archivedReview.count, archivedReview.example, archivedReview.count ? 'Review/Ambiguous rows were archived recently; confirm this is intentional rather than hiding unresolved mail.' : 'No recent archived review rows found.', now]
+  ];
+
+  const maxRowsToClear = Math.max(sheet.getLastRow() - 1, values.length, 1);
+  sheet.getRange(2, 1, maxRowsToClear, 6).clearContent();
+  sheet.getRange(2, 1, values.length, values[0].length).setValues(values);
+  configureWorkflowAuditSheetUx_(sheet);
+
+  return {
+    rowsScanned: rows.length,
+    reviewOnlyCount: reviewOnly.count,
+    legacyReviewFyiCount: legacyReviewFyi.count,
+    explicitFyiCount: explicitFyi.count,
+    notificationCount: notification.count,
+    newsBlankCount: newsBlank.count,
+    newsWithWorkflowCount: newsWithWorkflow.count,
+    archivedReviewCount: archivedReview.count,
+    warningCount: values.filter(row => row[1] === 'warning').length
+  };
+}
+
+function summarizeWorkflowAuditBucket_(rows, predicate) {
+  const matches = (rows || []).filter(row => predicate(row));
+  return {
+    count: matches.length,
+    example: formatWorkflowAuditExample_(matches[0])
+  };
+}
+
+function formatWorkflowAuditExample_(row) {
+  if (!row) return '';
+  const from = truncateRunNote_(String(row.from || '').trim(), 80);
+  const subject = truncateRunNote_(String(row.subject || '').trim(), 120);
+  if (from && subject) return `${from} — ${subject}`;
+  return from || subject || '';
+}
+
+function hasAppliedLabel_(appliedLabels, labelName) {
+  if (!labelName) return false;
+  return String(appliedLabels || '').split(',').map(entry => entry.trim()).filter(Boolean).includes(labelName);
+}
+
+function hasAnyAppliedLabel_(appliedLabels, labelNames) {
+  return (labelNames || []).some(labelName => hasAppliedLabel_(appliedLabels, labelName));
+}
+
+function hasExactAppliedLabels_(appliedLabels, expectedLabels) {
+  const actual = String(appliedLabels || '').split(',').map(entry => entry.trim()).filter(Boolean);
+  const expected = (expectedLabels || []).filter(Boolean);
+  if (actual.length !== expected.length) return false;
+  return expected.every(labelName => actual.includes(labelName));
 }
 
 function styleControlSurfaceSheet_(sheet, widths) {

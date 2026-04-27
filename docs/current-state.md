@@ -50,6 +50,7 @@ Important tabs:
 - `TuningSuggestions`
 - `ControlSurfaceStatus`
 - `ValidationStatus`
+- `WorkflowAudit`
 - `OperatorGuide`
 - `AutomationHealthLog`
 
@@ -59,7 +60,7 @@ Current loop:
 3. approve or reject as needed
 4. import approved suggestions into `ApprovedRules`
 5. run `runPhase10ValidationCheckpoint()`
-6. inspect `ValidationStatus` / `RunLog` if anything looks off
+6. inspect `ValidationStatus`, `WorkflowAudit`, and `RunLog` if anything looks off
 
 ## Recent important changes
 
@@ -69,6 +70,7 @@ Current loop:
 - automation-health auditing was added
 - trigger reinstall now reconciles stale unmanaged clock triggers instead of only deleting known managed handlers
 - a new `ValidationStatus` sheet plus `runPhase10ValidationCheckpoint()` provide a one-shot Option A confidence pass after review/import changes
+- a new `WorkflowAudit` sheet plus `rebuildWorkflowAuditPhase10()` provide a compact recent-log check for review/FYI/notification/news semantics drift
 - ambiguous mail no longer auto-gets `2: FYI`
 - `Review/Ambiguous` now stays workflow-blank by default instead of inferring FYI from vague wording
 - `fyi-sender` / `forceFyiSenders` now means explicit workflow-only FYI routing for intentionally informational senders

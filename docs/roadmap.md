@@ -26,7 +26,7 @@ The main active roadmap focus is now **Phase 10 Option A**: making the Google Sh
 - approved sender rules now load from `ApprovedRules` into runtime config
 - tuning suggestions can be promoted into approved rules via a sheet-based review loop
 - `ApprovedRules` supports operator-friendly category aliases plus `add` / `remove` actions
-- `ControlSurfaceStatus`, `ValidationStatus`, `OperatorGuide`, and `AutomationHealthLog` are live
+- `ControlSurfaceStatus`, `ValidationStatus`, `WorkflowAudit`, `OperatorGuide`, and `AutomationHealthLog` are live
 - automation-health auditing is live
 - ambiguous mail no longer auto-gets `2: FYI`; review and FYI semantics are being cleaned up further
 
@@ -37,6 +37,7 @@ The main active roadmap focus is now **Phase 10 Option A**: making the Google Sh
 - keep improving the existing Sheets control surface as the primary operator UI
 - keep the review/import/validate loop compact enough that operators can confirm changes without digging through raw logs every time
 - stabilize statuses, approval actions, validation rules, helper views, and operator terminology
+- keep recent-log semantics auditing visible enough that workflow drift is obvious without manual log spelunking
 - tighten docs/testing so operator expectations match real runtime behavior
 
 ### Phase 10 UX deployment path
