@@ -23,9 +23,9 @@ Implemented and in active use:
 - **Phase 5:** draft-only reply assistance in a narrow, validated form
 - **Phase 6:** visibility-first follow-up tracking and digest surfacing
 - **Phase 7:** operational reporting and live tuning via `RunLog`
-- **Phase 8:** separate `News/Digest` lane with dedicated morning/evening news digests
-- **Phase 9:** recommendation-first tuning suggestions via `TuningSuggestions`
-- **Phase 10:** spreadsheet control surface with runtime-loaded preferences, digest/news settings, and approved-rule application
+- **Phase 8:** separate `News/Digest` lane with dedicated morning/evening news digests (shipped; remaining polish folded into Phase 10)
+- **Phase 9:** recommendation-first tuning suggestions via `TuningSuggestions` (shipped; remaining polish folded into Phase 10)
+- **Phase 10:** spreadsheet control surface with runtime-loaded preferences, digest/news settings, approved-rule application, and the remaining news/tuning/operator-loop polish
 
 Recent operational status:
 - `clasp run` execution and API-executable deployment are working again

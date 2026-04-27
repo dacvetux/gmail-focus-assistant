@@ -13,9 +13,9 @@ Implemented and actively usable:
 - **Phase 5:** narrow draft-only reply assistance
 - **Phase 6:** visibility-first follow-up tracking and digest surfacing
 - **Phase 7:** operational reporting via `RunLog`
-- **Phase 8:** separate `News/Digest` lane with dedicated digests
-- **Phase 9:** recommendation-first tuning suggestions in `TuningSuggestions`
-- **Phase 10:** sheet-backed control surface with runtime-loaded preferences, approved rules, review/import workflow, and status dashboard
+- **Phase 8:** separate `News/Digest` lane with dedicated digests (shipped; residual polish now tracked under Phase 10)
+- **Phase 9:** recommendation-first tuning suggestions in `TuningSuggestions` (shipped; residual polish now tracked under Phase 10)
+- **Phase 10:** sheet-backed control surface with runtime-loaded preferences, approved rules, review/import workflow, validation checkpoint, and status dashboard
 
 Operationally live now:
 - Apps Script API execution and `clasp run` are working again
@@ -71,12 +71,14 @@ Current loop:
 - `fyi-sender` / `forceFyiSenders` now means explicit workflow-only FYI routing for intentionally informational senders
 - news now defaults to `News/Digest` without a workflow label unless the operator explicitly re-enables FYI/notification in `Preferences`
 - a live repair pass removed false FYI labels from historical mailbox threads
-- a follow-up issue now tracks long-term FYI vs review semantics cleanup: **GitHub issue #8**
+- long-term FYI vs review semantics cleanup now lives directly inside active Phase 10 work rather than a separately open phase-tracking issue
 
 ## Current roadmap focus
 
 ### Now
 - finish Phase 10 **Option A** polish in Google Sheets
+- carry the remaining Phase 8 news-boundary/default/control cleanup inside Phase 10
+- carry the remaining Phase 9 suggestion-quality/workflow cleanup inside Phase 10
 - tighten docs so operator guidance matches real runtime behavior
 - keep validating the sharper workflow model: review = unresolved, FYI = explicit info-only, notification = transactional/system updates
 

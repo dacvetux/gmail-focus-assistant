@@ -13,11 +13,13 @@
 
 ## Current active phase: Phase 10 - Preferences and control surface
 
-Phases 8 and 9 are already live in a first usable form:
-- **Phase 8:** separate `News/Digest` lane is implemented
-- **Phase 9:** recommendation-first tuning suggestions are implemented
+Phases 8 and 9 are now treated as shipped base capabilities rather than separately open workstreams:
+- **Phase 8:** separate `News/Digest` lane is implemented and operational
+- **Phase 9:** recommendation-first tuning suggestions are implemented and operational
 
-The main active roadmap focus is now **Phase 10 Option A**: making the Google Sheets control surface genuinely clear and usable in day-to-day operation.
+Any remaining Phase 8 / 9 refinement now rolls into **Phase 10 Option A** so there is one active operator-facing phase instead of three partially-open ones.
+
+The main active roadmap focus is now **Phase 10 Option A**: making the Google Sheets control surface genuinely clear and usable in day-to-day operation while absorbing the remaining news/tuning polish.
 
 ### Current status update
 - sheet-backed preferences, digest settings, and news-source controls are live
@@ -30,6 +32,8 @@ The main active roadmap focus is now **Phase 10 Option A**: making the Google Sh
 
 ### What is next inside Phase 10
 - refine workflow-label semantics between `Review/Ambiguous`, `2: FYI`, and `3: notification`
+- continue Phase 8 residual work here: validate `News/Digest` boundaries, defaults, and operator controls from live evidence
+- continue Phase 9 residual work here: improve suggestion quality, approval workflow clarity, and runtime feedback loops from live evidence
 - keep improving the existing Sheets control surface as the primary operator UI
 - keep the review/import/validate loop compact enough that operators can confirm changes without digging through raw logs every time
 - stabilize statuses, approval actions, validation rules, helper views, and operator terminology

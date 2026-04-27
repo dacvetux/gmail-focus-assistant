@@ -54,22 +54,25 @@ Status: started on 2026-04-23
 - keep rollout visibility improving before broadening automation
 
 ## Phase 8, news layer
-Status: started on 2026-04-24
+Status: shipped usable base on 2026-04-24; remaining refinement absorbed into Phase 10 on 2026-04-27
 - add a separate `News/Digest` lane for read-later news/newsletter content
 - keep news distinct from urgent workflow mail and generic commercial junk
 - add morning and evening news digest entrypoints
 - start with explainable sender/pattern rules before any richer ranking or summarization
+- further boundary/default/operator-control polish now lives under Phase 10 instead of keeping Phase 8 open separately
 
 ## Phase 9, tuning assistant
-Status: started on 2026-04-24
+Status: shipped usable base on 2026-04-24; remaining refinement absorbed into Phase 10 on 2026-04-27
 - scan recent logs for repeated review-bucket leaks and misroutes
 - write recommendation-first suggestions into a `TuningSuggestions` sheet
 - keep the first version advisory only; do not auto-mutate rules yet
 - surface commercial, shipping, and finance candidates before expanding into richer suggestion types
+- further suggestion-quality/workflow/runtime-loop polish now lives under Phase 10 instead of keeping Phase 9 open separately
 
 ## Phase 10, spreadsheet control surface
-Status: started on 2026-04-24
+Status: current active phase since 2026-04-24; explicitly absorbs remaining Phase 8/9 work as of 2026-04-27
 - use the existing Google Sheets workbook as the first operator UI
 - create tabs such as `Preferences`, `DigestSettings`, `NewsSources`, and `ApprovedRules`
 - load a small set of core preferences back into runtime config
 - keep the first version simple and spreadsheet-native before any richer standalone GUI
+- own the remaining news-boundary, tuning-quality, workflow-semantics, validation, and operator UX polish so only one phase stays open at a time
