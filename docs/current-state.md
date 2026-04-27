@@ -27,13 +27,16 @@ Operationally live now:
 
 ## Conservative / intentionally limited areas
 
-These parts are deliberately narrow:
+These parts are deliberately narrow today:
 - AI only reviews ambiguous mail
 - reply help is draft-only
 - no autonomous sending
 - no silent rule mutation without review
 - follow-up tracking is conservative and visibility-first
 - tuning suggestions are recommendation-first, not auto-applied
+
+Planned next broadening step:
+- Phase 11 will widen AI in review-first/operator-facing ways, but still not allow silent live rule mutation
 
 ## Current operator workflow
 
@@ -83,8 +86,9 @@ Current loop:
 - keep validating the sharper workflow model: review = unresolved, FYI = explicit info-only, notification = transactional/system updates
 
 ### Next
+- finish Phase 10 Option A until the Sheets workflow is stable and obvious
+- then start **Phase 11** for assisted AI expansion: AI-backed tuning suggestions, `NewsSources` recommendations, and workflow-semantics help
 - add lightweight escalation/notification for automation-health warnings
-- continue tuning suggestion quality from live evidence
 
 ### Later
 - once the Sheets workflow feels ~90% finalized, start **Option B** as a separate dedicated HTML UI phase

@@ -46,6 +46,13 @@ The main active roadmap focus is now **Phase 10 Option A**: making the Google Sh
 - **Option B (later separate phase):** build a dedicated HTML UI (preferably starting with Apps Script HTML, sidebar, or web app) on top of the stabilized Sheets-backed model
 - the HTML UI should crystallize a proven workflow, not invent one too early
 
+## Next planned phase: Phase 11 - Assisted AI expansion
+- widen AI into operator-facing recommendation loops after Phase 10 is stable enough
+- start with AI-assisted `TuningSuggestions`, `NewsSources` proposals, and workflow-semantics recommendations
+- prefer explanation, clustering, and suggestion quality over autonomy
+- keep human approval as the control point for anything that changes runtime behavior
+- do not let AI silently add rules, mutate preferences, or alter mailbox behavior in this phase
+
 ## Later
 - strengthen follow-up intelligence once real waiting-on-them mailbox state exists
 - add lightweight escalation/notification for automation-health warnings

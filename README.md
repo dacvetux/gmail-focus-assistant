@@ -26,6 +26,7 @@ Implemented and in active use:
 - **Phase 8:** separate `News/Digest` lane with dedicated morning/evening news digests (shipped; remaining polish folded into Phase 10)
 - **Phase 9:** recommendation-first tuning suggestions via `TuningSuggestions` (shipped; remaining polish folded into Phase 10)
 - **Phase 10:** spreadsheet control surface with runtime-loaded preferences, digest/news settings, approved-rule application, and the remaining news/tuning/operator-loop polish
+- **Phase 11 (planned):** assisted AI expansion for review-first tuning, news-source recommendations, and workflow-semantics support
 
 Recent operational status:
 - `clasp run` execution and API-executable deployment are working again
@@ -39,6 +40,7 @@ Recent operational status:
 - promotions should not dominate the inbox
 - rules beat AI for obvious cases
 - AI should be narrow, reviewable, and optional
+- when AI expands, it should expand as suggestion/support first, not silent automation
 - no auto-send
 - preserve manual workflow labels
 - keep behavior auditable through logs and docs

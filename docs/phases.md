@@ -76,3 +76,13 @@ Status: current active phase since 2026-04-24; explicitly absorbs remaining Phas
 - load a small set of core preferences back into runtime config
 - keep the first version simple and spreadsheet-native before any richer standalone GUI
 - own the remaining news-boundary, tuning-quality, workflow-semantics, validation, and operator UX polish so only one phase stays open at a time
+
+## Phase 11, assisted AI expansion
+Status: planned on 2026-04-27; starts after Phase 10 operator workflow is stable enough to support broader review-first AI use
+- expand AI from narrow ambiguous-mail review into additional operator-facing recommendation surfaces
+- add AI-assisted tuning suggestions that can propose clearer rule candidates, group similar leaks, and explain why a suggestion exists
+- add AI-assisted `NewsSources` proposals to recommend likely `news` / `exclude` entries for operator review
+- improve AI help with workflow semantics, especially distinguishing `Review/Ambiguous`, `2: FYI`, and `3: notification`
+- add AI-assisted digest shaping and noisy-sender detection to improve section placement and reduce operator cleanup work
+- keep the whole phase review-first: AI may suggest, summarize, cluster, and explain, but must not silently mutate runtime rules or live behavior
+- only consider limited semi-automation later, and only for high-confidence cases after suggestion quality is proven in real use
