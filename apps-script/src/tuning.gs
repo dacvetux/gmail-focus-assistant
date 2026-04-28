@@ -10,6 +10,85 @@ function generateTuningSuggestionsPhase9Live() {
   });
 }
 
+function inspectNewsSourceCandidatesPhase10() {
+  refreshConfigFromPreferencesPhase10_({ suppressLog: true });
+  const rows = readRecentDecisionRows_(CONFIG.tuningSuggestionLookbackRows || 500);
+  const newsConfig = readNewsSourceConfig_();
+  const approvedRules = readApprovedRules_();
+  const bySender = new Map();
+
+  rows.forEach(row => {
+    const from = (row.from || '').trim();
+    const subject = (row.subject || '').trim();
+    const reason = (row.reason || '').trim();
+    const labels = (row.appliedLabels || '').trim();
+    const senderKey = extractSenderKey_(from);
+    if (!senderKey) return;
+
+    if (!bySender.has(senderKey)) {
+      bySender.set(senderKey, {
+        sender: senderKey,
+        from: from,
+        subject: subject,
+        reason: reason,
+        totalCount: 0,
+        reviewCount: 0,
+        newsCount: 0,
+        labels: {},
+        examples: []
+      });
+    }
+
+    const entry = bySender.get(senderKey);
+    entry.totalCount += 1;
+    entry.labels[labels] = (entry.labels[labels] || 0) + 1;
+    if (isReviewLabelSet_(labels)) entry.reviewCount += 1;
+    if (String(labels).split(',').map(value => value.trim()).includes(CONFIG.labels.newsDigest)) entry.newsCount += 1;
+    if (!entry.subject && subject) entry.subject = subject;
+    if (!entry.reason && reason) entry.reason = reason;
+    if (entry.examples.length < 3) {
+      entry.examples.push({ subject: subject, reason: reason, labels: labels });
+    }
+  });
+
+  const includeCandidates = [];
+  const excludeCandidates = [];
+
+  bySender.forEach(entry => {
+    const representative = entry.examples[0] || entry;
+    const alreadyNews = containsAny_(entry.sender, newsConfig.senders || []);
+    const alreadyExcluded = containsAny_(entry.sender, newsConfig.excludedSenders || []);
+    const alreadyCoveredByRule = isSenderAlreadyCoveredByApprovedRules_(entry.sender, approvedRules);
+
+    if (!alreadyNews && !alreadyExcluded && !alreadyCoveredByRule && isLikelyNewsIncludeCandidate_(entry, representative)) {
+      includeCandidates.push(buildNewsSourceCandidateResult_(entry, representative, 'news', alreadyNews, alreadyExcluded));
+    }
+
+    if (alreadyNews && isLikelyNewsExcludeCandidate_(entry, representative)) {
+      excludeCandidates.push(buildNewsSourceCandidateResult_(entry, representative, 'exclude', alreadyNews, alreadyExcluded));
+    }
+  });
+
+  includeCandidates.sort((a, b) => Number(b.reviewCount || 0) - Number(a.reviewCount || 0) || String(a.sender || '').localeCompare(String(b.sender || '')));
+  excludeCandidates.sort((a, b) => Number(b.newsCount || 0) - Number(a.newsCount || 0) || String(a.sender || '').localeCompare(String(b.sender || '')));
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'inspectNewsSourceCandidatesPhase10',
+    processedThreads: rows.length,
+    itemCount: includeCandidates.length + excludeCandidates.length,
+    outcome: includeCandidates.length || excludeCandidates.length ? 'news-candidates-found' : 'no-news-candidates',
+    notes: `includes=${includeCandidates.length}; excludes=${excludeCandidates.length}; lookback=${rows.length}`
+  });
+
+  return {
+    scannedRows: rows.length,
+    includeCandidates: includeCandidates,
+    excludeCandidates: excludeCandidates
+  };
+}
+
 function generateTuningSuggestionsPhase9_(options) {
   refreshConfigFromPreferencesPhase10_({ suppressLog: true });
   const rows = readRecentDecisionRows_(CONFIG.tuningSuggestionLookbackRows || 500);
@@ -365,6 +444,43 @@ function formatTuningSuggestionTimestamp_(value) {
     return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
   }
   return String(value || '').trim();
+}
+
+function isLikelyNewsIncludeCandidate_(entry, representative) {
+  const haystack = buildNewsCandidateHaystack_(entry, representative);
+  if (!haystack) return false;
+  if (entry.newsCount > 0) return false;
+  if (looksCommercialSuggestion_(representative) || looksStrongCommercialSuggestion_(entry, representative)) return false;
+  if (looksShippingSuggestion_(representative) || looksFinanceSuggestion_(representative) || looksMarketplaceTransactionalSuggestion_(representative)) return false;
+  if (looksServiceNotificationSuggestion_(representative) || looksStrongServiceNotificationSuggestion_(entry, representative)) return false;
+  if (/(job alert|recruiting season|recommended jobs|companies are looking for candidates|messaging digest|kudos|liked your|notifications-noreply@linkedin\.com|mailrobot@mail\.xing\.com)/i.test(haystack)) return false;
+  const strongSignal = /(newsletter|digest|roundup|daily|weekly|briefing|morning brief|evening brief|techcrunch|reuters|economist|financial times|ft\.com|bloomberg|the information|ted conferences via linkedin|via linkedin)/i.test(haystack);
+  if (!strongSignal) return false;
+  return entry.reviewCount >= 1 || /(newsletter|digest|roundup|daily|weekly)/i.test(haystack);
+}
+
+function isLikelyNewsExcludeCandidate_(entry, representative) {
+  const haystack = buildNewsCandidateHaystack_(entry, representative);
+  if (!haystack) return false;
+  return /(messaging digest|job alert|recruiting season|recommended jobs|companies are looking for candidates|kudos|liked your|notifications-noreply@linkedin\.com|mailrobot@mail\.xing\.com)/i.test(haystack);
+}
+
+function buildNewsCandidateHaystack_(entry, representative) {
+  return `${entry.from || ''}\n${entry.sender || ''}\n${representative.subject || entry.subject || ''}\n${representative.reason || entry.reason || ''}`.toLowerCase();
+}
+
+function buildNewsSourceCandidateResult_(entry, representative, action, alreadyNews, alreadyExcluded) {
+  return {
+    sender: entry.sender,
+    proposedAction: action,
+    reviewCount: entry.reviewCount,
+    newsCount: entry.newsCount,
+    totalCount: entry.totalCount,
+    exampleSubject: representative.subject || entry.subject || '',
+    exampleReason: representative.reason || entry.reason || '',
+    alreadyNews: alreadyNews,
+    alreadyExcluded: alreadyExcluded
+  };
 }
 
 function isSenderAlreadyCoveredByApprovedRules_(senderKey, approvedRules) {
