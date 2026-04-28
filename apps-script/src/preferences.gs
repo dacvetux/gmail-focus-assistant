@@ -1213,6 +1213,32 @@ function inspectTuningReviewQueuePhase10() {
   };
 }
 
+function inspectRecentDecisionRowsPhase10(senderQueries, maxRows) {
+  const queries = Array.isArray(senderQueries)
+    ? senderQueries.map(value => String(value || '').trim().toLowerCase()).filter(Boolean)
+    : [String(senderQueries || '').trim().toLowerCase()].filter(Boolean);
+  const rows = readRecentDecisionRows_(maxRows || 200);
+  const matches = rows.filter(row => {
+    const from = String(row.from || '').toLowerCase();
+    const subject = String(row.subject || '').toLowerCase();
+    return queries.some(query => from.includes(query) || subject.includes(query));
+  }).slice(-25).map(row => ({
+    timestamp: formatTuningSuggestionTimestamp_(row.timestamp),
+    from: row.from,
+    subject: row.subject,
+    appliedLabels: row.appliedLabels,
+    reason: row.reason,
+    archived: row.archived
+  }));
+
+  return {
+    queries: queries,
+    scannedRows: rows.length,
+    matchCount: matches.length,
+    matches: matches
+  };
+}
+
 function setTuningSuggestionStatusPhase10(rowNumber, status, note) {
   const sheet = getOrCreateTuningSuggestionsSheet_();
   const numericRow = Number(rowNumber);
