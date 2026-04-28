@@ -59,8 +59,9 @@ function inspectNewsSourceCandidatesPhase10() {
     const alreadyNews = containsAny_(entry.sender, newsConfig.senders || []);
     const alreadyExcluded = containsAny_(entry.sender, newsConfig.excludedSenders || []);
     const alreadyCoveredByRule = isSenderAlreadyCoveredByApprovedRules_(entry.sender, approvedRules);
+    const alreadyCoveredByRuntimeOverride = isSenderCoveredByRuntimeOverride_(entry.sender);
 
-    if (!alreadyNews && !alreadyExcluded && !alreadyCoveredByRule && isLikelyNewsIncludeCandidate_(entry, representative)) {
+    if (!alreadyNews && !alreadyExcluded && !alreadyCoveredByRule && !alreadyCoveredByRuntimeOverride && isLikelyNewsIncludeCandidate_(entry, representative)) {
       includeCandidates.push(buildNewsSourceCandidateResult_(entry, representative, 'news', alreadyNews, alreadyExcluded));
     }
 
@@ -481,6 +482,15 @@ function buildNewsSourceCandidateResult_(entry, representative, action, alreadyN
     alreadyNews: alreadyNews,
     alreadyExcluded: alreadyExcluded
   };
+}
+
+function isSenderCoveredByRuntimeOverride_(senderKey) {
+  if (!senderKey) return false;
+  return containsAny_(senderKey, CONFIG.forceCommercialSenders || []) ||
+    containsAny_(senderKey, CONFIG.forceImportantSenders || []) ||
+    containsAny_(senderKey, CONFIG.forceShippingSenders || []) ||
+    containsAny_(senderKey, CONFIG.forceFyiSenders || []) ||
+    containsAny_(senderKey, CONFIG.forceReviewSenders || []);
 }
 
 function isSenderAlreadyCoveredByApprovedRules_(senderKey, approvedRules) {
