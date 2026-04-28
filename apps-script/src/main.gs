@@ -231,6 +231,83 @@ function repairRecentFyiMislabelsLive() {
   };
 }
 
+function reclassifyThreadsForQueryPhase10Live(query) {
+  return reclassifyThreadsForQueryPhase10_(query, {
+    dryRun: false,
+    enableAiReview: true,
+    entryPointName: 'reclassifyThreadsForQueryPhase10Live'
+  });
+}
+
+function reclassifyThreadsForQueryPhase10DryRun(query) {
+  return reclassifyThreadsForQueryPhase10_(query, {
+    dryRun: true,
+    enableAiReview: true,
+    entryPointName: 'reclassifyThreadsForQueryPhase10DryRun'
+  });
+}
+
+function reclassifyThreadsForQueryPhase10_(query, options) {
+  refreshConfigFromPreferencesPhase10_({ suppressLog: true });
+  const settings = options || {};
+  const searchQuery = String(query || '').trim();
+  if (!searchQuery) {
+    throw new Error('Query is required');
+  }
+
+  const threads = dedupeThreads_(GmailApp.search(searchQuery, 0, CONFIG.maxThreads || 100));
+  const logRows = [];
+  const previousDryRun = CONFIG.dryRun;
+  const mode = settings.dryRun ? 'dry-run' : 'live';
+  let aiCount = 0;
+
+  CONFIG.dryRun = Boolean(settings.dryRun);
+
+  try {
+    threads.forEach(thread => {
+      let decision = classifyThread_(thread, { ignoreManagedDecisionLabels: true });
+
+      if (
+        settings.enableAiReview &&
+        CONFIG.enableAiForReview &&
+        decision.action === 'label' &&
+        decision.label === CONFIG.labels.review &&
+        aiCount < (CONFIG.aiDailyLimit || 15)
+      ) {
+        const aiDecision = classifyWithAI_(thread);
+        if (aiDecision) {
+          decision = aiDecision;
+        }
+        aiCount += 1;
+      }
+
+      const result = applyDecision_(thread, decision);
+      logDecision_(logRows, thread, decision, result);
+    });
+
+    flushDecisionLog_(logRows);
+  } finally {
+    CONFIG.dryRun = previousDryRun;
+  }
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: mode,
+    entryPoint: settings.entryPointName || 'reclassifyThreadsForQueryPhase10Live',
+    processedThreads: threads.length,
+    itemCount: logRows.length,
+    outcome: threads.length ? 'query-reclassification-processed' : 'query-reclassification-empty',
+    notes: `query=${truncateRunNote_(searchQuery, 180)}; ai-review=${settings.enableAiReview ? 'yes' : 'no'}`
+  });
+
+  return {
+    mode: mode,
+    processedThreads: threads.length,
+    query: searchQuery,
+    aiReviewed: aiCount
+  };
+}
+
 function auditAutomationHealth() {
   refreshConfigFromPreferencesPhase10_({ suppressLog: true });
   const timezone = Session.getScriptTimeZone();
