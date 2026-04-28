@@ -507,7 +507,7 @@ function buildDigestSections_(query, searchLimit) {
       return;
     }
 
-    if (decision.label === CONFIG.labels.review && !isObviousCommercialDigestText_(buildThreadDigestHaystack_(thread))) {
+    if (decision.label === CONFIG.labels.review && isDigestSafeReviewThread_(thread)) {
       sections.review.push(thread);
     }
   });
@@ -689,7 +689,7 @@ function buildLogBackedDigestSummary_(rows, options) {
       return;
     }
 
-    if ((row.appliedLabels || '').includes(CONFIG.labels.review) && !isObviousCommercialDigestText_(buildDigestHaystackFromParts_(row.from, row.subject, row.reason))) {
+    if ((row.appliedLabels || '').includes(CONFIG.labels.review) && isDigestSafeReviewText_(buildDigestHaystackFromParts_(row.from, row.subject, row.reason))) {
       sections.review.push(entry);
     }
   });
@@ -747,13 +747,41 @@ function buildDigestHaystackFromParts_(from, subject, reason) {
   return `${String(from || '').toLowerCase()}\n${String(subject || '').toLowerCase()}\n${String(reason || '').toLowerCase()}`;
 }
 
+function isDigestSafeReviewThread_(thread) {
+  return isDigestSafeReviewText_(buildThreadDigestHaystack_(thread));
+}
+
+function isDigestSafeReviewText_(haystack) {
+  if (!haystack) return false;
+  if (isObviousCommercialDigestText_(haystack)) return false;
+  if (isObviousLowValueDigestText_(haystack)) return false;
+  return hasDigestRelevantReviewSignal_(haystack);
+}
+
 function isObviousCommercialDigestText_(haystack) {
   if (!haystack) return false;
   if (containsAny_(haystack, CONFIG.forceCommercialSenders || [])) return true;
   if (matchesAny_(haystack, CONFIG.newsletterPatterns || [])) return true;
   if (matchesAny_(haystack, CONFIG.adPatterns || [])) return true;
   if (matchesAny_(haystack, CONFIG.campaignPatterns || [])) return true;
-  return /(sale|discount|offer|promo|promotion|shop now|new arrivals|collection|box is getting packed|welcome to the crew|vacation with|gave you kudos|collaborations archive|special offer)/i.test(haystack);
+  return /(sale|discount|offer|promo|promotion|shop now|new arrivals|collection|box is getting packed|welcome to the crew|vacation with|gave you kudos|collaborations archive|special offer|summer styles|drops? now|shop|adidas|rioca|strava|packed)/i.test(haystack);
+}
+
+function isObviousLowValueDigestText_(haystack) {
+  if (!haystack) return false;
+  return /(kudos|liked your|follow us|join us|are you coming|event reminder|webinar|festival|playlist|trending|recommended for you|digest|newsletter|weekly recap|daily recap|what you missed|open now|discover|experience|archive is now open)/i.test(haystack);
+}
+
+function hasDigestRelevantReviewSignal_(haystack) {
+  if (!haystack) return false;
+  if (matchesAny_(haystack, CONFIG.responsePatterns || [])) return true;
+  if (matchesAny_(haystack, CONFIG.notificationPatterns || [])) return true;
+  if (matchesAny_(haystack, CONFIG.financePatterns || [])) return true;
+  if (matchesAny_(haystack, CONFIG.shippingPatterns || [])) return true;
+  if (matchesAny_(haystack, CONFIG.calendarPatterns || [])) return true;
+  if (matchesAny_(haystack, CONFIG.opportunityPatterns || [])) return true;
+  if (matchesAny_(haystack, CONFIG.opportunityResponsePatterns || [])) return true;
+  return /(summary of failures|failed|failure|error|incident|security|verification|invoice|receipt|payment|delivery|shipment|tracking|meeting|invite|application|interview|assessment|availability|access|login|account|approval|confirm|question|please review|action required|important update|service notice|password reset)/i.test(haystack);
 }
 
 function renderLogDigestSection_(title, entries) {
