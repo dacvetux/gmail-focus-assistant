@@ -15,6 +15,10 @@ function classifyThread_(thread, options) {
     return buildDecision_('label', CONFIG.labels.review, false, 'forced review sender override', null);
   }
 
+  if (isExplicitNewsSender_(from)) {
+    return buildDecision_('label', CONFIG.labels.newsDigest, false, 'explicit news sender override', CONFIG.newsWorkflowLabel || null);
+  }
+
   if (containsAny_(subjectHaystack, CONFIG.forceImportantSenders)) {
     return classifyForcedImportant_(subjectHaystack, workflowHaystack);
   }
@@ -145,6 +149,14 @@ function isNewsThread_(from, subjectHaystack) {
   }
 
   return containsAny_(from, CONFIG.newsSenders || []) || matchesAny_(subjectHaystack, CONFIG.newsPatterns || []);
+}
+
+function isExplicitNewsSender_(from) {
+  if (containsAny_(from, CONFIG.newsExcludedSenders || [])) {
+    return false;
+  }
+
+  return containsAny_(from, CONFIG.newsSenders || []);
 }
 
 function buildDecision_(action, label, archive, reason, workflowLabel) {

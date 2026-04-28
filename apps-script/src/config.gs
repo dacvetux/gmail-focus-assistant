@@ -18,7 +18,9 @@ const CONFIG = {
     'status.incident.io',
     'racun@mail.a1.si',
     'sparkassepay.si',
-    'myfritz.net'
+    'myfritz.net',
+    'googleplay-noreply@google.com',
+    'play.google.com'
   ],
   forceFyiSenders: [],
   newsSenders: [
@@ -26,6 +28,9 @@ const CONFIG = {
     'reuters.com',
     'newsletters@e.economist.com',
     'noreply@e.economist.com',
+    'tldrnewsletter.com',
+    'mail.telecompaper.com',
+    'zeteo.com',
     'newsletters-noreply@linkedin.com',
     'news@mail.xing.com'
   ],
@@ -36,6 +41,9 @@ const CONFIG = {
     /techcrunch daily/i,
     /reuters/i,
     /economist/i,
+    /telecompaper/i,
+    /zeteo/i,
+    /tldr/i,
     /roundup/i,
     /daily:/i,
     /today:/i,
@@ -50,9 +58,7 @@ const CONFIG = {
     'qwertee.com',
     'steampowered.com',
     'stackcommerce.com',
-    'mail.telecompaper.com',
     'substack.com',
-    'tldrnewsletter.com',
     'members.netflix.com',
     'bandsintown.com',
     'ticketmaster.',
@@ -66,7 +72,6 @@ const CONFIG = {
     'ml.spartan.com',
     'booking.com',
     'kompas-shop.si',
-    'news@mail.xing.com',
     'karriere.at',
     'uk-umg.com',
     'drclark.si',

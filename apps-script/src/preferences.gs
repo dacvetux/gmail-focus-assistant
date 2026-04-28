@@ -312,10 +312,13 @@ function getOrCreateNewsSourcesSheet_() {
   if (!sheet) {
     sheet = spreadsheet.insertSheet('NewsSources');
     sheet.getRange(1, 1, 1, 5).setValues([['Source', 'Type', 'Action', 'Enabled', 'Notes']]);
-    sheet.getRange(2, 1, 6, 5).setValues([
+    sheet.getRange(2, 1, 9, 5).setValues([
       ['newsletters@email.reuters.com', 'sender', 'news', 'yes', 'Reuters news digest'],
       ['newsletters@e.economist.com', 'sender', 'news', 'yes', 'Economist newsletters'],
       ['noreply@e.economist.com', 'sender', 'news', 'yes', 'Economist mail'],
+      ['tldrnewsletter.com', 'sender', 'news', 'yes', 'TLDR newsletters are read-later news, not commercial ads'],
+      ['mail.telecompaper.com', 'sender', 'news', 'yes', 'Telecompaper industry news digests'],
+      ['zeteo.com', 'sender', 'news', 'yes', 'Zeteo newsletters/news analysis'],
       ['newsletters-noreply@linkedin.com', 'sender', 'news', 'yes', 'Publisher/newsletter traffic via LinkedIn'],
       ['news@mail.xing.com', 'sender', 'news', 'yes', 'XING news digests'],
       ['messaging-digest-noreply@linkedin.com', 'sender', 'exclude', 'yes', 'Not news; LinkedIn messaging digest']
@@ -341,6 +344,105 @@ function getOrCreateApprovedRulesSheet_() {
   }
 
   return sheet;
+}
+
+function upsertNewsSourcePhase10(source, action, enabled, notes) {
+  const sheet = getOrCreateNewsSourcesSheet_();
+  const normalizedSource = String(source || '').trim().toLowerCase();
+  if (!normalizedSource) {
+    throw new Error('News source is required');
+  }
+
+  const normalizedAction = String(action || 'news').trim().toLowerCase() || 'news';
+  const normalizedEnabled = String(enabled === undefined ? 'yes' : enabled).trim().toLowerCase() || 'yes';
+  const normalizedNotes = String(notes || '').trim();
+  const lastRow = sheet.getLastRow();
+  const values = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, 5).getDisplayValues() : [];
+  let updatedRow = 0;
+
+  values.forEach((row, index) => {
+    if (updatedRow) return;
+    const existingSource = String(row[0] || '').trim().toLowerCase();
+    const existingType = String(row[1] || '').trim().toLowerCase();
+    if (existingSource === normalizedSource && existingType === 'sender') {
+      updatedRow = index + 2;
+    }
+  });
+
+  if (updatedRow) {
+    sheet.getRange(updatedRow, 1, 1, 5).setValues([[normalizedSource, 'sender', normalizedAction, normalizedEnabled, normalizedNotes]]);
+  } else {
+    sheet.appendRow([normalizedSource, 'sender', normalizedAction, normalizedEnabled, normalizedNotes]);
+    updatedRow = sheet.getLastRow();
+  }
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'upsertNewsSourcePhase10',
+    processedThreads: 1,
+    itemCount: 1,
+    outcome: updatedRow === lastRow + 1 ? 'news-source-added' : 'news-source-updated',
+    notes: `row=${updatedRow}; source=${normalizedSource}; action=${normalizedAction}; enabled=${normalizedEnabled}`
+  });
+
+  return {
+    rowNumber: updatedRow,
+    source: normalizedSource,
+    action: normalizedAction,
+    enabled: normalizedEnabled
+  };
+}
+
+function upsertApprovedRulePhase10(category, target, action, approved, notes) {
+  const sheet = getOrCreateApprovedRulesSheet_();
+  const normalizedCategory = String(category || '').trim();
+  const normalizedTarget = String(target || '').trim().toLowerCase();
+  if (!normalizedCategory || !normalizedTarget) {
+    throw new Error('Both category and target are required');
+  }
+
+  const normalizedAction = String(action || 'add').trim().toLowerCase() || 'add';
+  const normalizedApproved = String(approved === undefined ? 'yes' : approved).trim().toLowerCase() || 'yes';
+  const normalizedNotes = String(notes || '').trim();
+  const lastRow = sheet.getLastRow();
+  const values = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, 7).getDisplayValues() : [];
+  let updatedRow = 0;
+
+  values.forEach((row, index) => {
+    if (updatedRow) return;
+    const existingCategory = String(row[0] || '').trim();
+    const existingTarget = String(row[1] || '').trim().toLowerCase();
+    if (existingCategory === normalizedCategory && existingTarget === normalizedTarget) {
+      updatedRow = index + 2;
+    }
+  });
+
+  const rowValues = [[normalizedCategory, normalizedTarget, normalizedAction, normalizedApproved, 'phase10-manual', new Date(), normalizedNotes]];
+  if (updatedRow) {
+    sheet.getRange(updatedRow, 1, 1, 7).setValues(rowValues);
+  } else {
+    sheet.appendRow(rowValues[0]);
+    updatedRow = sheet.getLastRow();
+  }
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'upsertApprovedRulePhase10',
+    processedThreads: 1,
+    itemCount: 1,
+    outcome: updatedRow === lastRow + 1 ? 'approved-rule-added' : 'approved-rule-updated',
+    notes: `row=${updatedRow}; category=${normalizedCategory}; target=${normalizedTarget}; action=${normalizedAction}`
+  });
+
+  return {
+    rowNumber: updatedRow,
+    category: normalizedCategory,
+    target: normalizedTarget,
+    action: normalizedAction,
+    approved: normalizedApproved
+  };
 }
 
 function getOrCreateOperatorGuideSheet_() {
