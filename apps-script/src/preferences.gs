@@ -1092,6 +1092,25 @@ function summarizeTuningReviewQueueRows_(rows) {
   };
 }
 
+function inspectTuningReviewQueuePhase10() {
+  const rows = readTuningReviewQueueRows_();
+  return {
+    totalRows: rows.length,
+    actionableRows: rows.map(row => ({
+      status: row[0],
+      nextAction: row[1],
+      category: row[2],
+      suggestedChange: row[3],
+      target: row[4],
+      evidenceCount: row[5],
+      confidence: row[6],
+      exampleSubject: row[7],
+      sourceRow: row[8],
+      notes: row[9]
+    }))
+  };
+}
+
 function rebuildRecentRunSummarySheet_(sheet) {
   ensureRecentRunSummaryHeader_(sheet);
   const latestByEntryPoint = readLatestRunLogEntriesByEntryPoint_();
