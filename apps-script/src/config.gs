@@ -306,8 +306,6 @@ const CONFIG = {
     /application update/i,
     /your application/i,
     /hearing -/i,
-    /recruiter/i,
-    /recruiting/i,
     /hiring manager/i,
     /schedule/i,
     /availability/i,

@@ -499,7 +499,9 @@ function buildDigestSections_(query, searchLimit) {
     }
 
     if (decision.label === CONFIG.labels.importantOpportunities) {
-      sections.opportunities.push(thread);
+      if (isDigestSafeOpportunityThread_(thread, decision)) {
+        sections.opportunities.push(thread);
+      }
       return;
     }
 
@@ -685,7 +687,9 @@ function buildLogBackedDigestSummary_(rows, options) {
     }
 
     if ((row.appliedLabels || '').includes(CONFIG.labels.importantOpportunities)) {
-      sections.opportunities.push(entry);
+      if (isDigestSafeOpportunityText_(buildDigestHaystackFromParts_(row.from, row.subject, row.reason), row.appliedLabels)) {
+        sections.opportunities.push(entry);
+      }
       return;
     }
 
@@ -747,13 +751,28 @@ function buildDigestHaystackFromParts_(from, subject, reason) {
   return `${String(from || '').toLowerCase()}\n${String(subject || '').toLowerCase()}\n${String(reason || '').toLowerCase()}`;
 }
 
+function isDigestSafeOpportunityThread_(thread, decision) {
+  const haystack = buildThreadDigestHaystack_(thread);
+  return isDigestSafeOpportunityText_(haystack, decision && decision.workflowLabel);
+}
+
+function isDigestSafeOpportunityText_(haystack, workflowOrLabels) {
+  if (!haystack) return false;
+  if (isLegacyAppsScriptFailureDigestText_(haystack)) return false;
+  if (isBroadcastOpportunityDigestText_(haystack)) return false;
+  if (String(workflowOrLabels || '').includes(CONFIG.labels.toRespond)) return true;
+  return /(interview|application status|application update|your application|hiring manager|assessment|case study|schedule|availability|next step|next steps|task for the interview|bewerbungsgespräch)/i.test(haystack);
+}
+
 function isDigestSafeReviewThread_(thread) {
   return isDigestSafeReviewText_(buildThreadDigestHaystack_(thread));
 }
 
 function isDigestSafeReviewText_(haystack) {
   if (!haystack) return false;
+  if (isLegacyAppsScriptFailureDigestText_(haystack)) return false;
   if (isObviousCommercialDigestText_(haystack)) return false;
+  if (isBroadcastOpportunityDigestText_(haystack)) return false;
   if (isObviousLowValueDigestText_(haystack)) return false;
   return hasDigestRelevantReviewSignal_(haystack);
 }
@@ -770,6 +789,16 @@ function isObviousCommercialDigestText_(haystack) {
 function isObviousLowValueDigestText_(haystack) {
   if (!haystack) return false;
   return /(kudos|liked your|follow us|join us|are you coming|event reminder|webinar|festival|playlist|trending|recommended for you|digest|newsletter|weekly recap|daily recap|what you missed|open now|discover|experience|archive is now open)/i.test(haystack);
+}
+
+function isLegacyAppsScriptFailureDigestText_(haystack) {
+  if (!haystack) return false;
+  return /noreply-apps-scripts-notifications@google\.com/.test(haystack) && /gmail sorter/.test(haystack);
+}
+
+function isBroadcastOpportunityDigestText_(haystack) {
+  if (!haystack) return false;
+  return /(linkedin job alerts|job alert|experteer|recruiting season|recommended jobs|companies are looking for candidates|are you ready for the recruiting season|project manager at haystack)/i.test(haystack);
 }
 
 function hasDigestRelevantReviewSignal_(haystack) {
