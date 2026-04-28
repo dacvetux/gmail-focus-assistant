@@ -329,6 +329,46 @@ function generateLogBackedDigest_(options) {
   };
 }
 
+function inspectCurrentDigestWindowsPhase10() {
+  refreshConfigFromPreferencesPhase10_({ suppressLog: true });
+
+  const morningMain = inspectDigestWindow_(getDigestWindowConfig_('morning-log'), 'main');
+  const morningNews = inspectDigestWindow_(getDigestWindowConfig_('news-morning-log'), 'news');
+  const recentRuns = readRecentDigestRelatedRunLogRows_(20);
+
+  return {
+    morningMain: morningMain,
+    morningNews: morningNews,
+    recentRuns: recentRuns
+  };
+}
+
+function inspectDigestWindow_(windowConfig, sourceType) {
+  const rows = readDecisionRowsForWindow_(windowConfig.start, windowConfig.end);
+  const latestDecisionRows = readRecentDecisionRows_(20);
+  const latestDecisionTimestamp = latestDecisionRows.length ? formatWindowDateLocal_(coerceLogDate_(latestDecisionRows[latestDecisionRows.length - 1].timestamp)) : '';
+  const latestWindowTimestamp = rows.length ? formatWindowDateLocal_(coerceLogDate_(rows[0].timestamp)) : '';
+  const summaryData = buildLogBackedDigestSummary_(rows, { sourceType: sourceType });
+
+  return {
+    sourceType: sourceType,
+    windowLabel: windowConfig.label,
+    windowStartLocal: formatWindowDateLocal_(windowConfig.start),
+    windowEndLocal: formatWindowDateLocal_(windowConfig.end),
+    rowsInWindow: rows.length,
+    digestItemCount: summaryData.itemCount,
+    latestDecisionTimestamp: latestDecisionTimestamp,
+    latestWindowTimestamp: latestWindowTimestamp,
+    sectionCounts: {
+      toRespond: summaryData.sections && summaryData.sections.toRespond ? summaryData.sections.toRespond.length : 0,
+      notifications: summaryData.sections && summaryData.sections.notifications ? summaryData.sections.notifications.length : 0,
+      opportunities: summaryData.sections && summaryData.sections.opportunities ? summaryData.sections.opportunities.length : 0,
+      review: summaryData.sections && summaryData.sections.review ? summaryData.sections.review.length : 0,
+      news: summaryData.sections && summaryData.sections.news ? summaryData.sections.news.length : 0
+    }
+  };
+}
+
 function generateFollowUpDigestPhase6_(options) {
   const mode = options.dryRun ? 'dry-run' : 'live';
   const staleThreads = selectStaleAwaitingReplyThreads_();
@@ -362,6 +402,30 @@ function generateFollowUpDigestPhase6_(options) {
   });
 
   return result;
+}
+
+function readRecentDigestRelatedRunLogRows_(maxRows) {
+  const sheet = getOrCreateRunLogSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return [];
+
+  const effectiveMaxRows = Math.max(1, maxRows || 20);
+  const startRow = Math.max(2, lastRow - (effectiveMaxRows - 1));
+  const numRows = lastRow - startRow + 1;
+  const values = sheet.getRange(startRow, 1, numRows, 8).getValues();
+
+  return values.map(row => ({
+    timestamp: formatWindowDateLocal_(coerceLogDate_(row[0])),
+    runType: String(row[1] || ''),
+    mode: String(row[2] || ''),
+    entryPoint: String(row[3] || ''),
+    processedThreads: row[4],
+    primaryCount: row[5],
+    outcome: String(row[6] || ''),
+    notes: String(row[7] || '')
+  })).filter(row => {
+    return row.entryPoint.indexOf('Digest') !== -1 || row.runType === 'digest-log-window' || row.runType === 'automation-wrapper';
+  });
 }
 
 function inferDigestEntryPoint_(options) {
