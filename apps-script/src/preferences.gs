@@ -97,6 +97,8 @@ function runPhase10ValidationCheckpoint() {
   ];
 
   const rows = [];
+  const passedChecks = [];
+  const failedChecks = [];
   let successCount = 0;
   let failureCount = 0;
 
@@ -112,16 +114,28 @@ function runPhase10ValidationCheckpoint() {
         summary.notes,
         formatControlSurfaceTimestamp_(new Date())
       ]);
+      passedChecks.push({
+        key: check.key,
+        label: check.label,
+        primaryValue: summary.primaryValue,
+        notes: summary.notes
+      });
       successCount += 1;
     } catch (error) {
+      const message = truncateRunNote_(error && error.message ? error.message : String(error), 300);
       rows.push([
         check.key,
         check.label,
         'error',
         '',
-        truncateRunNote_(error && error.message ? error.message : String(error), 300),
+        message,
         formatControlSurfaceTimestamp_(new Date())
       ]);
+      failedChecks.push({
+        key: check.key,
+        label: check.label,
+        message: message
+      });
       failureCount += 1;
     }
   });
@@ -149,7 +163,9 @@ function runPhase10ValidationCheckpoint() {
     tuningReviewQueueSummary: tuningReviewQueueSummary,
     recentRunSummary: recentRunSummary,
     workflowAuditSummary: workflowAuditSummary,
-    statusSummary: statusSummary
+    statusSummary: statusSummary,
+    passedChecks: passedChecks,
+    failedChecks: failedChecks
   };
 }
 
@@ -903,10 +919,17 @@ function rebuildValidationStatusSheet_(sheet, rows) {
   }
   configureValidationStatusSheetUx_(sheet);
 
+  const failedRows = values.filter(row => row[2] === 'error').map(row => ({
+    key: row[0],
+    check: row[1],
+    notes: row[4]
+  }));
+
   return {
     totalChecks: values.length,
     successCount: values.filter(row => row[2] === 'ok').length,
-    failureCount: values.filter(row => row[2] === 'error').length
+    failureCount: failedRows.length,
+    failedChecks: failedRows
   };
 }
 
@@ -1094,7 +1117,6 @@ function buildRecentRunSummaryFamilies_() {
   return [
     { label: 'Phase 10 review loop', entryPoints: ['runPhase10ReviewLoopOptionA'], staleHours: 72 },
     { label: 'Phase 10 validation checkpoint', entryPoints: ['runPhase10ValidationCheckpoint'], staleHours: 72 },
-    { label: 'Phase 10 run summary refresh', entryPoints: ['rebuildRecentRunSummaryPhase10'], staleHours: 72 },
     { label: 'Automation health audit', entryPoints: ['runAutomationHealthAuditWrapper', 'auditAutomationHealth'], staleHours: 36 },
     { label: 'Frequent processing wrapper', entryPoints: ['runFrequentProcessingLiveWrapper'], staleHours: 18 },
     { label: 'Morning main digest wrapper', entryPoints: ['runMorningMainDigestLiveWrapper'], staleHours: 36 },
