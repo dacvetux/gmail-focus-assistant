@@ -57,13 +57,13 @@ Important tabs:
 - `AutomationHealthLog`
 
 Current loop:
-1. inspect `ControlSurfaceStatus`
+1. inspect `ControlSurfaceStatus` first for queue state, workflow-semantics warnings, and latest checkpoint status
 2. review actionable rows in `TuningReviewQueue`
 3. update the referenced source rows in `TuningSuggestions` as approved/rejected/superseded
 4. import approved suggestions into `ApprovedRules`
 5. run `runPhase10ValidationCheckpoint()`
 6. optionally run `runPhase10ExtendedValidationCheckpoint()` when you want the heavier AI/tuning checks too
-7. inspect `ValidationStatus`, `RecentRunSummary`, `WorkflowAudit`, `TuningReviewQueue`, and `RunLog` if anything looks off
+7. inspect `ValidationStatus`, `RecentRunSummary`, `WorkflowAudit`, `TuningReviewQueue`, and `RunLog` only if `ControlSurfaceStatus` or the checkpoint suggests drift
 
 ## Recent important changes
 
@@ -76,6 +76,7 @@ Current loop:
 - `runPhase10ExtendedValidationCheckpoint()` keeps the heavier AI review + tuning-suggestion checks available without forcing them into every default checkpoint
 - a new `RecentRunSummary` sheet plus `rebuildRecentRunSummaryPhase10()` provide a compact latest-run check for key wrappers and Phase 10 helper actions
 - a new `WorkflowAudit` sheet plus `rebuildWorkflowAuditPhase10()` provide a compact recent-log check for review/FYI/notification/news semantics drift
+- `ControlSurfaceStatus` now mirrors workflow warning buckets plus the latest Phase 10 checkpoint outcome, making the top-level dashboard more self-sufficient
 - a new `TuningReviewQueue` sheet plus `rebuildTuningReviewQueuePhase10()` provide a compact actionable queue derived from `TuningSuggestions`
 - ambiguous mail no longer auto-gets `2: FYI`
 - `Review/Ambiguous` now stays workflow-blank by default instead of inferring FYI from vague wording
@@ -87,10 +88,10 @@ Current loop:
 ## Current roadmap focus
 
 ### Now
-- finish Phase 10 **Option A** polish in Google Sheets
-- carry the remaining Phase 8 news-boundary/default/control cleanup inside Phase 10
-- carry the remaining Phase 9 suggestion-quality/workflow cleanup inside Phase 10
-- tighten docs so operator guidance matches real runtime behavior
+- do a short live-soak on the strengthened Phase 10 **Option A** Sheets workflow
+- carry the remaining Phase 8 news-boundary/default cleanup inside Phase 10 from live evidence
+- carry the remaining Phase 9 suggestion-quality cleanup inside Phase 10 from live evidence
+- keep docs aligned with the now-shipped operator dashboard/validation flow
 - keep validating the sharper workflow model: review = unresolved, FYI = explicit info-only, notification = transactional/system updates
 
 ### Next
@@ -103,6 +104,6 @@ Current loop:
 
 ## Next 3 practical milestones
 
-1. improve the control-surface operator UX until the review/import loop feels obvious
+1. live-soak the current control-surface workflow and confirm the new dashboard signals are sufficient in day-to-day use
 2. keep validating the sharper workflow-label semantics in live use
-3. publish cleaner project documentation for first-time readers and operators
+3. decide whether automation-health email escalation should remain disabled or get a real recipient/severity policy

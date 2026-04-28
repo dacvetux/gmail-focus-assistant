@@ -971,27 +971,19 @@ function rebuildRecentRunSummaryPhase10() {
 
 function rebuildWorkflowAuditSheet_(sheet) {
   ensureWorkflowAuditHeader_(sheet);
-  const rows = readRecentDecisionRows_(200);
-  const now = formatControlSurfaceTimestamp_(new Date());
-
-  const reviewOnly = summarizeWorkflowAuditBucket_(rows, row => hasExactAppliedLabels_(row.appliedLabels, [CONFIG.labels.review]));
-  const legacyReviewFyi = summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.review) && hasAppliedLabel_(row.appliedLabels, CONFIG.labels.fyi));
-  const explicitFyi = summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.fyi) && !hasAppliedLabel_(row.appliedLabels, CONFIG.labels.review));
-  const notification = summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.notification));
-  const newsBlank = summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.newsDigest) && !hasAnyAppliedLabel_(row.appliedLabels, [CONFIG.labels.toRespond, CONFIG.labels.fyi, CONFIG.labels.notification]));
-  const newsWithWorkflow = summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.newsDigest) && hasAnyAppliedLabel_(row.appliedLabels, [CONFIG.labels.toRespond, CONFIG.labels.fyi, CONFIG.labels.notification]));
-  const archivedReview = summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.review) && String(row.archived || '').trim().toLowerCase() === 'yes');
+  const snapshot = buildWorkflowAuditSnapshot_();
+  const now = snapshot.lastUpdated;
 
   const values = [
     ['last-updated', 'info', '', '', 'When this workflow semantics audit was rebuilt.', now],
-    ['rows-scanned', rows.length ? 'info' : 'warning', rows.length, '', rows.length ? 'Recent DecisionLog rows inspected for workflow semantics drift.' : 'No recent DecisionLog rows found; run a dry-run or live processing pass first.', now],
-    ['review-only', 'info', reviewOnly.count, reviewOnly.example, 'Expected baseline for unresolved ambiguous mail: review-only and workflow-blank.', now],
-    ['legacy-review-plus-fyi', legacyReviewFyi.count ? 'warning' : 'ok', legacyReviewFyi.count, legacyReviewFyi.example, legacyReviewFyi.count ? 'Older `Review/Ambiguous, 2: FYI` shape still appeared in recent logs; review whether a remaining path still emits it.' : 'No recent legacy review+FYI rows found.', now],
-    ['explicit-fyi', 'info', explicitFyi.count, explicitFyi.example, 'FYI should be intentional informational routing, not generic ambiguity fallback.', now],
-    ['notification', 'info', notification.count, notification.example, 'Notification should capture low-response transactional/system/status updates.', now],
-    ['news-blank-workflow', newsBlank.count ? 'ok' : 'info', newsBlank.count, newsBlank.example, 'Default healthy shape when News/Digest stays separate from workflow labels.', now],
-    ['news-with-workflow', newsWithWorkflow.count && !CONFIG.newsWorkflowLabel ? 'warning' : 'info', newsWithWorkflow.count, newsWithWorkflow.example, CONFIG.newsWorkflowLabel ? `News workflow label is intentionally set to ${CONFIG.newsWorkflowLabel}.` : 'Should usually stay at zero unless the operator intentionally enabled a news workflow label.', now],
-    ['archived-review', archivedReview.count ? 'warning' : 'ok', archivedReview.count, archivedReview.example, archivedReview.count ? 'Review/Ambiguous rows were archived recently; confirm this is intentional rather than hiding unresolved mail.' : 'No recent archived review rows found.', now]
+    ['rows-scanned', snapshot.rowsScanned ? 'info' : 'warning', snapshot.rowsScanned, '', snapshot.rowsScanned ? 'Recent DecisionLog rows inspected for workflow semantics drift.' : 'No recent DecisionLog rows found; run a dry-run or live processing pass first.', now],
+    ['review-only', 'info', snapshot.reviewOnly.count, snapshot.reviewOnly.example, 'Expected baseline for unresolved ambiguous mail: review-only and workflow-blank.', now],
+    ['legacy-review-plus-fyi', snapshot.legacyReviewFyi.count ? 'warning' : 'ok', snapshot.legacyReviewFyi.count, snapshot.legacyReviewFyi.example, snapshot.legacyReviewFyi.count ? 'Older `Review/Ambiguous, 2: FYI` shape still appeared in recent logs; review whether a remaining path still emits it.' : 'No recent legacy review+FYI rows found.', now],
+    ['explicit-fyi', 'info', snapshot.explicitFyi.count, snapshot.explicitFyi.example, 'FYI should be intentional informational routing, not generic ambiguity fallback.', now],
+    ['notification', 'info', snapshot.notification.count, snapshot.notification.example, 'Notification should capture low-response transactional/system/status updates.', now],
+    ['news-blank-workflow', snapshot.newsBlank.count ? 'ok' : 'info', snapshot.newsBlank.count, snapshot.newsBlank.example, 'Default healthy shape when News/Digest stays separate from workflow labels.', now],
+    ['news-with-workflow', snapshot.newsWithWorkflow.count && !CONFIG.newsWorkflowLabel ? 'warning' : 'info', snapshot.newsWithWorkflow.count, snapshot.newsWithWorkflow.example, CONFIG.newsWorkflowLabel ? `News workflow label is intentionally set to ${CONFIG.newsWorkflowLabel}.` : 'Should usually stay at zero unless the operator intentionally enabled a news workflow label.', now],
+    ['archived-review', snapshot.archivedReview.count ? 'warning' : 'ok', snapshot.archivedReview.count, snapshot.archivedReview.example, snapshot.archivedReview.count ? 'Review/Ambiguous rows were archived recently; confirm this is intentional rather than hiding unresolved mail.' : 'No recent archived review rows found.', now]
   ];
 
   const maxRowsToClear = Math.max(sheet.getLastRow() - 1, values.length, 1);
@@ -1000,15 +992,30 @@ function rebuildWorkflowAuditSheet_(sheet) {
   configureWorkflowAuditSheetUx_(sheet);
 
   return {
-    rowsScanned: rows.length,
-    reviewOnlyCount: reviewOnly.count,
-    legacyReviewFyiCount: legacyReviewFyi.count,
-    explicitFyiCount: explicitFyi.count,
-    notificationCount: notification.count,
-    newsBlankCount: newsBlank.count,
-    newsWithWorkflowCount: newsWithWorkflow.count,
-    archivedReviewCount: archivedReview.count,
+    rowsScanned: snapshot.rowsScanned,
+    reviewOnlyCount: snapshot.reviewOnly.count,
+    legacyReviewFyiCount: snapshot.legacyReviewFyi.count,
+    explicitFyiCount: snapshot.explicitFyi.count,
+    notificationCount: snapshot.notification.count,
+    newsBlankCount: snapshot.newsBlank.count,
+    newsWithWorkflowCount: snapshot.newsWithWorkflow.count,
+    archivedReviewCount: snapshot.archivedReview.count,
     warningCount: values.filter(row => row[1] === 'warning').length
+  };
+}
+
+function buildWorkflowAuditSnapshot_() {
+  const rows = readRecentDecisionRows_(200);
+  return {
+    rowsScanned: rows.length,
+    lastUpdated: formatControlSurfaceTimestamp_(new Date()),
+    reviewOnly: summarizeWorkflowAuditBucket_(rows, row => hasExactAppliedLabels_(row.appliedLabels, [CONFIG.labels.review])),
+    legacyReviewFyi: summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.review) && hasAppliedLabel_(row.appliedLabels, CONFIG.labels.fyi)),
+    explicitFyi: summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.fyi) && !hasAppliedLabel_(row.appliedLabels, CONFIG.labels.review)),
+    notification: summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.notification)),
+    newsBlank: summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.newsDigest) && !hasAnyAppliedLabel_(row.appliedLabels, [CONFIG.labels.toRespond, CONFIG.labels.fyi, CONFIG.labels.notification])),
+    newsWithWorkflow: summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.newsDigest) && hasAnyAppliedLabel_(row.appliedLabels, [CONFIG.labels.toRespond, CONFIG.labels.fyi, CONFIG.labels.notification])),
+    archivedReview: summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.review) && String(row.archived || '').trim().toLowerCase() === 'yes')
   };
 }
 
@@ -1288,7 +1295,9 @@ function rebuildControlSurfaceStatusSheet_(sheet) {
   const tuningSummary = summarizeTuningSuggestions_();
   const approvedRulesSummary = summarizeApprovedRules_();
   const automationHealthSummary = summarizeAutomationHealthStatus_();
-  const nextAction = buildControlSurfaceNextAction_(tuningSummary);
+  const workflowSummary = summarizeWorkflowHealthForStatus_();
+  const checkpointSummary = summarizeCheckpointRunStatus_();
+  const nextAction = buildControlSurfaceNextAction_(tuningSummary, workflowSummary, checkpointSummary);
   const newsWorkflowLabel = CONFIG.newsWorkflowLabel ? CONFIG.newsWorkflowLabel : '(blank)';
 
   const rows = [
@@ -1300,6 +1309,11 @@ function rebuildControlSurfaceStatusSheet_(sheet) {
     ['workflow-review-default', 'Review/Ambiguous', 'Ambiguous mail should stay review-only and workflow-blank unless another rule classifies it more confidently', 'Use this as the baseline mental model for operator review'],
     ['workflow-fyi-default', 'explicit only', 'FYI should be assigned intentionally for informational mail, not inferred from generic ambiguity', 'Use ApprovedRules fyi-sender or explicit model output when you really want FYI.'],
     ['workflow-news-label', newsWorkflowLabel, 'Current workflow label applied to News/Digest items; blank keeps news separate from FYI/notification', CONFIG.newsWorkflowLabel ? 'Keep only if this is an intentional operator choice.' : 'Recommended default: leave blank unless you explicitly want FYI/notification on news.'],
+    ['workflow-audit-warnings', workflowSummary.warningCount, 'How many recent workflow-semantics warning buckets are currently active', workflowSummary.warningCount ? workflowSummary.nextAction : 'No current semantics drift warnings surfaced by WorkflowAudit.'],
+    ['workflow-legacy-review-plus-fyi', workflowSummary.legacyReviewFyiCount, 'Recent rows that still used the old Review + FYI combined shape', workflowSummary.legacyReviewFyiCount ? 'Inspect WorkflowAudit and the example row to find the remaining path.' : 'Healthy: no recent legacy review+FYI rows.'],
+    ['workflow-news-with-workflow', workflowSummary.newsWithWorkflowCount, 'Recent news rows that also carried a workflow label', workflowSummary.newsWithWorkflowCount && !CONFIG.newsWorkflowLabel ? 'Inspect WorkflowAudit unless this was an explicit operator choice.' : 'Healthy unless you intentionally configured newsWorkflowLabel.'],
+    ['workflow-archived-review', workflowSummary.archivedReviewCount, 'Recent Review/Ambiguous rows that were archived', workflowSummary.archivedReviewCount ? 'Confirm archived review rows were truly intentional.' : 'Healthy: no recent archived review rows.'],
+    ['phase10-last-checkpoint', checkpointSummary.value, 'Latest recorded Phase 10 checkpoint outcome from RunLog', checkpointSummary.nextAction],
     ['automation-health-last-status', automationHealthSummary.status, 'Latest recorded automation-health outcome from AutomationHealthLog', automationHealthSummary.nextAction],
     ['automation-health-last-alert-time', automationHealthSummary.timestamp, 'When the latest automation-health row was logged', ''],
     ['automation-health-alert-email', automationHealthSummary.alertEmailStatus, 'Whether email escalation is enabled/configured in Preferences', automationHealthSummary.alertEmailNextAction],
@@ -1445,6 +1459,16 @@ function readLatestAutomationHealthRow_() {
 }
 
 function buildControlSurfaceNextAction_(tuningSummary) {
+  if (arguments.length > 1) {
+    const workflowSummary = arguments[1] || {};
+    const checkpointSummary = arguments[2] || {};
+    if (workflowSummary.warningCount) {
+      return `WorkflowAudit is showing ${workflowSummary.warningCount} warning bucket(s); inspect semantics before treating the system as settled.`;
+    }
+    if (checkpointSummary && checkpointSummary.needsAttention) {
+      return checkpointSummary.nextAction;
+    }
+  }
   if (tuningSummary.approved) {
     return `There are ${tuningSummary.approved} approved suggestions waiting for import.`;
   }
@@ -1455,6 +1479,57 @@ function buildControlSurfaceNextAction_(tuningSummary) {
     return 'No actionable tuning suggestions right now.';
   }
   return 'No pending review/import work right now.';
+}
+
+function summarizeWorkflowHealthForStatus_() {
+  const snapshot = buildWorkflowAuditSnapshot_();
+  const warningCount = [
+    snapshot.legacyReviewFyi.count ? 1 : 0,
+    snapshot.newsWithWorkflow.count && !CONFIG.newsWorkflowLabel ? 1 : 0,
+    snapshot.archivedReview.count ? 1 : 0,
+    snapshot.rowsScanned ? 0 : 1
+  ].reduce((sum, value) => sum + value, 0);
+
+  return {
+    rowsScanned: snapshot.rowsScanned,
+    warningCount: warningCount,
+    legacyReviewFyiCount: snapshot.legacyReviewFyi.count,
+    newsWithWorkflowCount: snapshot.newsWithWorkflow.count,
+    archivedReviewCount: snapshot.archivedReview.count,
+    nextAction: !snapshot.rowsScanned
+      ? 'Run a dry-run or live processing pass, then rebuild WorkflowAudit.'
+      : 'Open WorkflowAudit for the representative row examples and confirm the remaining semantics drift is intentional.'
+  };
+}
+
+function summarizeCheckpointRunStatus_() {
+  const latestByEntryPoint = readLatestRunLogEntriesByEntryPoint_();
+  const latest = latestByEntryPoint.runPhase10ExtendedValidationCheckpoint || latestByEntryPoint.runPhase10ValidationCheckpoint;
+  if (!latest) {
+    return {
+      value: 'no-checkpoint-yet',
+      nextAction: 'Run runPhase10ValidationCheckpoint() after meaningful control-surface changes.',
+      needsAttention: true
+    };
+  }
+
+  const outcome = String(latest.outcome || '').trim();
+  const notes = String(latest.notes || '').trim();
+  const value = `${formatControlSurfaceTimestamp_(latest.timestamp)} — ${outcome || 'unknown'}`;
+
+  if (/failed|error/i.test(outcome)) {
+    return {
+      value: value,
+      nextAction: notes ? `Latest checkpoint failed: ${truncateRunNote_(notes, 180)}` : 'Latest checkpoint failed; inspect ValidationStatus and RunLog.',
+      needsAttention: true
+    };
+  }
+
+  return {
+    value: value,
+    nextAction: notes ? `Latest checkpoint notes: ${truncateRunNote_(notes, 180)}` : 'Latest checkpoint looks healthy.',
+    needsAttention: false
+  };
 }
 
 function formatControlSurfaceTimestamp_(date) {

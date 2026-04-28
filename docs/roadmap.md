@@ -29,16 +29,15 @@ The main active roadmap focus is now **Phase 10 Option A**: making the Google Sh
 - `ControlSurfaceStatus`, `ValidationStatus`, `RecentRunSummary`, `WorkflowAudit`, `TuningReviewQueue`, `OperatorGuide`, and `AutomationHealthLog` are live
 - automation-health auditing is live
 - ambiguous mail no longer auto-gets `2: FYI`; review and FYI semantics are being cleaned up further
+- `ControlSurfaceStatus` now also surfaces workflow-semantics warnings and the latest Phase 10 checkpoint status directly, so first-pass triage usually no longer requires opening `WorkflowAudit` or raw `RunLog`
 
 ### What is next inside Phase 10
-- refine workflow-label semantics between `Review/Ambiguous`, `2: FYI`, and `3: notification`
-- continue Phase 8 residual work here: validate `News/Digest` boundaries, defaults, and operator controls from live evidence
-- continue Phase 9 residual work here: improve suggestion quality, approval workflow clarity, and runtime feedback loops from live evidence
-- keep improving the existing Sheets control surface as the primary operator UI
-- keep the review/import/validate loop compact enough that operators can confirm changes without digging through raw logs every time
-- stabilize statuses, approval actions, validation rules, helper views, and operator terminology
-- keep recent-log semantics auditing visible enough that workflow drift is obvious without manual log spelunking
-- tighten docs/testing so operator expectations match real runtime behavior
+- keep validating workflow-label semantics between `Review/Ambiguous`, `2: FYI`, and `3: notification` from live evidence
+- keep validating `News/Digest` boundaries/defaults from live evidence now that the operator surface exposes the semantics more clearly
+- continue tuning-suggestion quality improvements from live evidence
+- do a short live-soak period to confirm the current Sheets loop feels stable and obvious in day-to-day use
+- decide intentionally whether automation-health email escalation should stay disabled or get a real recipient/severity policy
+- revisit the known log-backed digest duplicate-entry bug separately when resuming deeper digest internals work
 
 ### Phase 10 UX deployment path
 - **Option A (now):** improve the existing Google Sheets control surface and treat it as the primary operator UI while workflow semantics are still evolving
