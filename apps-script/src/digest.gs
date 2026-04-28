@@ -478,6 +478,10 @@ function buildDigestSections_(query, searchLimit) {
     if (seen.has(id)) return;
     seen.add(id);
 
+    if (isCommercialDigestDecision_(decision)) {
+      return;
+    }
+
     if (decision.workflowLabel === CONFIG.labels.toRespond) {
       sections.toRespond.push(thread);
       return;
@@ -503,7 +507,7 @@ function buildDigestSections_(query, searchLimit) {
       return;
     }
 
-    if (decision.label === CONFIG.labels.review) {
+    if (decision.label === CONFIG.labels.review && !isObviousCommercialDigestText_(buildThreadDigestHaystack_(thread))) {
       sections.review.push(thread);
     }
   });
@@ -660,6 +664,10 @@ function buildLogBackedDigestSummary_(rows, options) {
       return;
     }
 
+    if (hasAnyCommercialLabel_(row.appliedLabels)) {
+      return;
+    }
+
     if ((row.appliedLabels || '').includes(CONFIG.labels.toRespond)) {
       sections.toRespond.push(entry);
       return;
@@ -681,7 +689,7 @@ function buildLogBackedDigestSummary_(rows, options) {
       return;
     }
 
-    if ((row.appliedLabels || '').includes(CONFIG.labels.review)) {
+    if ((row.appliedLabels || '').includes(CONFIG.labels.review) && !isObviousCommercialDigestText_(buildDigestHaystackFromParts_(row.from, row.subject, row.reason))) {
       sections.review.push(entry);
     }
   });
@@ -715,6 +723,37 @@ function buildLogBackedDigestSummary_(rows, options) {
     itemCount: normalizedSections.toRespond.length + normalizedSections.notifications.length + normalizedSections.opportunities.length + normalizedSections.review.length,
     sections: normalizedSections
   };
+}
+
+function isCommercialDigestDecision_(decision) {
+  if (!decision) return false;
+  return (CONFIG.commercialLabels || []).includes(decision.label);
+}
+
+function hasAnyCommercialLabel_(appliedLabels) {
+  return (CONFIG.commercialLabels || []).some(labelName => String(appliedLabels || '').includes(labelName));
+}
+
+function buildThreadDigestHaystack_(thread) {
+  const lastMessage = thread.getMessages()[thread.getMessageCount() - 1];
+  return buildDigestHaystackFromParts_(
+    (lastMessage && lastMessage.getFrom()) || '',
+    (lastMessage && lastMessage.getSubject()) || '',
+    ''
+  );
+}
+
+function buildDigestHaystackFromParts_(from, subject, reason) {
+  return `${String(from || '').toLowerCase()}\n${String(subject || '').toLowerCase()}\n${String(reason || '').toLowerCase()}`;
+}
+
+function isObviousCommercialDigestText_(haystack) {
+  if (!haystack) return false;
+  if (containsAny_(haystack, CONFIG.forceCommercialSenders || [])) return true;
+  if (matchesAny_(haystack, CONFIG.newsletterPatterns || [])) return true;
+  if (matchesAny_(haystack, CONFIG.adPatterns || [])) return true;
+  if (matchesAny_(haystack, CONFIG.campaignPatterns || [])) return true;
+  return /(sale|discount|offer|promo|promotion|shop now|new arrivals|collection|box is getting packed|welcome to the crew|vacation with|gave you kudos|collaborations archive|special offer)/i.test(haystack);
 }
 
 function renderLogDigestSection_(title, entries) {
