@@ -30,10 +30,12 @@ The main active roadmap focus is now **Phase 10 Option A**: making the Google Sh
 - automation-health auditing is live
 - ambiguous mail no longer auto-gets `2: FYI`; review and FYI semantics are being cleaned up further
 - `ControlSurfaceStatus` now also surfaces workflow-semantics warnings and the latest Phase 10 checkpoint status directly, so first-pass triage usually no longer requires opening `WorkflowAudit` or raw `RunLog`
+- targeted query-based reclassification helpers now exist for catch-up repairs when improved rules need to be applied to older preserved mailbox threads
+- curated news-source handling has been corrected in live use for TLDR, Economist, Telecompaper, and Zeteo-family mail, while Google Play / Play Store mail now routes toward important service handling instead of news
 
 ### What is next inside Phase 10
 - keep validating workflow-label semantics between `Review/Ambiguous`, `2: FYI`, and `3: notification` from live evidence
-- keep validating `News/Digest` boundaries/defaults from live evidence now that the operator surface exposes the semantics more clearly
+- keep validating `News/Digest` boundaries/defaults from live evidence now that curated news sender handling has been corrected further
 - continue tuning-suggestion quality improvements from live evidence
 - do a short live-soak period to confirm the current Sheets loop feels stable and obvious in day-to-day use
 - decide intentionally whether automation-health email escalation should stay disabled or get a real recipient/severity policy

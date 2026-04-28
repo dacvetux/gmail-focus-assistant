@@ -25,14 +25,17 @@ Implemented and in active use:
 - **Phase 7:** operational reporting and live tuning via `RunLog`
 - **Phase 8:** separate `News/Digest` lane with dedicated morning/evening news digests (shipped; remaining polish folded into Phase 10)
 - **Phase 9:** recommendation-first tuning suggestions via `TuningSuggestions` (shipped; remaining polish folded into Phase 10)
-- **Phase 10:** spreadsheet control surface with runtime-loaded preferences, digest/news settings, approved-rule application, recent-run feedback, and the remaining news/tuning/operator-loop polish
+- **Phase 10:** spreadsheet control surface with runtime-loaded preferences, approved-rule application, dashboard/validation helpers, targeted reclassification helpers, and the remaining live-operations polish
 - **Phase 11 (planned):** assisted AI expansion for review-first tuning, news-source recommendations, and workflow-semantics support
 
 Recent operational status:
 - `clasp run` execution and API-executable deployment are working again
 - live wrapper automation and time triggers are in place
 - approved sheet rules now affect runtime behavior
-- operator-friendly approved-rule aliases such as `shipping-sender` are supported
+- operator-friendly approved-rule aliases such as `shipping-sender`, `news-sender`, and `news-exclude-sender` are supported
+- the Phase 10 operator loop now centers on `ControlSurfaceStatus`, `ValidationStatus`, `RecentRunSummary`, `WorkflowAudit`, and `TuningReviewQueue`
+- targeted reclassification helpers now exist for catch-up relabeling when older mailbox state is blocking newer rule improvements
+- curated news handling was corrected recently so TLDR, Economist, Telecompaper, and Zeteo-style mail route to `News/Digest`, while Google Play / Play Store mail routes toward important service handling instead of news
 
 ## Principles
 
@@ -51,6 +54,12 @@ Recent operational status:
 - `docs/` architecture, roadmap, phase notes, and runbooks
 - `scripts/` local helper scripts
 - `PROJECT_MEMORY.md` ongoing project state and decisions
+
+## Notes on current digest validation
+
+- mailbox-state digest dry-runs can legitimately return `0` even after successful relabeling if the relevant mail falls outside the current morning/evening digest windows
+- log-backed digest dry-runs are the better source of truth when validating time-window behavior after late-day classification changes
+- targeted reclassification can be necessary when older threads are protected by preserve-label behavior and need to catch up to newer sender rules
 
 ## Key docs
 

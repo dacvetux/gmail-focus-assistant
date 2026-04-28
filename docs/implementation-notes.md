@@ -593,6 +593,30 @@ Refined workflow semantics so news stays in its own lane by default.
 - this gives FYI a sharper meaning again: intentionally informational mail, not generic read-later news
 - it also makes the operator model cleaner because `News/Digest` is now a separate lane instead of a disguised FYI path
 
+## 2026-04-28 - Curated news corrections, targeted mailbox catch-up, and digest-window interpretation
+
+Corrected several real-world sender-family mistakes and added a safer repair path for older mailbox state.
+
+### Added or changed
+- moved curated sources like TLDR and Telecompaper out of the broad commercial override path and into explicit `NewsSources` / `newsSenders` handling
+- added Zeteo-family news handling, including `zeteo@substack.com` and broader `zeteo+...@substack.com` alias matching
+- added important-sender treatment for Google Play / Play Store transactional mail
+- moved `hello@ollama.com` from the old forced-review posture into explicit FYI handling
+- added targeted helper entrypoints for inspection and repair work:
+  - `inspectTuningReviewQueuePhase10()`
+  - `inspectRecentDecisionRowsPhase10()`
+  - `inspectNewsSourceCandidatesPhase10()`
+  - `upsertNewsSourcePhase10()`
+  - `upsertApprovedRulePhase10()`
+  - `reclassifyThreadsForQueryPhase10Live()` / `reclassifyThreadsForQueryPhase10DryRun()`
+- verified that targeted live reclassification can safely catch older preserved mailbox threads up to newer sender rules without changing the broader global preserve-label policy
+- confirmed an important operator lesson: successful late-day relabeling may still produce `0` items in mailbox-state and log-backed digest dry-runs if the relevant rows fall outside the current morning/evening digest windows
+
+### Why
+- broad early overrides had become too blunt for some sender families, especially curated news that happened to travel through newsletter-style infrastructure like Substack
+- preserve-label behavior is still the right default for safety, but it needed a narrow catch-up path for intentional repairs
+- digest validation needed clearer interpretation so successful classification fixes are not mistaken for failures when the window timing simply does not include the changed rows
+
 ## 2026-04-27 - Optional automation-health alerting and final Option A UX polish
 
 Added a lightweight escalation path plus a clearer Sheet-native operator checklist.

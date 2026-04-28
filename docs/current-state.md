@@ -24,6 +24,7 @@ Operationally live now:
 - automation-health auditing is live
 - script timezone is corrected to `Europe/Ljubljana`
 - approved sheet rules affect runtime behavior
+- targeted query-based reclassification helpers now exist for mailbox catch-up passes when older preserved threads need to reflect newer sender/routing rules
 
 ## Conservative / intentionally limited areas
 
@@ -83,15 +84,17 @@ Current loop:
 - `fyi-sender` / `forceFyiSenders` now means explicit workflow-only FYI routing for intentionally informational senders
 - news now defaults to `News/Digest` without a workflow label unless the operator explicitly re-enables FYI/notification in `Preferences`
 - a live repair pass removed false FYI labels from historical mailbox threads
+- targeted catch-up reclassification is now available for sender/query slices where preserve-label behavior would otherwise keep older mailbox state from reflecting improved rules
+- curated news-source handling was corrected in live use so TLDR, Economist, Telecompaper, and Zeteo-family mail route to `News/Digest`, while Google Play / Play Store mail is treated as important service/store traffic instead of news
 - long-term FYI vs review semantics cleanup now lives directly inside active Phase 10 work rather than a separately open phase-tracking issue
 
 ## Current roadmap focus
 
 ### Now
-- do a short live-soak on the strengthened Phase 10 **Option A** Sheets workflow
-- carry the remaining Phase 8 news-boundary/default cleanup inside Phase 10 from live evidence
+- continue a short live-soak on the strengthened Phase 10 **Option A** Sheets workflow
+- validate the newer curated-news sender corrections from real traffic and digest windows
 - carry the remaining Phase 9 suggestion-quality cleanup inside Phase 10 from live evidence
-- keep docs aligned with the now-shipped operator dashboard/validation flow
+- keep docs aligned with the now-shipped operator dashboard/validation/reclassification flow
 - keep validating the sharper workflow model: review = unresolved, FYI = explicit info-only, notification = transactional/system updates
 
 ### Next
@@ -105,5 +108,5 @@ Current loop:
 ## Next 3 practical milestones
 
 1. live-soak the current control-surface workflow and confirm the new dashboard signals are sufficient in day-to-day use
-2. keep validating the sharper workflow-label semantics in live use
+2. keep validating curated-news sender handling and the sharper workflow-label semantics in live use
 3. decide whether automation-health email escalation should remain disabled or get a real recipient/severity policy

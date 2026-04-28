@@ -33,6 +33,7 @@ const CONFIG = {
     'tldrnewsletter.com',
     'mail.telecompaper.com',
     'zeteo.com',
+    'zeteo+',
     'zeteo@substack.com',
     'newsletters-noreply@linkedin.com',
     'news@mail.xing.com'
