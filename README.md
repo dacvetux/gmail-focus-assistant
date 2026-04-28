@@ -25,7 +25,7 @@ Implemented and in active use:
 - **Phase 7:** operational reporting and live tuning via `RunLog`
 - **Phase 8:** separate `News/Digest` lane with dedicated morning/evening news digests (shipped; remaining polish folded into Phase 10)
 - **Phase 9:** recommendation-first tuning suggestions via `TuningSuggestions` (shipped; remaining polish folded into Phase 10)
-- **Phase 10:** spreadsheet control surface with runtime-loaded preferences, digest/news settings, approved-rule application, and the remaining news/tuning/operator-loop polish
+- **Phase 10:** spreadsheet control surface with runtime-loaded preferences, digest/news settings, approved-rule application, recent-run feedback, and the remaining news/tuning/operator-loop polish
 - **Phase 11 (planned):** assisted AI expansion for review-first tuning, news-source recommendations, and workflow-semantics support
 
 Recent operational status:

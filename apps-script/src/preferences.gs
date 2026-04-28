@@ -9,6 +9,7 @@ function setupControlSurfacePhase10() {
   getOrCreateOperatorGuideSheet_();
   getOrCreateControlSurfaceStatusSheet_();
   getOrCreateValidationStatusSheet_();
+  getOrCreateRecentRunSummarySheet_();
   getOrCreateWorkflowAuditSheet_();
   const uxSummary = applyControlSurfaceOptionAUx_();
 
@@ -40,6 +41,7 @@ function upgradeControlSurfacePhase10OptionA() {
   getOrCreateOperatorGuideSheet_();
   getOrCreateControlSurfaceStatusSheet_();
   getOrCreateValidationStatusSheet_();
+  getOrCreateRecentRunSummarySheet_();
   getOrCreateWorkflowAuditSheet_();
 
   const summary = applyControlSurfaceOptionAUx_();
@@ -73,10 +75,13 @@ function runPhase10ReviewLoopOptionA() {
     notes: `approved-pending=${statusSummary.tuningSummary.approved}; imported=${syncSummary.importedCount}; approved-rules-configured=${refreshSummary.approvedRulesConfigured}`
   });
 
+  const recentRunSummary = rebuildRecentRunSummarySheet_(getOrCreateRecentRunSummarySheet_());
+
   return {
     syncSummary: syncSummary,
     refreshSummary: refreshSummary,
     tuningReviewQueueSummary: tuningReviewQueueSummary,
+    recentRunSummary: recentRunSummary,
     statusSummary: statusSummary
   };
 }
@@ -136,10 +141,13 @@ function runPhase10ValidationCheckpoint() {
     notes: `success=${successCount}; failed=${failureCount}; workflow-warning=${workflowAuditSummary.warningCount}; approved-rules-configured=${refreshSummary.approvedRulesConfigured}`
   });
 
+  const recentRunSummary = rebuildRecentRunSummarySheet_(getOrCreateRecentRunSummarySheet_());
+
   return {
     refreshSummary: refreshSummary,
     validationSummary: validationSummary,
     tuningReviewQueueSummary: tuningReviewQueueSummary,
+    recentRunSummary: recentRunSummary,
     workflowAuditSummary: workflowAuditSummary,
     statusSummary: statusSummary
   };
@@ -317,11 +325,12 @@ function getOrCreateOperatorGuideSheet_() {
     ['ApprovedRules', 'Runtime rules already approved by the operator', 'One rule per row; keep Approved=yes for active rules', 'Category=shipping-sender/commercial-sender/important-sender/fyi-sender/news-sender/news-exclude-sender; Action=add|remove', 'fyi-sender adds workflow-only FYI routing for intentionally informational senders'],
     ['ControlSurfaceStatus', 'Small operator dashboard for the current review/import state', 'Rebuild via rebuildControlSurfaceStatusPhase10() or runPhase10ReviewLoopOptionA()', 'Shows pending/new/approved/imported counts plus next-action guidance', 'Use this first before reviewing or importing'],
     ['ValidationStatus', 'Compact last-checkpoint view for the core dry-run validation loop', 'Refresh via runPhase10ValidationCheckpoint()', 'Shows ok/error plus key result for Phase 1, AI review, digests, and tuning suggestions', 'Use this after changes when you want a quick confidence pass without reading raw logs first'],
+    ['RecentRunSummary', 'Compact latest-run view for wrappers and Phase 10 helper actions', 'Refresh via rebuildRecentRunSummaryPhase10(), runPhase10ReviewLoopOptionA(), or runPhase10ValidationCheckpoint()', 'Shows latest local time, outcome, counts, and notes for key wrapper/helper entry points', 'Use this when you want a quick “did the last thing actually run?” answer without opening raw RunLog'],
     ['WorkflowAudit', 'Recent DecisionLog semantics audit for review/FYI/notification/news behavior', 'Refresh via rebuildWorkflowAuditPhase10() or runPhase10ValidationCheckpoint()', 'Shows whether recent rows match the intended workflow semantics model plus example rows', 'Use this when Phase 10 semantics feel blurry or after any routing/label change'],
     ['Workflow label semantics', 'Clarify when to use review vs FYI vs notification', 'Treat Review/Ambiguous as unresolved mail, FYI as intentionally informational, and notification as low-response transactional/system updates', 'Review/Ambiguous should stay workflow-blank; News/Digest can stay workflow-blank', 'Default news behavior should stay separate unless the operator explicitly wants FYI/notification'],
     ['Automation health alerts', 'Optional lightweight escalation for wrapper failures or missed schedules', 'Enable only if you want email alerts; blank recipient keeps the feature safely silent', 'automationHealthAlertEnabled=false by default; min severity=warning|error', 'Repeated identical alerts are deduplicated to avoid spam'],
-    ['Recommended workflow', 'Use Sheets as the primary operator UI for now', '1) review ControlSurfaceStatus 2) review TuningReviewQueue 3) update source rows in TuningSuggestions as approved/rejected/superseded 4) run runPhase10ReviewLoopOptionA() 5) run runPhase10ValidationCheckpoint() 6) confirm ValidationStatus, WorkflowAudit, TuningReviewQueue, and ControlSurfaceStatus updated', 'Option A now; Option B HTML UI later', 'Only move to the HTML phase once this workflow feels ~90% finalized'],
-    ['Fast commands', 'Exact helper functions for the operator loop', 'Use these when you want a quick refresh/import cycle without digging through code', 'rebuildControlSurfaceStatusPhase10(); rebuildTuningReviewQueuePhase10(); rebuildWorkflowAuditPhase10(); runPhase10ReviewLoopOptionA(); runPhase10ValidationCheckpoint(); refreshConfigFromPreferencesPhase10()', 'These are the main Option A operator commands today']
+    ['Recommended workflow', 'Use Sheets as the primary operator UI for now', '1) review ControlSurfaceStatus 2) review TuningReviewQueue 3) update source rows in TuningSuggestions as approved/rejected/superseded 4) run runPhase10ReviewLoopOptionA() 5) run runPhase10ValidationCheckpoint() 6) confirm ValidationStatus, RecentRunSummary, WorkflowAudit, TuningReviewQueue, and ControlSurfaceStatus updated', 'Option A now; Option B HTML UI later', 'Only move to the HTML phase once this workflow feels ~90% finalized'],
+    ['Fast commands', 'Exact helper functions for the operator loop', 'Use these when you want a quick refresh/import cycle without digging through code', 'rebuildControlSurfaceStatusPhase10(); rebuildTuningReviewQueuePhase10(); rebuildRecentRunSummaryPhase10(); rebuildWorkflowAuditPhase10(); runPhase10ReviewLoopOptionA(); runPhase10ValidationCheckpoint(); refreshConfigFromPreferencesPhase10()', 'These are the main Option A operator commands today']
   ];
 
   sheet.clearContents();
@@ -351,6 +360,18 @@ function getOrCreateValidationStatusSheet_() {
   }
 
   ensureValidationStatusHeader_(sheet);
+  return sheet;
+}
+
+function getOrCreateRecentRunSummarySheet_() {
+  const spreadsheet = getLogSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName('RecentRunSummary');
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('RecentRunSummary');
+  }
+
+  ensureRecentRunSummaryHeader_(sheet);
   return sheet;
 }
 
@@ -598,6 +619,7 @@ function applyControlSurfaceOptionAUx_() {
   const operatorGuideSheet = getOrCreateOperatorGuideSheet_();
   const controlSurfaceStatusSheet = getOrCreateControlSurfaceStatusSheet_();
   const validationStatusSheet = getOrCreateValidationStatusSheet_();
+  const recentRunSummarySheet = getOrCreateRecentRunSummarySheet_();
   const workflowAuditSheet = getOrCreateWorkflowAuditSheet_();
 
   let validationsApplied = 0;
@@ -612,15 +634,17 @@ function applyControlSurfaceOptionAUx_() {
   rebuildControlSurfaceStatusSheet_(controlSurfaceStatusSheet);
   rebuildTuningReviewQueueSheet_(tuningReviewQueueSheet);
   configureValidationStatusSheetUx_(validationStatusSheet);
+  configureRecentRunSummarySheetUx_(recentRunSummarySheet);
+  rebuildRecentRunSummarySheet_(recentRunSummarySheet);
   configureWorkflowAuditSheetUx_(workflowAuditSheet);
   rebuildWorkflowAuditSheet_(workflowAuditSheet);
 
   return {
-    sheetsReady: ['Preferences', 'DigestSettings', 'NewsSources', 'ApprovedRules', 'TuningSuggestions', 'TuningReviewQueue', 'OperatorGuide', 'ControlSurfaceStatus', 'ValidationStatus', 'WorkflowAudit'],
-    sheetCount: 10,
-    validationsApplied: validationsApplied + 2,
+    sheetsReady: ['Preferences', 'DigestSettings', 'NewsSources', 'ApprovedRules', 'TuningSuggestions', 'TuningReviewQueue', 'OperatorGuide', 'ControlSurfaceStatus', 'ValidationStatus', 'RecentRunSummary', 'WorkflowAudit'],
+    sheetCount: 11,
+    validationsApplied: validationsApplied + 3,
     guideUpdated: true,
-    notes: `Option A UX prepared across 10 sheets; validations-applied=${validationsApplied + 2}`
+    notes: `Option A UX prepared across 11 sheets; validations-applied=${validationsApplied + 3}`
   };
 }
 
@@ -789,6 +813,28 @@ function configureValidationStatusSheetUx_(sheet) {
   return 1;
 }
 
+function ensureRecentRunSummaryHeader_(sheet) {
+  if (!sheet) return;
+  const header = [['Run Family', 'Latest Local Time', 'Entry Point', 'Outcome', 'Processed Threads', 'Primary Count', 'Notes', 'Operator Action']];
+  sheet.getRange(1, 1, 1, header[0].length).setValues(header);
+}
+
+function configureRecentRunSummarySheetUx_(sheet) {
+  ensureRecentRunSummaryHeader_(sheet);
+  styleControlSurfaceSheet_(sheet, [220, 160, 220, 180, 140, 120, 420, 320]);
+  setHeaderNotes_(sheet, {
+    1: 'Operator-facing summary group for the latest relevant run.',
+    2: 'Latest local timestamp seen in RunLog for this group.',
+    3: 'Exact entry point from RunLog.',
+    4: 'Latest recorded outcome, or stale/missing when the view thinks attention is needed.',
+    5: 'Processed Threads from the latest run.',
+    6: 'Primary Count from the latest run.',
+    7: 'Latest notes captured in RunLog.',
+    8: 'Suggested next operator action based on the latest outcome.'
+  });
+  return 1;
+}
+
 function ensureWorkflowAuditHeader_(sheet) {
   if (!sheet) return;
   const header = [['Audit Key', 'Status', 'Count', 'Example', 'Notes', 'Last Updated']];
@@ -862,6 +908,22 @@ function rebuildValidationStatusSheet_(sheet, rows) {
     successCount: values.filter(row => row[2] === 'ok').length,
     failureCount: values.filter(row => row[2] === 'error').length
   };
+}
+
+function rebuildRecentRunSummaryPhase10() {
+  const summary = rebuildRecentRunSummarySheet_(getOrCreateRecentRunSummarySheet_());
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'rebuildRecentRunSummaryPhase10',
+    processedThreads: summary.totalFamilies,
+    itemCount: summary.missingFamilies,
+    outcome: summary.missingFamilies ? 'recent-run-summary-warning' : 'recent-run-summary-ok',
+    notes: `families=${summary.totalFamilies}; missing=${summary.missingFamilies}; stale=${summary.staleFamilies}`
+  });
+
+  return summary;
 }
 
 function rebuildWorkflowAuditSheet_(sheet) {
@@ -980,6 +1042,38 @@ function summarizeTuningReviewQueueRows_(rows) {
   };
 }
 
+function rebuildRecentRunSummarySheet_(sheet) {
+  ensureRecentRunSummaryHeader_(sheet);
+  const latestByEntryPoint = readLatestRunLogEntriesByEntryPoint_();
+  const families = buildRecentRunSummaryFamilies_();
+  const rows = families.map(family => {
+    const match = family.entryPoints.map(entryPoint => latestByEntryPoint[entryPoint]).find(Boolean);
+    return buildRecentRunSummaryRow_(family, match);
+  });
+
+  const values = rows.length ? rows : [[
+    'info',
+    '',
+    '',
+    'no-runlog-data',
+    '',
+    '',
+    'RunLog has no non-header rows yet.',
+    'Run a dry-run, review loop, validation checkpoint, or wrapper before using this sheet.'
+  ]];
+
+  const maxRowsToClear = Math.max(sheet.getLastRow() - 1, values.length, 1);
+  sheet.getRange(2, 1, maxRowsToClear, 8).clearContent();
+  sheet.getRange(2, 1, values.length, values[0].length).setValues(values);
+  configureRecentRunSummarySheetUx_(sheet);
+
+  return {
+    totalFamilies: rows.length,
+    missingFamilies: rows.filter(row => row[3] === 'missing').length,
+    staleFamilies: rows.filter(row => row[3] === 'stale').length
+  };
+}
+
 function summarizeWorkflowAuditBucket_(rows, predicate) {
   const matches = (rows || []).filter(row => predicate(row));
   return {
@@ -994,6 +1088,97 @@ function formatWorkflowAuditExample_(row) {
   const subject = truncateRunNote_(String(row.subject || '').trim(), 120);
   if (from && subject) return `${from} — ${subject}`;
   return from || subject || '';
+}
+
+function buildRecentRunSummaryFamilies_() {
+  return [
+    { label: 'Phase 10 review loop', entryPoints: ['runPhase10ReviewLoopOptionA'], staleHours: 72 },
+    { label: 'Phase 10 validation checkpoint', entryPoints: ['runPhase10ValidationCheckpoint'], staleHours: 72 },
+    { label: 'Phase 10 run summary refresh', entryPoints: ['rebuildRecentRunSummaryPhase10'], staleHours: 72 },
+    { label: 'Automation health audit', entryPoints: ['runAutomationHealthAuditWrapper', 'auditAutomationHealth'], staleHours: 36 },
+    { label: 'Frequent processing wrapper', entryPoints: ['runFrequentProcessingLiveWrapper'], staleHours: 18 },
+    { label: 'Morning main digest wrapper', entryPoints: ['runMorningMainDigestLiveWrapper'], staleHours: 36 },
+    { label: 'Evening main digest wrapper', entryPoints: ['runEveningMainDigestLiveWrapper'], staleHours: 36 },
+    { label: 'Morning news digest wrapper', entryPoints: ['runMorningNewsDigestLiveWrapper'], staleHours: 36 },
+    { label: 'Evening news digest wrapper', entryPoints: ['runEveningNewsDigestLiveWrapper'], staleHours: 36 }
+  ];
+}
+
+function buildRecentRunSummaryRow_(family, run) {
+  if (!run) {
+    return [
+      family.label,
+      '',
+      '',
+      'missing',
+      '',
+      '',
+      'No RunLog entry found for this run family yet.',
+      'Run or wait for this helper/wrapper, then confirm it logs successfully.'
+    ];
+  }
+
+  const stale = isRecentRunSummaryStale_(run.timestamp, family.staleHours);
+  return [
+    family.label,
+    formatControlSurfaceTimestamp_(run.timestamp),
+    run.entryPoint,
+    stale ? 'stale' : (run.outcome || 'ok'),
+    run.processedThreads === undefined ? '' : run.processedThreads,
+    run.primaryCount === undefined ? '' : run.primaryCount,
+    stale ? `Last run is older than ${family.staleHours}h. ${run.notes || ''}`.trim() : (run.notes || ''),
+    stale ? 'Review trigger schedule / recent activity if this should have run more recently.' : buildRecentRunSummaryAction_(run)
+  ];
+}
+
+function buildRecentRunSummaryAction_(run) {
+  const outcome = String(run && run.outcome || '').trim().toLowerCase();
+  if (!outcome) return 'Review raw RunLog row if this result feels unclear.';
+  if (outcome.indexOf('failed') !== -1 || outcome.indexOf('error') !== -1) {
+    return 'Inspect RunLog notes and the related sheet/log before trusting this area.';
+  }
+  if (outcome.indexOf('warning') !== -1 || outcome.indexOf('skipped') !== -1 || outcome.indexOf('missing') !== -1) {
+    return 'Inspect recent automation/control-surface state and decide whether intervention is needed.';
+  }
+  if (outcome.indexOf('no-imports') !== -1 || outcome.indexOf('no-approved') !== -1 || outcome.indexOf('empty') !== -1) {
+    return 'No action needed unless you expected work here.';
+  }
+  return 'Looks healthy; only dig deeper if another sheet suggests drift.';
+}
+
+function isRecentRunSummaryStale_(timestamp, staleHours) {
+  if (!(timestamp instanceof Date) || !Number.isFinite(staleHours)) return false;
+  return (new Date().getTime() - timestamp.getTime()) > staleHours * 60 * 60 * 1000;
+}
+
+function readLatestRunLogEntriesByEntryPoint_() {
+  const sheet = getOrCreateRunLogSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return {};
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+  const latestByEntryPoint = {};
+
+  values.forEach(row => {
+    const entryPoint = String(row[3] || '').trim();
+    const timestamp = row[0];
+    if (!entryPoint || !(timestamp instanceof Date)) return;
+    const current = latestByEntryPoint[entryPoint];
+    if (!current || current.timestamp.getTime() < timestamp.getTime()) {
+      latestByEntryPoint[entryPoint] = {
+        timestamp: timestamp,
+        runType: String(row[1] || '').trim(),
+        mode: String(row[2] || '').trim(),
+        entryPoint: entryPoint,
+        processedThreads: row[4],
+        primaryCount: row[5],
+        outcome: String(row[6] || '').trim(),
+        notes: String(row[7] || '').trim()
+      };
+    }
+  });
+
+  return latestByEntryPoint;
 }
 
 function hasAppliedLabel_(appliedLabels, labelName) {
