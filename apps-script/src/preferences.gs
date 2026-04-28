@@ -1111,6 +1111,47 @@ function inspectTuningReviewQueuePhase10() {
   };
 }
 
+function setTuningSuggestionStatusPhase10(rowNumber, status, note) {
+  const sheet = getOrCreateTuningSuggestionsSheet_();
+  const numericRow = Number(rowNumber);
+  if (!Number.isFinite(numericRow) || numericRow < 2) {
+    throw new Error(`Invalid tuning suggestion row: ${rowNumber}`);
+  }
+
+  const normalizedStatus = String(status || '').trim().toLowerCase();
+  if (!normalizedStatus) {
+    throw new Error('Status is required');
+  }
+
+  sheet.getRange(numericRow, 10).setValue(normalizedStatus);
+  if (note !== undefined && note !== null && String(note).trim()) {
+    const noteCell = sheet.getRange(numericRow, 11);
+    const existing = String(noteCell.getDisplayValue() || '').trim();
+    const appended = existing ? `${existing}; ${String(note).trim()}` : String(note).trim();
+    noteCell.setValue(appended);
+  }
+
+  const category = String(sheet.getRange(numericRow, 2).getDisplayValue() || '').trim();
+  const target = String(sheet.getRange(numericRow, 4).getDisplayValue() || '').trim();
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'setTuningSuggestionStatusPhase10',
+    processedThreads: 1,
+    itemCount: 1,
+    outcome: `tuning-status-${normalizedStatus}`,
+    notes: `row=${numericRow}; category=${category}; target=${target}`
+  });
+
+  return {
+    rowNumber: numericRow,
+    status: normalizedStatus,
+    category: category,
+    target: target
+  };
+}
+
 function rebuildRecentRunSummarySheet_(sheet) {
   ensureRecentRunSummaryHeader_(sheet);
   const latestByEntryPoint = readLatestRunLogEntriesByEntryPoint_();
