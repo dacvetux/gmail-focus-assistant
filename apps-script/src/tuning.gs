@@ -23,7 +23,7 @@ function generateTuningSuggestionsPhase9_(options) {
     const reason = (row.reason || '').trim();
     const labels = (row.appliedLabels || '').trim();
     const archived = (row.archived || '').trim();
-    const timestamp = (row.timestamp || '').trim();
+    const timestamp = formatTuningSuggestionTimestamp_(row.timestamp);
     const senderKey = extractSenderKey_(from);
     if (!senderKey) return;
 
@@ -358,6 +358,13 @@ function buildSuggestionNotes_(options, entry, reviewCount) {
   const mode = options.dryRun ? 'dry-run' : 'live';
   const seenModes = Object.keys(entry.modes || {}).join(', ') || mode;
   return `generated in ${mode} suggestion mode; review-count=${reviewCount}; seen-modes=${seenModes}`;
+}
+
+function formatTuningSuggestionTimestamp_(value) {
+  if (value instanceof Date) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
+  }
+  return String(value || '').trim();
 }
 
 function isSenderAlreadyCoveredByApprovedRules_(senderKey, approvedRules) {
