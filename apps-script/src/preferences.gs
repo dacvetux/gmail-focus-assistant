@@ -162,7 +162,6 @@ function runPhase10ValidationCheckpointInternal_(options) {
   const validationSummary = rebuildValidationStatusSheet_(getOrCreateValidationStatusSheet_(), rows);
   const tuningReviewQueueSummary = rebuildTuningReviewQueueSheet_(getOrCreateTuningReviewQueueSheet_());
   const workflowAuditSummary = rebuildWorkflowAuditSheet_(getOrCreateWorkflowAuditSheet_());
-  const statusSummary = rebuildControlSurfaceStatusPhase10();
 
   logRunSummary_({
     runType: 'control-surface',
@@ -175,6 +174,7 @@ function runPhase10ValidationCheckpointInternal_(options) {
   });
 
   const recentRunSummary = rebuildRecentRunSummarySheet_(getOrCreateRecentRunSummarySheet_());
+  const statusSummary = rebuildControlSurfaceStatusPhase10();
 
   return {
     refreshSummary: refreshSummary,
