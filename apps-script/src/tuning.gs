@@ -276,17 +276,17 @@ function readRecentDecisionRows_(maxRows) {
   const effectiveMaxRows = Math.max(1, maxRows || 200);
   const startRow = Math.max(2, lastRow - (effectiveMaxRows - 1));
   const numRows = lastRow - startRow + 1;
-  const values = sheet.getRange(startRow, 1, numRows, 8).getDisplayValues();
+  const values = sheet.getRange(startRow, 1, numRows, 8).getValues();
 
   return values.map(row => ({
     timestamp: row[0],
-    mode: row[1],
-    threadId: row[2],
-    from: row[3],
-    subject: row[4],
-    reason: row[5],
-    appliedLabels: row[6],
-    archived: row[7]
+    mode: String(row[1] || ''),
+    threadId: String(row[2] || ''),
+    from: String(row[3] || ''),
+    subject: String(row[4] || ''),
+    reason: String(row[5] || ''),
+    appliedLabels: String(row[6] || ''),
+    archived: String(row[7] || '')
   }));
 }
 
