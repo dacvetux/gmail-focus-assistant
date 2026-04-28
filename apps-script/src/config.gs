@@ -22,7 +22,9 @@ const CONFIG = {
     'googleplay-noreply@google.com',
     'play.google.com'
   ],
-  forceFyiSenders: [],
+  forceFyiSenders: [
+    'hello@ollama.com'
+  ],
   newsSenders: [
     'newsletters@email.reuters.com',
     'reuters.com',
@@ -31,6 +33,7 @@ const CONFIG = {
     'tldrnewsletter.com',
     'mail.telecompaper.com',
     'zeteo.com',
+    'zeteo@substack.com',
     'newsletters-noreply@linkedin.com',
     'news@mail.xing.com'
   ],
@@ -117,7 +120,6 @@ const CONFIG = {
     'developers.google.com',
     'googledev-noreply@google.com',
     'ifttt.com',
-    'ollama.com',
     'families-noreply@google.com',
     'invitations@linkedin.com'
   ],
