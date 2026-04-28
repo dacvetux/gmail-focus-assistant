@@ -11,6 +11,7 @@ function generateMorningDigestFromLogsDryRun() {
     type: 'morning-log',
     sourceType: 'main',
     dryRun: true,
+    previewPendingWindow: true,
     entryPointName: 'generateMorningDigestFromLogsDryRun'
   });
 }
@@ -53,6 +54,7 @@ function generateEveningDigestFromLogsDryRun() {
     type: 'evening-log',
     sourceType: 'main',
     dryRun: true,
+    previewPendingWindow: true,
     entryPointName: 'generateEveningDigestFromLogsDryRun'
   });
 }
@@ -107,6 +109,7 @@ function generateNewsDigestMorningFromLogsDryRun() {
     type: 'news-morning-log',
     sourceType: 'news',
     dryRun: true,
+    previewPendingWindow: true,
     entryPointName: 'generateNewsDigestMorningFromLogsDryRun'
   });
 }
@@ -141,6 +144,7 @@ function generateNewsDigestEveningFromLogsDryRun() {
     type: 'news-evening-log',
     sourceType: 'news',
     dryRun: true,
+    previewPendingWindow: true,
     entryPointName: 'generateNewsDigestEveningFromLogsDryRun'
   });
 }
@@ -294,7 +298,9 @@ function generateNewsDigest_(options) {
 function generateLogBackedDigest_(options) {
   refreshConfigFromPreferencesPhase10_({ suppressLog: true });
   const mode = options.dryRun ? 'dry-run' : 'live';
-  const windowConfig = getDigestWindowConfig_(options.type);
+  const windowConfig = getDigestWindowConfig_(options.type, {
+    previewPendingWindow: Boolean(options.previewPendingWindow)
+  });
   const rows = readDecisionRowsForWindow_(windowConfig.start, windowConfig.end);
   const summaryData = buildLogBackedDigestSummary_(rows, options);
   const summary = summaryData.summary;
@@ -751,12 +757,22 @@ function buildLogDigestRunNotes_(summaryData, windowConfig) {
   return notes.join('; ');
 }
 
-function getDigestWindowConfig_(digestType) {
+function getDigestWindowConfig_(digestType, options) {
   const now = new Date();
+  const previewPendingWindow = Boolean(options && options.previewPendingWindow);
 
   if ((digestType || '').includes('morning')) {
-    const end = new Date(now);
-    end.setHours(7, 30, 0, 0);
+    const scheduledEnd = new Date(now);
+    scheduledEnd.setHours(7, 30, 0, 0);
+
+    if (previewPendingWindow && now < scheduledEnd) {
+      const previewStart = new Date(now);
+      previewStart.setDate(previewStart.getDate() - 1);
+      previewStart.setHours(19, 0, 0, 0);
+      return { start: previewStart, end: now, label: 'evening-to-now-preview' };
+    }
+
+    const end = new Date(scheduledEnd);
     if (now < end) {
       end.setDate(end.getDate() - 1);
     }
@@ -767,8 +783,16 @@ function getDigestWindowConfig_(digestType) {
     return { start: start, end: end, label: 'evening-to-morning' };
   }
 
-  const end = new Date(now);
-  end.setHours(19, 0, 0, 0);
+  const scheduledEnd = new Date(now);
+  scheduledEnd.setHours(19, 0, 0, 0);
+
+  if (previewPendingWindow && now < scheduledEnd) {
+    const previewStart = new Date(now);
+    previewStart.setHours(7, 30, 0, 0);
+    return { start: previewStart, end: now, label: 'morning-to-now-preview' };
+  }
+
+  const end = new Date(scheduledEnd);
   if (now < end) {
     end.setDate(end.getDate() - 1);
   }
