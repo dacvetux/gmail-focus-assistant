@@ -87,14 +87,33 @@ function runPhase10ReviewLoopOptionA() {
 }
 
 function runPhase10ValidationCheckpoint() {
+  return runPhase10ValidationCheckpointInternal_({
+    entryPoint: 'runPhase10ValidationCheckpoint',
+    checks: [
+      { key: 'phase1-dry-run', label: 'Phase 1 dry-run', runner: processInboxFocusPhase1DryRun },
+      { key: 'morning-digest-dry-run', label: 'Morning digest dry-run', runner: generateMorningDigestDryRun },
+      { key: 'news-morning-digest-dry-run', label: 'News morning digest dry-run', runner: generateNewsDigestMorningDryRun }
+    ]
+  });
+}
+
+function runPhase10ExtendedValidationCheckpoint() {
+  return runPhase10ValidationCheckpointInternal_({
+    entryPoint: 'runPhase10ExtendedValidationCheckpoint',
+    checks: [
+      { key: 'phase1-dry-run', label: 'Phase 1 dry-run', runner: processInboxFocusPhase1DryRun },
+      { key: 'phase4-ai-review-dry-run', label: 'Phase 4 AI review dry-run', runner: processInboxFocusPhase4AiReviewDryRun },
+      { key: 'morning-digest-dry-run', label: 'Morning digest dry-run', runner: generateMorningDigestDryRun },
+      { key: 'news-morning-digest-dry-run', label: 'News morning digest dry-run', runner: generateNewsDigestMorningDryRun },
+      { key: 'tuning-suggestions-dry-run', label: 'Tuning suggestions dry-run', runner: generateTuningSuggestionsPhase9DryRun }
+    ]
+  });
+}
+
+function runPhase10ValidationCheckpointInternal_(options) {
+  const entryPoint = options && options.entryPoint ? options.entryPoint : 'runPhase10ValidationCheckpoint';
+  const checks = options && options.checks ? options.checks : [];
   const refreshSummary = refreshConfigFromPreferencesPhase10_({ suppressLog: true });
-  const checks = [
-    { key: 'phase1-dry-run', label: 'Phase 1 dry-run', runner: processInboxFocusPhase1DryRun },
-    { key: 'phase4-ai-review-dry-run', label: 'Phase 4 AI review dry-run', runner: processInboxFocusPhase4AiReviewDryRun },
-    { key: 'morning-digest-dry-run', label: 'Morning digest dry-run', runner: generateMorningDigestDryRun },
-    { key: 'news-morning-digest-dry-run', label: 'News morning digest dry-run', runner: generateNewsDigestMorningDryRun },
-    { key: 'tuning-suggestions-dry-run', label: 'Tuning suggestions dry-run', runner: generateTuningSuggestionsPhase9DryRun }
-  ];
 
   const rows = [];
   const passedChecks = [];
@@ -148,7 +167,7 @@ function runPhase10ValidationCheckpoint() {
   logRunSummary_({
     runType: 'control-surface',
     mode: 'internal',
-    entryPoint: 'runPhase10ValidationCheckpoint',
+    entryPoint: entryPoint,
     processedThreads: checks.length,
     itemCount: successCount,
     outcome: failureCount ? 'validation-checkpoint-failed' : 'validation-checkpoint-ok',
@@ -165,7 +184,8 @@ function runPhase10ValidationCheckpoint() {
     workflowAuditSummary: workflowAuditSummary,
     statusSummary: statusSummary,
     passedChecks: passedChecks,
-    failedChecks: failedChecks
+    failedChecks: failedChecks,
+    entryPoint: entryPoint
   };
 }
 
@@ -340,13 +360,13 @@ function getOrCreateOperatorGuideSheet_() {
     ['TuningReviewQueue', 'Compact operator queue built from actionable TuningSuggestions rows', 'Refresh via rebuildTuningReviewQueuePhase10() or runPhase10ReviewLoopOptionA()', 'Shows only new/approved rows plus next-action guidance and source row links', 'Use this when you want the work queue without the full historical suggestion sheet'],
     ['ApprovedRules', 'Runtime rules already approved by the operator', 'One rule per row; keep Approved=yes for active rules', 'Category=shipping-sender/commercial-sender/important-sender/fyi-sender/news-sender/news-exclude-sender; Action=add|remove', 'fyi-sender adds workflow-only FYI routing for intentionally informational senders'],
     ['ControlSurfaceStatus', 'Small operator dashboard for the current review/import state', 'Rebuild via rebuildControlSurfaceStatusPhase10() or runPhase10ReviewLoopOptionA()', 'Shows pending/new/approved/imported counts plus next-action guidance', 'Use this first before reviewing or importing'],
-    ['ValidationStatus', 'Compact last-checkpoint view for the core dry-run validation loop', 'Refresh via runPhase10ValidationCheckpoint()', 'Shows ok/error plus key result for Phase 1, AI review, digests, and tuning suggestions', 'Use this after changes when you want a quick confidence pass without reading raw logs first'],
+    ['ValidationStatus', 'Compact last-checkpoint view for the core dry-run validation loop', 'Refresh via runPhase10ValidationCheckpoint() for the fast default path or runPhase10ExtendedValidationCheckpoint() for the heavier AI/tuning path', 'Shows ok/error plus key result for the checks included in the most recent checkpoint run', 'Use the default checkpoint after normal changes and the extended checkpoint when you explicitly want deeper validation'],
     ['RecentRunSummary', 'Compact latest-run view for wrappers and Phase 10 helper actions', 'Refresh via rebuildRecentRunSummaryPhase10(), runPhase10ReviewLoopOptionA(), or runPhase10ValidationCheckpoint()', 'Shows latest local time, outcome, counts, and notes for key wrapper/helper entry points', 'Use this when you want a quick “did the last thing actually run?” answer without opening raw RunLog'],
     ['WorkflowAudit', 'Recent DecisionLog semantics audit for review/FYI/notification/news behavior', 'Refresh via rebuildWorkflowAuditPhase10() or runPhase10ValidationCheckpoint()', 'Shows whether recent rows match the intended workflow semantics model plus example rows', 'Use this when Phase 10 semantics feel blurry or after any routing/label change'],
     ['Workflow label semantics', 'Clarify when to use review vs FYI vs notification', 'Treat Review/Ambiguous as unresolved mail, FYI as intentionally informational, and notification as low-response transactional/system updates', 'Review/Ambiguous should stay workflow-blank; News/Digest can stay workflow-blank', 'Default news behavior should stay separate unless the operator explicitly wants FYI/notification'],
     ['Automation health alerts', 'Optional lightweight escalation for wrapper failures or missed schedules', 'Enable only if you want email alerts; blank recipient keeps the feature safely silent', 'automationHealthAlertEnabled=false by default; min severity=warning|error', 'Repeated identical alerts are deduplicated to avoid spam'],
-    ['Recommended workflow', 'Use Sheets as the primary operator UI for now', '1) review ControlSurfaceStatus 2) review TuningReviewQueue 3) update source rows in TuningSuggestions as approved/rejected/superseded 4) run runPhase10ReviewLoopOptionA() 5) run runPhase10ValidationCheckpoint() 6) confirm ValidationStatus, RecentRunSummary, WorkflowAudit, TuningReviewQueue, and ControlSurfaceStatus updated', 'Option A now; Option B HTML UI later', 'Only move to the HTML phase once this workflow feels ~90% finalized'],
-    ['Fast commands', 'Exact helper functions for the operator loop', 'Use these when you want a quick refresh/import cycle without digging through code', 'rebuildControlSurfaceStatusPhase10(); rebuildTuningReviewQueuePhase10(); rebuildRecentRunSummaryPhase10(); rebuildWorkflowAuditPhase10(); runPhase10ReviewLoopOptionA(); runPhase10ValidationCheckpoint(); refreshConfigFromPreferencesPhase10()', 'These are the main Option A operator commands today']
+    ['Recommended workflow', 'Use Sheets as the primary operator UI for now', '1) review ControlSurfaceStatus 2) review TuningReviewQueue 3) update source rows in TuningSuggestions as approved/rejected/superseded 4) run runPhase10ReviewLoopOptionA() 5) run runPhase10ValidationCheckpoint() 6) confirm ValidationStatus, RecentRunSummary, WorkflowAudit, TuningReviewQueue, and ControlSurfaceStatus updated', 'Option A now; Option B HTML UI later', 'Use runPhase10ExtendedValidationCheckpoint() only when you explicitly want the heavier AI/tuning checks too.'],
+    ['Fast commands', 'Exact helper functions for the operator loop', 'Use these when you want a quick refresh/import cycle without digging through code', 'rebuildControlSurfaceStatusPhase10(); rebuildTuningReviewQueuePhase10(); rebuildRecentRunSummaryPhase10(); rebuildWorkflowAuditPhase10(); runPhase10ReviewLoopOptionA(); runPhase10ValidationCheckpoint(); runPhase10ExtendedValidationCheckpoint(); refreshConfigFromPreferencesPhase10()', 'These are the main Option A operator commands today']
   ];
 
   sheet.clearContents();
@@ -1276,7 +1296,7 @@ function rebuildControlSurfaceStatusSheet_(sheet) {
     ['last-updated', formatControlSurfaceTimestamp_(new Date()), 'When this dashboard was last rebuilt', nextAction],
     ['operator-step-1', tuningSummary.newCount ? 'review TuningReviewQueue' : 'check ControlSurfaceStatus', 'First operator action in the Phase 10 loop', tuningSummary.newCount ? 'Open TuningReviewQueue, then update the referenced source rows in TuningSuggestions as approved, rejected, or superseded.' : 'No fresh review work right now; use this sheet as the quick system overview.'],
     ['operator-step-2', tuningSummary.approved ? 'run review/import loop' : 'no import work pending', 'Second operator action after review', tuningSummary.approved ? 'Run runPhase10ReviewLoopOptionA() to import approved suggestions and refresh runtime.' : 'Import step is clear right now.'],
-    ['operator-step-3', 'refresh + validate', 'Final operator action after changes', 'Run runPhase10ValidationCheckpoint() for a compact confidence pass, then review ValidationStatus if anything fails.'],
+    ['operator-step-3', 'refresh + validate', 'Final operator action after changes', 'Run runPhase10ValidationCheckpoint() for the fast confidence pass, then use runPhase10ExtendedValidationCheckpoint() only when you want the heavier AI/tuning checks too.'],
     ['workflow-review-default', 'Review/Ambiguous', 'Ambiguous mail should stay review-only and workflow-blank unless another rule classifies it more confidently', 'Use this as the baseline mental model for operator review'],
     ['workflow-fyi-default', 'explicit only', 'FYI should be assigned intentionally for informational mail, not inferred from generic ambiguity', 'Use ApprovedRules fyi-sender or explicit model output when you really want FYI.'],
     ['workflow-news-label', newsWorkflowLabel, 'Current workflow label applied to News/Digest items; blank keeps news separate from FYI/notification', CONFIG.newsWorkflowLabel ? 'Keep only if this is an intentional operator choice.' : 'Recommended default: leave blank unless you explicitly want FYI/notification on news.'],

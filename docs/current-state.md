@@ -62,7 +62,8 @@ Current loop:
 3. update the referenced source rows in `TuningSuggestions` as approved/rejected/superseded
 4. import approved suggestions into `ApprovedRules`
 5. run `runPhase10ValidationCheckpoint()`
-6. inspect `ValidationStatus`, `RecentRunSummary`, `WorkflowAudit`, `TuningReviewQueue`, and `RunLog` if anything looks off
+6. optionally run `runPhase10ExtendedValidationCheckpoint()` when you want the heavier AI/tuning checks too
+7. inspect `ValidationStatus`, `RecentRunSummary`, `WorkflowAudit`, `TuningReviewQueue`, and `RunLog` if anything looks off
 
 ## Recent important changes
 
@@ -71,7 +72,8 @@ Current loop:
 - operator-friendly approved-rule aliases and add/remove actions are live
 - automation-health auditing was added
 - trigger reinstall now reconciles stale unmanaged clock triggers instead of only deleting known managed handlers
-- a new `ValidationStatus` sheet plus `runPhase10ValidationCheckpoint()` provide a one-shot Option A confidence pass after review/import changes
+- a new `ValidationStatus` sheet plus `runPhase10ValidationCheckpoint()` provide a one-shot fast Option A confidence pass after review/import changes
+- `runPhase10ExtendedValidationCheckpoint()` keeps the heavier AI review + tuning-suggestion checks available without forcing them into every default checkpoint
 - a new `RecentRunSummary` sheet plus `rebuildRecentRunSummaryPhase10()` provide a compact latest-run check for key wrappers and Phase 10 helper actions
 - a new `WorkflowAudit` sheet plus `rebuildWorkflowAuditPhase10()` provide a compact recent-log check for review/FYI/notification/news semantics drift
 - a new `TuningReviewQueue` sheet plus `rebuildTuningReviewQueuePhase10()` provide a compact actionable queue derived from `TuningSuggestions`

@@ -2,7 +2,9 @@
 
 Use this as the current validation runbook for Focuna - Gmail Assistant.
 
-For the compact Option A operator loop, run `runPhase10ValidationCheckpoint()` first. It refreshes config, runs the core dry-runs, writes a quick-pass summary to `ValidationStatus`, refreshes `RecentRunSummary` from `RunLog`, rebuilds `WorkflowAudit` from recent `DecisionLog` rows, and refreshes `TuningReviewQueue` from actionable `TuningSuggestions` rows.
+For the compact Option A operator loop, run `runPhase10ValidationCheckpoint()` first. It refreshes config, runs the fast default dry-runs, writes a quick-pass summary to `ValidationStatus`, refreshes `RecentRunSummary` from `RunLog`, rebuilds `WorkflowAudit` from recent `DecisionLog` rows, and refreshes `TuningReviewQueue` from actionable `TuningSuggestions` rows.
+
+When you explicitly want the heavier AI/tuning path too, run `runPhase10ExtendedValidationCheckpoint()` separately.
 
 ## Core processing
 
@@ -95,7 +97,8 @@ Check:
 Fast path:
 1. `runPhase10ValidationCheckpoint()`
 2. inspect `ValidationStatus`, `RecentRunSummary`, `WorkflowAudit`, and `TuningReviewQueue`
-3. drop into the detailed steps below only if a check fails or looks suspicious
+3. run `runPhase10ExtendedValidationCheckpoint()` only when you want the heavier AI/tuning checks too
+4. drop into the detailed steps below only if a check fails or looks suspicious
 
 Detailed path:
 
