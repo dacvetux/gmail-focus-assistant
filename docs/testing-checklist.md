@@ -2,7 +2,7 @@
 
 Use this as the current validation runbook for Focuna - Gmail Assistant.
 
-For the compact Option A operator loop, run `runPhase10ValidationCheckpoint()` first. It refreshes config, runs the fast default dry-runs, writes a quick-pass summary to `ValidationStatus`, refreshes `RecentRunSummary` from `RunLog`, rebuilds `WorkflowAudit` from recent `DecisionLog` rows, refreshes `TuningReviewQueue` from actionable `TuningSuggestions` rows, and leaves `ControlSurfaceStatus` with top-level workflow-warning + latest-checkpoint signals.
+For the compact Option A operator loop, run `runPhase10ValidationCheckpoint()` first. It refreshes config, rotates old operational log rows into `*Archive` sheets when enabled, runs the fast default dry-runs, writes a quick-pass summary to `ValidationStatus`, refreshes `RecentRunSummary` from `RunLog`, rebuilds `WorkflowAudit` from recent `DecisionLog` rows, refreshes `TuningReviewQueue` from actionable `TuningSuggestions` rows, and leaves `ControlSurfaceStatus` with top-level workflow-warning + latest-checkpoint signals.
 
 When you explicitly want the heavier AI/tuning path too, run `runPhase10ExtendedValidationCheckpoint()` separately.
 
@@ -97,8 +97,9 @@ Check:
 Fast path:
 1. `runPhase10ValidationCheckpoint()`
 2. inspect `ControlSurfaceStatus` first, then `ValidationStatus`, `RecentRunSummary`, `WorkflowAudit`, and `TuningReviewQueue` only where the dashboard suggests drift
-3. run `runPhase10ExtendedValidationCheckpoint()` only when you want the heavier AI/tuning checks too
-4. drop into the detailed steps below only if a check fails or looks suspicious
+3. confirm `log-rotation-last-status` / `log-rotation-retention-days` look sensible if the workbook has been running for a while
+4. run `runPhase10ExtendedValidationCheckpoint()` only when you want the heavier AI/tuning checks too
+5. drop into the detailed steps below only if a check fails or looks suspicious
 
 Detailed path:
 
@@ -119,3 +120,4 @@ Write down:
 - which digest sections look too noisy or too sparse
 - whether new suggestions in `TuningSuggestions` are good enough to accept manually
 - whether `ControlSurfaceStatus` gave enough signal to spot semantics drift without digging into raw logs
+- whether active log tabs stayed compact enough and older rows were moved into the expected `*Archive` sheets

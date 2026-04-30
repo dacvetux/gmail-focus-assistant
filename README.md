@@ -25,8 +25,9 @@ Implemented and in active use:
 - **Phase 7:** operational reporting and live tuning via `RunLog`
 - **Phase 8:** separate `News/Digest` lane with dedicated morning/evening news digests (shipped; remaining polish folded into Phase 10)
 - **Phase 9:** recommendation-first tuning suggestions via `TuningSuggestions` (shipped; remaining polish folded into Phase 10)
-- **Phase 10:** spreadsheet control surface with runtime-loaded preferences, approved-rule application, dashboard/validation helpers, targeted reclassification helpers, and the remaining live-operations polish
+- **Phase 10:** spreadsheet control surface with runtime-loaded preferences, approved-rule application, dashboard/validation helpers, targeted reclassification helpers, log rotation/archival, and the remaining live-operations polish
 - **Phase 11 (planned):** assisted AI expansion for review-first tuning, news-source recommendations, and workflow-semantics support
+- **Phase 12 (planned):** dedicated HTML operator UI after the Sheets workflow is proven
 
 Recent operational status:
 - `clasp run` execution and API-executable deployment are working again

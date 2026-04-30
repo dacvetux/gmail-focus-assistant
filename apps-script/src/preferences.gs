@@ -62,6 +62,7 @@ function upgradeControlSurfacePhase10OptionA() {
 function runPhase10ReviewLoopOptionA() {
   const syncSummary = syncApprovedRulesFromTuningSuggestionsPhase10();
   const refreshSummary = refreshConfigFromPreferencesPhase10_({ suppressLog: true });
+  const logRotationSummary = rotateOperationalLogsPhase10();
   const tuningReviewQueueSummary = rebuildTuningReviewQueueSheet_(getOrCreateTuningReviewQueueSheet_());
   const statusSummary = rebuildControlSurfaceStatusPhase10();
 
@@ -72,7 +73,7 @@ function runPhase10ReviewLoopOptionA() {
     processedThreads: statusSummary.tuningSummary.totalRows,
     itemCount: syncSummary.importedCount,
     outcome: syncSummary.importedCount ? 'review-loop-applied' : 'review-loop-no-imports',
-    notes: `approved-pending=${statusSummary.tuningSummary.approved}; imported=${syncSummary.importedCount}; approved-rules-configured=${refreshSummary.approvedRulesConfigured}`
+    notes: `approved-pending=${statusSummary.tuningSummary.approved}; imported=${syncSummary.importedCount}; approved-rules-configured=${refreshSummary.approvedRulesConfigured}; archived-log-rows=${logRotationSummary.archivedRows}`
   });
 
   const recentRunSummary = rebuildRecentRunSummarySheet_(getOrCreateRecentRunSummarySheet_());
@@ -80,6 +81,7 @@ function runPhase10ReviewLoopOptionA() {
   return {
     syncSummary: syncSummary,
     refreshSummary: refreshSummary,
+    logRotationSummary: logRotationSummary,
     tuningReviewQueueSummary: tuningReviewQueueSummary,
     recentRunSummary: recentRunSummary,
     statusSummary: statusSummary
@@ -114,6 +116,7 @@ function runPhase10ValidationCheckpointInternal_(options) {
   const entryPoint = options && options.entryPoint ? options.entryPoint : 'runPhase10ValidationCheckpoint';
   const checks = options && options.checks ? options.checks : [];
   const refreshSummary = refreshConfigFromPreferencesPhase10_({ suppressLog: true });
+  const logRotationSummary = rotateOperationalLogsPhase10();
 
   const rows = [];
   const passedChecks = [];
@@ -170,7 +173,7 @@ function runPhase10ValidationCheckpointInternal_(options) {
     processedThreads: checks.length,
     itemCount: successCount,
     outcome: failureCount ? 'validation-checkpoint-failed' : 'validation-checkpoint-ok',
-    notes: `success=${successCount}; failed=${failureCount}; workflow-warning=${workflowAuditSummary.warningCount}; approved-rules-configured=${refreshSummary.approvedRulesConfigured}`
+    notes: `success=${successCount}; failed=${failureCount}; workflow-warning=${workflowAuditSummary.warningCount}; approved-rules-configured=${refreshSummary.approvedRulesConfigured}; archived-log-rows=${logRotationSummary.archivedRows}`
   });
 
   const recentRunSummary = rebuildRecentRunSummarySheet_(getOrCreateRecentRunSummarySheet_());
@@ -178,6 +181,7 @@ function runPhase10ValidationCheckpointInternal_(options) {
 
   return {
     refreshSummary: refreshSummary,
+    logRotationSummary: logRotationSummary,
     validationSummary: validationSummary,
     tuningReviewQueueSummary: tuningReviewQueueSummary,
     recentRunSummary: recentRunSummary,
@@ -268,7 +272,7 @@ function getOrCreatePreferencesSheet_() {
   if (!sheet) {
     sheet = spreadsheet.insertSheet('Preferences');
     sheet.getRange(1, 1, 1, 4).setValues([['Key', 'Value', 'Description', 'Enabled']]);
-    sheet.getRange(2, 1, 10, 4).setValues([
+    sheet.getRange(2, 1, 12, 4).setValues([
       ['dryRun', 'true', 'Default dry-run mode for generic entrypoints', 'yes'],
       ['enableAiForReview', 'true', 'Allow Phase 4 AI review on ambiguous mail', 'yes'],
       ['maxThreads', '100', 'Default processing thread limit', 'yes'],
@@ -278,7 +282,9 @@ function getOrCreatePreferencesSheet_() {
       ['newsWorkflowLabel', '', 'Optional workflow label for news items; leave blank to keep news separate from FYI/notification', 'yes'],
       ['automationHealthAlertEnabled', 'false', 'If true, send email when automation-health audit detects qualifying alerts', 'yes'],
       ['automationHealthAlertRecipient', '', 'Optional recipient for automation-health alert emails; leave blank to suppress sending', 'yes'],
-      ['automationHealthAlertMinSeverity', 'warning', 'Minimum alert severity for email escalation: warning or error', 'yes']
+      ['automationHealthAlertMinSeverity', 'warning', 'Minimum alert severity for email escalation: warning or error', 'yes'],
+      ['logRotationEnabled', 'true', 'If true, archive old operational log rows out of the active workbook tabs during the Phase 10 loop', 'yes'],
+      ['logRetentionDays', '7', 'How many days to keep in the active log tabs before rows move into *Archive sheets', 'yes']
     ]);
   }
 
@@ -455,7 +461,7 @@ function getOrCreateOperatorGuideSheet_() {
 
   const rows = [
     ['Section', 'What this sheet is for', 'How to use it', 'Allowed values / examples', 'Notes'],
-    ['Preferences', 'Top-level runtime parameters', 'Edit Value and keep Enabled=yes for active settings', 'dryRun=true/false; maxThreads=100; newsWorkflowLabel=(blank)|3: notification|2: FYI; automationHealthAlertEnabled=true/false', 'Use this for global behavior, not sender-specific tuning'],
+    ['Preferences', 'Top-level runtime parameters', 'Edit Value and keep Enabled=yes for active settings', 'dryRun=true/false; maxThreads=100; newsWorkflowLabel=(blank)|3: notification|2: FYI; automationHealthAlertEnabled=true/false; logRotationEnabled=true/false; logRetentionDays=7', 'Use this for global behavior, not sender-specific tuning'],
     ['DigestSettings', 'Enable/disable digest types and per-digest limits', 'Set Enabled to yes/no and tune thread limits conservatively', 'morning, evening, news-morning, news-evening', 'If disabled, wrappers log digest-disabled instead of sending'],
     ['NewsSources', 'Explicit allow/exclude list for news senders', 'One sender per row; Action=news or exclude', 'Type=sender; Action=news|exclude; Enabled=yes|no', 'Use exclude for digest traffic that looks newsletter-like but should stay out'],
     ['TuningSuggestions', 'Review queue for proposed sender/routing changes', 'Change Status from new to approved/rejected/superseded after review', 'Status=new|approved|rejected|imported|already-imported|skipped|superseded', 'Approved rows can be imported into ApprovedRules'],
@@ -465,10 +471,11 @@ function getOrCreateOperatorGuideSheet_() {
     ['ValidationStatus', 'Compact last-checkpoint view for the core dry-run validation loop', 'Refresh via runPhase10ValidationCheckpoint() for the fast default path or runPhase10ExtendedValidationCheckpoint() for the heavier AI/tuning path', 'Shows ok/error plus key result for the checks included in the most recent checkpoint run', 'Use the default checkpoint after normal changes and the extended checkpoint when you explicitly want deeper validation'],
     ['RecentRunSummary', 'Compact latest-run view for wrappers and Phase 10 helper actions', 'Refresh via rebuildRecentRunSummaryPhase10(), runPhase10ReviewLoopOptionA(), or runPhase10ValidationCheckpoint()', 'Shows latest local time, outcome, counts, and notes for key wrapper/helper entry points', 'Use this when you want a quick “did the last thing actually run?” answer without opening raw RunLog'],
     ['WorkflowAudit', 'Recent DecisionLog semantics audit for review/FYI/notification/news behavior', 'Refresh via rebuildWorkflowAuditPhase10() or runPhase10ValidationCheckpoint()', 'Shows whether recent rows match the intended workflow semantics model plus example rows', 'Use this when Phase 10 semantics feel blurry or after any routing/label change'],
+    ['Log maintenance', 'Keep active operational logs small enough for fast operator use', 'Leave logRotationEnabled=true and tune logRetentionDays if the active workbook feels too heavy', 'rotateOperationalLogsPhase10(); active logs archive into DecisionLogArchive / RunLogArchive / DigestLogArchive / AutomationHealthLogArchive / DraftLogArchive / FollowUpLogArchive', 'Archive sheets retain older history while active log tabs stay focused on recent operations'],
     ['Workflow label semantics', 'Clarify when to use review vs FYI vs notification', 'Treat Review/Ambiguous as unresolved mail, FYI as intentionally informational, and notification as low-response transactional/system updates', 'Review/Ambiguous should stay workflow-blank; News/Digest can stay workflow-blank', 'Default news behavior should stay separate unless the operator explicitly wants FYI/notification'],
     ['Automation health alerts', 'Optional lightweight escalation for wrapper failures or missed schedules', 'Enable only if you want email alerts; blank recipient keeps the feature safely silent', 'automationHealthAlertEnabled=false by default; min severity=warning|error', 'Repeated identical alerts are deduplicated to avoid spam'],
-    ['Recommended workflow', 'Use Sheets as the primary operator UI for now', '1) review ControlSurfaceStatus 2) review TuningReviewQueue 3) update source rows in TuningSuggestions as approved/rejected/superseded 4) run runPhase10ReviewLoopOptionA() 5) run runPhase10ValidationCheckpoint() 6) confirm ValidationStatus, RecentRunSummary, WorkflowAudit, TuningReviewQueue, and ControlSurfaceStatus updated', 'Option A now; Option B HTML UI later', 'Use runPhase10ExtendedValidationCheckpoint() only when you explicitly want the heavier AI/tuning checks too.'],
-    ['Fast commands', 'Exact helper functions for the operator loop', 'Use these when you want a quick refresh/import cycle without digging through code', 'rebuildControlSurfaceStatusPhase10(); rebuildTuningReviewQueuePhase10(); rebuildRecentRunSummaryPhase10(); rebuildWorkflowAuditPhase10(); runPhase10ReviewLoopOptionA(); runPhase10ValidationCheckpoint(); runPhase10ExtendedValidationCheckpoint(); refreshConfigFromPreferencesPhase10()', 'These are the main Option A operator commands today']
+    ['Recommended workflow', 'Use Sheets as the primary operator UI for now', '1) review ControlSurfaceStatus 2) review TuningReviewQueue 3) update source rows in TuningSuggestions as approved/rejected/superseded 4) run runPhase10ReviewLoopOptionA() 5) run runPhase10ValidationCheckpoint() 6) confirm ValidationStatus, RecentRunSummary, WorkflowAudit, TuningReviewQueue, and ControlSurfaceStatus updated 7) use archive sheets only when you need older log history', 'Option A now; Phase 12 HTML UI later', 'Use runPhase10ExtendedValidationCheckpoint() only when you explicitly want the heavier AI/tuning checks too.'],
+    ['Fast commands', 'Exact helper functions for the operator loop', 'Use these when you want a quick refresh/import cycle without digging through code', 'rebuildControlSurfaceStatusPhase10(); rebuildTuningReviewQueuePhase10(); rebuildRecentRunSummaryPhase10(); rebuildWorkflowAuditPhase10(); rotateOperationalLogsPhase10(); runPhase10ReviewLoopOptionA(); runPhase10ValidationCheckpoint(); runPhase10ExtendedValidationCheckpoint(); refreshConfigFromPreferencesPhase10()', 'These are the main Option A operator commands today']
   ];
 
   sheet.clearContents();
@@ -564,7 +571,12 @@ function readApprovedRules_() {
 }
 
 function isAffirmativeFlag_(value) {
-  return !value || value === 'yes' || value === 'true' || value === '1' || value === 'approved' || value === 'approve';
+  if (value === true) return true;
+  if (value === false || value === null || value === undefined) return false;
+
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!normalized) return false;
+  return normalized === 'yes' || normalized === 'true' || normalized === '1' || normalized === 'approved' || normalized === 'approve';
 }
 
 function resolveApprovedRuleConfigField_(category) {
@@ -1239,6 +1251,99 @@ function inspectRecentDecisionRowsPhase10(senderQueries, maxRows) {
   };
 }
 
+function inspectLogRotationControlSurfacePhase10() {
+  const preferenceKeys = ['logRotationEnabled', 'logRetentionDays'];
+  const statusKeys = ['log-rotation-last-status', 'log-rotation-retention-days', 'phase10-last-checkpoint'];
+  const preferences = readNamedPreferenceRowsPhase10_(preferenceKeys);
+  const controlSurfaceRows = readNamedControlSurfaceRowsPhase10_(statusKeys);
+  const latestByEntryPoint = readLatestRunLogEntriesByEntryPoint_();
+  const latestCheckpoint = pickLatestRunEntry_([
+    latestByEntryPoint.runPhase10ValidationCheckpoint,
+    latestByEntryPoint.runPhase10ExtendedValidationCheckpoint
+  ]);
+  const recentRunRows = [
+    buildRecentRunSummaryRow_({ label: 'Phase 10 log rotation', staleHours: 72 }, latestByEntryPoint.rotateOperationalLogsPhase10),
+    buildRecentRunSummaryRow_({ label: 'Phase 10 validation checkpoint', staleHours: 72 }, latestCheckpoint)
+  ].map(row => ({
+    family: row[0],
+    latestLocal: row[1],
+    entryPoint: row[2],
+    status: row[3],
+    processedThreads: row[4],
+    primaryCount: row[5],
+    notes: row[6],
+    nextAction: row[7]
+  }));
+
+  const archiveHealth = buildPhase10LogRotationSpecs_().map(spec => {
+    const activeSheet = spec.getSheet();
+    const archiveName = `${spec.sheetName}Archive`;
+    const archiveSheet = getLogSpreadsheet_().getSheetByName(archiveName);
+    return {
+      sheetName: spec.sheetName,
+      activeRows: Math.max(0, activeSheet.getLastRow() - 1),
+      archiveSheetName: archiveName,
+      archiveExists: Boolean(archiveSheet),
+      archiveRows: archiveSheet ? Math.max(0, archiveSheet.getLastRow() - 1) : 0
+    };
+  });
+
+  return {
+    preferences: preferences,
+    controlSurfaceRows: controlSurfaceRows,
+    recentRunRows: recentRunRows,
+    latestRunLog: {
+      rotateOperationalLogsPhase10: formatRunLogInspectionEntry_(latestByEntryPoint.rotateOperationalLogsPhase10),
+      runPhase10ValidationCheckpoint: formatRunLogInspectionEntry_(latestCheckpoint)
+    },
+    archiveHealth: archiveHealth
+  };
+}
+
+function readNamedPreferenceRowsPhase10_(keys) {
+  const wanted = new Set((keys || []).map(key => String(key || '').trim()).filter(Boolean));
+  const sheet = getOrCreatePreferencesSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1 || !wanted.size) return [];
+
+  return sheet.getRange(2, 1, lastRow - 1, 4).getDisplayValues()
+    .filter(row => wanted.has(String(row[0] || '').trim()))
+    .map(row => ({
+      key: row[0] || '',
+      value: row[1] || '',
+      description: row[2] || '',
+      enabled: row[3] || ''
+    }));
+}
+
+function readNamedControlSurfaceRowsPhase10_(keys) {
+  const wanted = new Set((keys || []).map(key => String(key || '').trim()).filter(Boolean));
+  const sheet = getOrCreateControlSurfaceStatusSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1 || !wanted.size) return [];
+
+  return sheet.getRange(2, 1, lastRow - 1, 4).getDisplayValues()
+    .filter(row => wanted.has(String(row[0] || '').trim()))
+    .map(row => ({
+      metric: row[0] || '',
+      value: row[1] || '',
+      meaning: row[2] || '',
+      nextAction: row[3] || ''
+    }));
+}
+
+function formatRunLogInspectionEntry_(entry) {
+  if (!entry) return null;
+  return {
+    timestamp: formatControlSurfaceTimestamp_(entry.timestamp),
+    entryPoint: entry.entryPoint,
+    outcome: entry.outcome,
+    processedThreads: entry.processedThreads,
+    primaryCount: entry.primaryCount,
+    notes: entry.notes
+  };
+}
+
 function setTuningSuggestionStatusPhase10(rowNumber, status, note) {
   const sheet = getOrCreateTuningSuggestionsSheet_();
   const numericRow = Number(rowNumber);
@@ -1332,6 +1437,7 @@ function buildRecentRunSummaryFamilies_() {
   return [
     { label: 'Phase 10 review loop', entryPoints: ['runPhase10ReviewLoopOptionA'], staleHours: 72 },
     { label: 'Phase 10 validation checkpoint', entryPoints: ['runPhase10ValidationCheckpoint'], staleHours: 72 },
+    { label: 'Phase 10 log rotation', entryPoints: ['rotateOperationalLogsPhase10'], staleHours: 72 },
     { label: 'Automation health audit', entryPoints: ['runAutomationHealthAuditWrapper', 'auditAutomationHealth'], staleHours: 36 },
     { label: 'Frequent processing wrapper', entryPoints: ['runFrequentProcessingLiveWrapper'], staleHours: 18 },
     { label: 'Morning main digest wrapper', entryPoints: ['runMorningMainDigestLiveWrapper'], staleHours: 36 },
@@ -1374,7 +1480,7 @@ function buildRecentRunSummaryAction_(run) {
   if (outcome.indexOf('failed') !== -1 || outcome.indexOf('error') !== -1) {
     return 'Inspect RunLog notes and the related sheet/log before trusting this area.';
   }
-  if (outcome.indexOf('warning') !== -1 || outcome.indexOf('skipped') !== -1 || outcome.indexOf('missing') !== -1) {
+  if (outcome.indexOf('warning') !== -1 || outcome.indexOf('skipped') !== -1 || outcome.indexOf('missing') !== -1 || outcome.indexOf('disabled') !== -1) {
     return 'Inspect recent automation/control-surface state and decide whether intervention is needed.';
   }
   if (outcome.indexOf('no-imports') !== -1 || outcome.indexOf('no-approved') !== -1 || outcome.indexOf('empty') !== -1) {
@@ -1416,6 +1522,14 @@ function readLatestRunLogEntriesByEntryPoint_() {
   });
 
   return latestByEntryPoint;
+}
+
+function pickLatestRunEntry_(entries) {
+  return (entries || []).filter(entry => entry && entry.timestamp instanceof Date)
+    .reduce((latest, entry) => {
+      if (!latest || latest.timestamp.getTime() < entry.timestamp.getTime()) return entry;
+      return latest;
+    }, null);
 }
 
 function hasAppliedLabel_(appliedLabels, labelName) {
@@ -1485,6 +1599,7 @@ function rebuildControlSurfaceStatusSheet_(sheet) {
   const automationHealthSummary = summarizeAutomationHealthStatus_();
   const workflowSummary = summarizeWorkflowHealthForStatus_();
   const checkpointSummary = summarizeCheckpointRunStatus_();
+  const logRotationSummary = summarizeLogRotationStatusPhase10_();
   const nextAction = buildControlSurfaceNextAction_(tuningSummary, workflowSummary, checkpointSummary);
   const newsWorkflowLabel = CONFIG.newsWorkflowLabel ? CONFIG.newsWorkflowLabel : '(blank)';
 
@@ -1502,6 +1617,8 @@ function rebuildControlSurfaceStatusSheet_(sheet) {
     ['workflow-news-with-workflow', workflowSummary.newsWithWorkflowCount, 'Recent news rows that also carried a workflow label', workflowSummary.newsWithWorkflowCount && !CONFIG.newsWorkflowLabel ? 'Inspect WorkflowAudit unless this was an explicit operator choice.' : 'Healthy unless you intentionally configured newsWorkflowLabel.'],
     ['workflow-archived-review', workflowSummary.archivedReviewCount, 'Recent Review/Ambiguous rows that were archived', workflowSummary.archivedReviewCount ? 'Confirm archived review rows were truly intentional.' : 'Healthy: no recent archived review rows.'],
     ['phase10-last-checkpoint', checkpointSummary.value, 'Latest recorded Phase 10 checkpoint outcome from RunLog', checkpointSummary.nextAction],
+    ['log-rotation-last-status', logRotationSummary.status, 'Latest operational-log rotation outcome recorded in RunLog', logRotationSummary.nextAction],
+    ['log-rotation-retention-days', logRotationSummary.retentionDays, 'Current active-log retention window from Preferences', logRotationSummary.retentionHint],
     ['automation-health-last-status', automationHealthSummary.status, 'Latest recorded automation-health outcome from AutomationHealthLog', automationHealthSummary.nextAction],
     ['automation-health-last-alert-time', automationHealthSummary.timestamp, 'When the latest automation-health row was logged', ''],
     ['automation-health-alert-email', automationHealthSummary.alertEmailStatus, 'Whether email escalation is enabled/configured in Preferences', automationHealthSummary.alertEmailNextAction],
@@ -1519,6 +1636,7 @@ function rebuildControlSurfaceStatusSheet_(sheet) {
 
   sheet.clearContents();
   sheet.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
+  sheet.getRange(2, 2, rows.length - 1, 1).setNumberFormat('@');
   styleControlSurfaceSheet_(sheet, [220, 140, 360, 420]);
   setHeaderNotes_(sheet, {
     1: 'Status metric or queue label.',
@@ -1630,6 +1748,37 @@ function summarizeAutomationHealthStatus_() {
   };
 }
 
+function summarizeLogRotationStatusPhase10_() {
+  const latest = readLatestRunLogEntriesByEntryPoint_().rotateOperationalLogsPhase10;
+  const retentionDays = Number(getPreferenceValue_('logRetentionDays', 7)) || 7;
+  const enabled = isAffirmativeFlag_(getPreferenceValue_('logRotationEnabled', true));
+
+  if (!enabled) {
+    return {
+      status: 'disabled',
+      retentionDays: retentionDays,
+      retentionHint: 'Set logRotationEnabled=true to keep active log sheets compact.',
+      nextAction: 'Log rotation is disabled; enable it if active log tabs start feeling heavy.'
+    };
+  }
+
+  if (!latest) {
+    return {
+      status: 'no-rotation-run-yet',
+      retentionDays: retentionDays,
+      retentionHint: `Active logs keep the last ${retentionDays} day(s) before archiving to *Archive sheets.`,
+      nextAction: 'Run rotateOperationalLogsPhase10() once or use the normal Phase 10 loop to seed the first archive pass.'
+    };
+  }
+
+  return {
+    status: latest.outcome || 'unknown',
+    retentionDays: retentionDays,
+    retentionHint: `Active logs keep the last ${retentionDays} day(s) before archiving to *Archive sheets.`,
+    nextAction: latest.primaryCount ? `Last rotation archived ${latest.primaryCount} row(s).` : 'No old rows needed archiving in the latest pass.'
+  };
+}
+
 function readLatestAutomationHealthRow_() {
   const sheet = getOrCreateAutomationHealthLogSheet_();
   const lastRow = sheet.getLastRow();
@@ -1692,7 +1841,10 @@ function summarizeWorkflowHealthForStatus_() {
 
 function summarizeCheckpointRunStatus_() {
   const latestByEntryPoint = readLatestRunLogEntriesByEntryPoint_();
-  const latest = latestByEntryPoint.runPhase10ExtendedValidationCheckpoint || latestByEntryPoint.runPhase10ValidationCheckpoint;
+  const latest = pickLatestRunEntry_([
+    latestByEntryPoint.runPhase10ValidationCheckpoint,
+    latestByEntryPoint.runPhase10ExtendedValidationCheckpoint
+  ]);
   if (!latest) {
     return {
       value: 'no-checkpoint-yet',
@@ -1830,7 +1982,7 @@ function refreshConfigFromPreferencesPhase10_(options) {
       mode: 'internal',
       entryPoint: 'refreshConfigFromPreferencesPhase10',
       processedThreads: 0,
-      itemCount: 12 + approvedRulesSummary.appliedCount,
+      itemCount: 14 + approvedRulesSummary.appliedCount,
       outcome: 'preferences-loaded',
       notes: `Loaded preferences plus news sources (${CONFIG.newsSenders.length} includes, ${CONFIG.newsExcludedSenders.length} excludes); approved-rules-applied=${approvedRulesSummary.appliedCount}`
     });
@@ -1894,6 +2046,24 @@ function normalizePreferenceRowsPhase10_(sheet) {
         row[1] = 'warning';
       }
       changed = true;
+      return;
+    }
+
+    if (key === 'logRotationEnabled') {
+      row[2] = 'If true, archive old operational log rows out of the active workbook tabs during the Phase 10 loop';
+      if (!String(row[1] || '').trim()) {
+        row[1] = 'true';
+      }
+      changed = true;
+      return;
+    }
+
+    if (key === 'logRetentionDays') {
+      row[2] = 'How many days to keep in the active log tabs before rows move into *Archive sheets';
+      if (!String(row[1] || '').trim()) {
+        row[1] = '7';
+      }
+      changed = true;
     }
   });
 
@@ -1904,6 +2074,8 @@ function normalizePreferenceRowsPhase10_(sheet) {
   ensurePreferenceRowExists_(sheet, 'automationHealthAlertEnabled', 'false', 'If true, send email when automation-health audit detects qualifying alerts', 'yes');
   ensurePreferenceRowExists_(sheet, 'automationHealthAlertRecipient', '', 'Optional recipient for automation-health alert emails; leave blank to suppress sending', 'yes');
   ensurePreferenceRowExists_(sheet, 'automationHealthAlertMinSeverity', 'warning', 'Minimum alert severity for email escalation: warning or error', 'yes');
+  ensurePreferenceRowExists_(sheet, 'logRotationEnabled', 'true', 'If true, archive old operational log rows out of the active workbook tabs during the Phase 10 loop', 'yes');
+  ensurePreferenceRowExists_(sheet, 'logRetentionDays', '7', 'How many days to keep in the active log tabs before rows move into *Archive sheets', 'yes');
 }
 
 function ensurePreferenceRowExists_(sheet, key, value, description, enabled) {
@@ -1938,7 +2110,7 @@ function applyPreferenceValueValidations_(sheet) {
     const key = String(row[0] || '').trim();
     const rowNumber = index + 2;
 
-    if (key === 'dryRun' || key === 'enableAiForReview' || key === 'automationHealthAlertEnabled') {
+    if (key === 'dryRun' || key === 'enableAiForReview' || key === 'automationHealthAlertEnabled' || key === 'logRotationEnabled') {
       setDropdownValidation_(sheet, rowNumber, 2, 1, ['true', 'false']);
       return;
     }

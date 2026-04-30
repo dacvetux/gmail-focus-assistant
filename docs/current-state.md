@@ -15,7 +15,7 @@ Implemented and actively usable:
 - **Phase 7:** operational reporting via `RunLog`
 - **Phase 8:** separate `News/Digest` lane with dedicated digests (shipped; residual polish now tracked under Phase 10)
 - **Phase 9:** recommendation-first tuning suggestions in `TuningSuggestions` (shipped; residual polish now tracked under Phase 10)
-- **Phase 10:** sheet-backed control surface with runtime-loaded preferences, approved rules, review/import workflow, validation checkpoint, and status dashboard
+- **Phase 10:** sheet-backed control surface with runtime-loaded preferences, approved rules, review/import workflow, validation checkpoint, status dashboard, and log rotation/archival
 
 Operationally live now:
 - Apps Script API execution and `clasp run` are working again
@@ -65,6 +65,7 @@ Current loop:
 5. run `runPhase10ValidationCheckpoint()`
 6. optionally run `runPhase10ExtendedValidationCheckpoint()` when you want the heavier AI/tuning checks too
 7. inspect `ValidationStatus`, `RecentRunSummary`, `WorkflowAudit`, `TuningReviewQueue`, and `RunLog` only if `ControlSurfaceStatus` or the checkpoint suggests drift
+8. use the `*Archive` sheets only when you need older log history beyond the active retention window
 
 ## Recent important changes
 
@@ -87,6 +88,7 @@ Current loop:
 - targeted catch-up reclassification is now available for sender/query slices where preserve-label behavior would otherwise keep older mailbox state from reflecting improved rules
 - curated news-source handling was corrected in live use so TLDR, Economist, Telecompaper, and Zeteo-family mail route to `News/Digest`, while Google Play / Play Store mail is treated as important service/store traffic instead of news
 - long-term FYI vs review semantics cleanup now lives directly inside active Phase 10 work rather than a separately open phase-tracking issue
+- operational log rotation now archives older `DecisionLog`, `RunLog`, `DigestLog`, `AutomationHealthLog`, `DraftLog`, and `FollowUpLog` rows into matching `*Archive` sheets so the active tabs stay focused on recent activity
 
 ## Current roadmap focus
 
@@ -94,6 +96,7 @@ Current loop:
 - continue a short live-soak on the strengthened Phase 10 **Option A** Sheets workflow
 - validate the newer curated-news sender corrections from real traffic and digest windows
 - carry the remaining Phase 9 suggestion-quality cleanup inside Phase 10 from live evidence
+- live-soak the new log rotation/archival behavior and tune retention if the operator workbook still feels too heavy
 - keep docs aligned with the now-shipped operator dashboard/validation/reclassification flow
 - keep validating the sharper workflow model: review = unresolved, FYI = explicit info-only, notification = transactional/system updates
 
@@ -103,10 +106,10 @@ Current loop:
 - add lightweight escalation/notification for automation-health warnings
 
 ### Later
-- once the Sheets workflow feels ~90% finalized, start **Option B** as a separate dedicated HTML UI phase
+- once the Sheets workflow feels ~90% finalized and Phase 11 is in place, start **Phase 12** as a separate dedicated HTML UI phase
 
 ## Next 3 practical milestones
 
 1. live-soak the current control-surface workflow and confirm the new dashboard signals are sufficient in day-to-day use
 2. keep validating curated-news sender handling and the sharper workflow-label semantics in live use
-3. decide whether automation-health email escalation should remain disabled or get a real recipient/severity policy
+3. confirm the new log rotation defaults keep active log tabs manageable without making recent troubleshooting harder

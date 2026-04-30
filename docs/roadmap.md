@@ -27,6 +27,7 @@ The main active roadmap focus is now **Phase 10 Option A**: making the Google Sh
 - tuning suggestions can be promoted into approved rules via a sheet-based review loop
 - `ApprovedRules` supports operator-friendly category aliases plus `add` / `remove` actions
 - `ControlSurfaceStatus`, `ValidationStatus`, `RecentRunSummary`, `WorkflowAudit`, `TuningReviewQueue`, `OperatorGuide`, and `AutomationHealthLog` are live
+- active operational logs can now be rotated into `*Archive` sheets via Phase 10 log-maintenance helpers so the main workbook tabs stay usable over time
 - automation-health auditing is live
 - ambiguous mail no longer auto-gets `2: FYI`; review and FYI semantics are being cleaned up further
 - `ControlSurfaceStatus` now also surfaces workflow-semantics warnings and the latest Phase 10 checkpoint status directly, so first-pass triage usually no longer requires opening `WorkflowAudit` or raw `RunLog`
@@ -37,16 +38,16 @@ The main active roadmap focus is now **Phase 10 Option A**: making the Google Sh
 - keep validating workflow-label semantics between `Review/Ambiguous`, `2: FYI`, and `3: notification` from live evidence
 - keep validating `News/Digest` boundaries/defaults from live evidence now that curated news sender handling has been corrected further
 - continue tuning-suggestion quality improvements from live evidence
+- live-soak the new log rotation/archival behavior so `RunLog`, `AutomationHealthLog`, `DigestLog`, and related tabs stay compact without hiding useful recent context
 - do a short live-soak period to confirm the current Sheets loop feels stable and obvious in day-to-day use
 - decide intentionally whether automation-health email escalation should stay disabled or get a real recipient/severity policy
 - revisit the known log-backed digest duplicate-entry bug separately when resuming deeper digest internals work
 
 ### Phase 10 UX deployment path
 - **Option A (now):** improve the existing Google Sheets control surface and treat it as the primary operator UI while workflow semantics are still evolving
-- use this period to stabilize statuses, approval actions, validation rules, helper views, and operator terminology
+- use this period to stabilize statuses, approval actions, validation rules, helper views, operator terminology, and log-maintenance behavior
 - **graduation rule:** only move on once the operator workflow feels finalized and about 90% clear/ready in real use
-- **Option B (later separate phase):** build a dedicated HTML UI (preferably starting with Apps Script HTML, sidebar, or web app) on top of the stabilized Sheets-backed model
-- the HTML UI should crystallize a proven workflow, not invent one too early
+- do not start a separate HTML UI inside Phase 10; first prove the workflow in Sheets
 
 ## Next planned phase: Phase 11 - Assisted AI expansion
 - widen AI into operator-facing recommendation loops after Phase 10 is stable enough
@@ -61,7 +62,11 @@ The main active roadmap focus is now **Phase 10 Option A**: making the Google Sh
 - add accepted-suggestion semi-automation only after suggestion quality is trustworthy
 - expand long-term analytics and preference-aware behavior
 - continue tightening tuning suggestion quality from live evidence
-- only after the Sheets workflow is proven: start a separate HTML UI phase (Option B)
+
+## Phase 12 - Dedicated HTML UI
+- after the Sheets workflow is proven, build a separate HTML UI phase on top of the stabilized Sheets-backed/runtime-backed model
+- prefer starting with Apps Script HTML, sidebar, or web app, but keep the implementation choice open until the operator workflow is genuinely settled
+- the HTML UI should crystallize a proven workflow, not invent one too early
 
 ## Non-goals for early versions
 - full autonomous inbox management

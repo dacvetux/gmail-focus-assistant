@@ -75,6 +75,7 @@ Status: current active phase since 2026-04-24; explicitly absorbs remaining Phas
 - create tabs such as `Preferences`, `DigestSettings`, `NewsSources`, and `ApprovedRules`
 - load a small set of core preferences back into runtime config
 - keep the first version simple and spreadsheet-native before any richer standalone GUI
+- add log rotation/archival for long-running operational sheets so logs stay readable and workbook performance stays acceptable over time
 - own the remaining news-boundary, tuning-quality, workflow-semantics, validation, and operator UX polish so only one phase stays open at a time
 
 ## Phase 11, assisted AI expansion
@@ -86,3 +87,10 @@ Status: planned on 2026-04-27; starts after Phase 10 operator workflow is stable
 - add AI-assisted digest shaping and noisy-sender detection to improve section placement and reduce operator cleanup work
 - keep the whole phase review-first: AI may suggest, summarize, cluster, and explain, but must not silently mutate runtime rules or live behavior
 - only consider limited semi-automation later, and only for high-confidence cases after suggestion quality is proven in real use
+
+## Phase 12, dedicated HTML UI
+Status: planned on 2026-04-29; starts only after the Sheets workflow is proven and the Phase 11 AI/operator loop is in place
+- build a dedicated HTML operator UI on top of the stabilized Sheets-backed/runtime-backed model
+- likely start with Apps Script HTML, sidebar, or web app, but keep the exact surface flexible until the workflow is settled
+- mirror and streamline proven operator actions rather than inventing a new workflow too early
+- keep the spreadsheet as a reliable fallback/admin surface even after the HTML UI exists

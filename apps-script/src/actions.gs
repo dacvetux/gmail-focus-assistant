@@ -340,6 +340,158 @@ function logRunSummary_(entry) {
   sheet.getRange(startRow, 1, 1, row[0].length).setValues(row);
 }
 
+function rotateOperationalLogsPhase10() {
+  const config = getPhase10LogRotationConfig_();
+  const specs = buildPhase10LogRotationSpecs_();
+
+  if (!config.enabled) {
+    logRunSummary_({
+      runType: 'control-surface',
+      mode: 'internal',
+      entryPoint: 'rotateOperationalLogsPhase10',
+      processedThreads: specs.length,
+      itemCount: 0,
+      outcome: 'log-rotation-disabled',
+      notes: `retention-days=${config.retentionDays}`
+    });
+
+    return {
+      enabled: false,
+      retentionDays: config.retentionDays,
+      scannedSheets: specs.length,
+      rotatedSheets: 0,
+      archivedRows: 0,
+      sheets: []
+    };
+  }
+
+  const summaries = specs.map(spec => rotateLogSheetByRetention_(spec, config.retentionDays));
+  const archivedRows = summaries.reduce((sum, summary) => sum + summary.archivedRows, 0);
+  const rotatedSheets = summaries.filter(summary => summary.archivedRows > 0).length;
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'rotateOperationalLogsPhase10',
+    processedThreads: specs.length,
+    itemCount: archivedRows,
+    outcome: archivedRows ? 'logs-rotated' : 'logs-unchanged',
+    notes: `retention-days=${config.retentionDays}; rotated-sheets=${rotatedSheets}`
+  });
+
+  return {
+    enabled: true,
+    retentionDays: config.retentionDays,
+    scannedSheets: specs.length,
+    rotatedSheets: rotatedSheets,
+    archivedRows: archivedRows,
+    sheets: summaries
+  };
+}
+
+function buildPhase10LogRotationSpecs_() {
+  return [
+    { sheetName: 'DecisionLog', getSheet: getOrCreateDecisionLogSheet_ },
+    { sheetName: 'RunLog', getSheet: getOrCreateRunLogSheet_ },
+    { sheetName: 'DigestLog', getSheet: getOrCreateDigestLogSheet_ },
+    { sheetName: 'AutomationHealthLog', getSheet: getOrCreateAutomationHealthLogSheet_ },
+    { sheetName: 'DraftLog', getSheet: getOrCreateDraftLogSheet_ },
+    { sheetName: 'FollowUpLog', getSheet: getOrCreateFollowUpLogSheet_ }
+  ];
+}
+
+function getPhase10LogRotationConfig_() {
+  const enabled = isAffirmativeFlag_(getPreferenceValue_('logRotationEnabled', true));
+  const rawRetentionDays = Number(getPreferenceValue_('logRetentionDays', 7));
+  const retentionDays = rawRetentionDays > 0 ? Math.floor(rawRetentionDays) : 7;
+
+  return {
+    enabled: enabled,
+    retentionDays: retentionDays
+  };
+}
+
+function rotateLogSheetByRetention_(spec, retentionDays) {
+  const sheet = spec.getSheet();
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+  const summary = {
+    sheetName: spec.sheetName,
+    archiveSheetName: `${spec.sheetName}Archive`,
+    archivedRows: 0,
+    retainedRows: Math.max(0, lastRow - 1),
+    oldestArchived: '',
+    newestArchived: ''
+  };
+
+  if (lastRow <= 1 || lastColumn <= 0) {
+    return summary;
+  }
+
+  const values = sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues();
+  const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+  let contiguousArchiveCount = 0;
+
+  for (let index = 0; index < values.length; index += 1) {
+    const timestamp = coerceLogTimestamp_(values[index][0]);
+    if (!timestamp) break;
+    if (timestamp.getTime() >= cutoff.getTime()) break;
+    contiguousArchiveCount += 1;
+  }
+
+  if (!contiguousArchiveCount) {
+    return summary;
+  }
+
+  const headers = sheet.getRange(1, 1, 1, lastColumn).getValues();
+  const archiveSheet = getOrCreateLogArchiveSheet_(summary.archiveSheetName, headers);
+  const archivedRows = values.slice(0, contiguousArchiveCount);
+  const archiveStartRow = archiveSheet.getLastRow() + 1;
+  archiveSheet.getRange(archiveStartRow, 1, archivedRows.length, archivedRows[0].length).setValues(archivedRows);
+  sheet.deleteRows(2, contiguousArchiveCount);
+
+  summary.archivedRows = contiguousArchiveCount;
+  summary.retainedRows = Math.max(0, sheet.getLastRow() - 1);
+  summary.oldestArchived = formatLogRotationTimestamp_(archivedRows[0][0]);
+  summary.newestArchived = formatLogRotationTimestamp_(archivedRows[archivedRows.length - 1][0]);
+  return summary;
+}
+
+function getOrCreateLogArchiveSheet_(sheetName, headers) {
+  const spreadsheet = getLogSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName(sheetName);
+  const headerRow = headers && headers.length ? headers : [[]];
+  const headerWidth = headerRow[0].length;
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(sheetName);
+  }
+
+  if (headerWidth && sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, headerWidth).setValues(headerRow);
+  } else if (headerWidth && sheet.getLastRow() >= 1) {
+    const existingHeader = sheet.getRange(1, 1, 1, headerWidth).getValues();
+    if (JSON.stringify(existingHeader[0]) !== JSON.stringify(headerRow[0])) {
+      sheet.getRange(1, 1, 1, headerWidth).setValues(headerRow);
+    }
+  }
+
+  return sheet;
+}
+
+function coerceLogTimestamp_(value) {
+  if (value instanceof Date && !isNaN(value.getTime())) return value;
+  if (value === '' || value === null || value === undefined) return null;
+  const parsed = new Date(value);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatLogRotationTimestamp_(value) {
+  const timestamp = coerceLogTimestamp_(value);
+  if (!timestamp) return '';
+  return Utilities.formatDate(timestamp, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
+}
+
 function getLogSpreadsheet_() {
   if (!CONFIG.logSpreadsheetId) {
     throw new Error('CONFIG.logSpreadsheetId must be set before running logging.');
