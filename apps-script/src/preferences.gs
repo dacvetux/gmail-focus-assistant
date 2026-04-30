@@ -1251,6 +1251,67 @@ function inspectRecentDecisionRowsPhase10(senderQueries, maxRows) {
   };
 }
 
+function analyzeHistoricalClassificationPhase10(startDate, topN, minSenderCount) {
+  const threshold = coerceHistoricalAnalysisDate_(startDate || '2026-01-01');
+  const summary = buildHistoricalClassificationSummary_(threshold, topN || 12, minSenderCount || 4);
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'analyzeHistoricalClassificationPhase10',
+    processedThreads: summary.rowsAnalyzed,
+    itemCount: summary.senderCount,
+    outcome: 'historical-classification-analysis',
+    notes: `start=${Utilities.formatDate(threshold, Session.getScriptTimeZone(), 'yyyy-MM-dd')}; mixed=${summary.mixedSenders.length}`
+  });
+
+  return summary;
+}
+
+function analyzeMailboxHistoryPhase10(startDate, maxThreads, topN, minSenderCount) {
+  const threshold = coerceHistoricalAnalysisDate_(startDate || '2026-01-01');
+  const summary = buildMailboxHistorySummary_(threshold, maxThreads || 4000, topN || 12, minSenderCount || 5);
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'analyzeMailboxHistoryPhase10',
+    processedThreads: summary.threadsAnalyzed,
+    itemCount: summary.senderCount,
+    outcome: summary.truncated ? 'mailbox-history-analysis-truncated' : 'mailbox-history-analysis',
+    notes: `start=${summary.startDate}; fetched=${summary.threadsAnalyzed}; mixed=${summary.mixedSenders.length}`
+  });
+
+  return summary;
+}
+
+function analyzeMailboxHistoryByBucketPhase10(startDate, perBucketMax, topN, minSenderCount) {
+  const threshold = coerceHistoricalAnalysisDate_(startDate || '2026-01-01');
+  const summary = buildMailboxHistoryByBucketSummary_(threshold, perBucketMax || 250, topN || 10, minSenderCount || 3);
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'analyzeMailboxHistoryByBucketPhase10',
+    processedThreads: summary.totalThreadsSampled,
+    itemCount: summary.mixedSenders.length,
+    outcome: 'mailbox-history-bucket-analysis',
+    notes: `start=${summary.startDate}; sampled=${summary.totalThreadsSampled}; mixed=${summary.mixedSenders.length}`
+  });
+
+  return summary;
+}
+
+function inspectMailboxHistoryBucketPhase10(bucketName, startDate, perBucketMax, topN, minSenderCount) {
+  const threshold = coerceHistoricalAnalysisDate_(startDate || '2026-01-01');
+  const summary = buildMailboxHistoryByBucketSummary_(threshold, perBucketMax || 50, topN || 8, minSenderCount || 2);
+  const bucket = String(bucketName || '').trim();
+  if (!summary.bucketSamples[bucket]) {
+    throw new Error(`Unknown bucket: ${bucket}`);
+  }
+  return summary.bucketSamples[bucket];
+}
+
 function inspectLogRotationControlSurfacePhase10() {
   const preferenceKeys = ['logRotationEnabled', 'logRetentionDays'];
   const statusKeys = ['log-rotation-last-status', 'log-rotation-retention-days', 'phase10-last-checkpoint'];
@@ -1342,6 +1403,331 @@ function formatRunLogInspectionEntry_(entry) {
     primaryCount: entry.primaryCount,
     notes: entry.notes
   };
+}
+
+function coerceHistoricalAnalysisDate_(value) {
+  if (value instanceof Date) return value;
+  const parsed = new Date(value);
+  if (String(parsed) === 'Invalid Date') {
+    throw new Error(`Invalid start date: ${value}`);
+  }
+  return parsed;
+}
+
+function buildHistoricalClassificationSummary_(startDate, topN, minSenderCount) {
+  const rows = readDecisionRowsSinceDate_(startDate);
+  const senderMap = {};
+  const bucketCounts = {};
+  const monthlyCounts = {};
+
+  rows.forEach(row => {
+    const sender = extractSenderKey_(row.from) || String(row.from || '').trim().toLowerCase() || '(unknown)';
+    const bucket = classifyDecisionRowBucket_(row);
+    const month = row.timestamp instanceof Date ? Utilities.formatDate(row.timestamp, Session.getScriptTimeZone(), 'yyyy-MM') : 'unknown';
+
+    bucketCounts[bucket] = (bucketCounts[bucket] || 0) + 1;
+    monthlyCounts[month] = monthlyCounts[month] || {};
+    monthlyCounts[month][bucket] = (monthlyCounts[month][bucket] || 0) + 1;
+
+    if (!senderMap[sender]) {
+      senderMap[sender] = {
+        sender: sender,
+        total: 0,
+        buckets: {},
+        examples: {},
+        latestTimestamp: null
+      };
+    }
+
+    const entry = senderMap[sender];
+    entry.total += 1;
+    entry.buckets[bucket] = (entry.buckets[bucket] || 0) + 1;
+    if (!entry.examples[bucket]) {
+      entry.examples[bucket] = truncateRunNote_(String(row.subject || '').trim(), 140);
+    }
+    if (row.timestamp instanceof Date && (!entry.latestTimestamp || entry.latestTimestamp.getTime() < row.timestamp.getTime())) {
+      entry.latestTimestamp = row.timestamp;
+    }
+  });
+
+  const senders = Object.keys(senderMap).map(key => {
+    const entry = senderMap[key];
+    const bucketNames = Object.keys(entry.buckets).sort((left, right) => entry.buckets[right] - entry.buckets[left]);
+    const dominantBucket = bucketNames[0] || 'other';
+    const semanticBuckets = bucketNames.filter(name => entry.buckets[name] > 0);
+    return {
+      sender: entry.sender,
+      total: entry.total,
+      dominantBucket: dominantBucket,
+      dominantCount: entry.buckets[dominantBucket] || 0,
+      bucketMix: bucketNames.map(name => ({ bucket: name, count: entry.buckets[name], sampleSubject: entry.examples[name] || '' })),
+      latestTimestamp: entry.latestTimestamp ? formatControlSurfaceTimestamp_(entry.latestTimestamp) : '',
+      mixed: semanticBuckets.length > 1
+    };
+  }).sort((left, right) => right.total - left.total);
+
+  const filteredSenders = senders.filter(entry => entry.total >= minSenderCount);
+  const topByBucket = ['review-only', 'explicit-fyi', 'notification', 'news-blank', 'news-with-workflow', 'to-respond', 'important', 'commercial', 'other']
+    .reduce((result, bucket) => {
+      result[bucket] = filteredSenders
+        .filter(entry => entry.dominantBucket === bucket)
+        .slice(0, topN);
+      return result;
+    }, {});
+
+  const mixedSenders = filteredSenders
+    .filter(entry => entry.mixed)
+    .slice(0, topN);
+
+  return {
+    startDate: Utilities.formatDate(startDate, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+    rowsAnalyzed: rows.length,
+    senderCount: senders.length,
+    bucketCounts: bucketCounts,
+    monthlyCounts: monthlyCounts,
+    topByBucket: topByBucket,
+    mixedSenders: mixedSenders,
+    notes: buildHistoricalClassificationNotes_(bucketCounts, mixedSenders)
+  };
+}
+
+function readDecisionRowsSinceDate_(startDate) {
+  const sheet = getOrCreateDecisionLogSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return [];
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+  return values.map(row => ({
+    timestamp: row[0],
+    mode: String(row[1] || ''),
+    threadId: String(row[2] || ''),
+    from: String(row[3] || ''),
+    subject: String(row[4] || ''),
+    reason: String(row[5] || ''),
+    appliedLabels: String(row[6] || ''),
+    archived: String(row[7] || '')
+  })).filter(row => row.timestamp instanceof Date && row.timestamp.getTime() >= startDate.getTime());
+}
+
+function classifyDecisionRowBucket_(row) {
+  const labels = String(row.appliedLabels || '');
+  if (hasAppliedLabel_(labels, CONFIG.labels.toRespond)) return 'to-respond';
+  if (hasAppliedLabel_(labels, CONFIG.labels.notification)) return hasAppliedLabel_(labels, CONFIG.labels.newsDigest) ? 'news-with-workflow' : 'notification';
+  if (hasAppliedLabel_(labels, CONFIG.labels.fyi)) return hasAppliedLabel_(labels, CONFIG.labels.newsDigest) ? 'news-with-workflow' : 'explicit-fyi';
+  if (hasExactAppliedLabels_(labels, [CONFIG.labels.review])) return 'review-only';
+  if (hasAppliedLabel_(labels, CONFIG.labels.newsDigest)) return 'news-blank';
+  if (hasAnyAppliedLabel_(labels, [CONFIG.labels.importantServices, CONFIG.labels.importantFinance, CONFIG.labels.importantShipping, CONFIG.labels.importantCalendar, CONFIG.labels.importantOpportunities])) return 'important';
+  if (hasAnyAppliedLabel_(labels, [CONFIG.labels.commercialNewsletters, CONFIG.labels.commercialAds, CONFIG.labels.commercialCampaigns])) return 'commercial';
+  return 'other';
+}
+
+function buildHistoricalClassificationNotes_(bucketCounts, mixedSenders) {
+  const notes = [];
+  if ((bucketCounts['review-only'] || 0) > (bucketCounts['explicit-fyi'] || 0) * 2) {
+    notes.push('Review-only volume is much higher than explicit FYI volume; there may still be senders that deserve clearer FYI/notification/news treatment.');
+  }
+  if (mixedSenders.length) {
+    notes.push('Mixed senders are the best place to inspect for missing sender-specific rules or inconsistent semantics.');
+  }
+  if ((bucketCounts['news-with-workflow'] || 0) > 0) {
+    notes.push('There are still news rows carrying workflow labels; verify those were intentional rather than semantic drift.');
+  }
+  return notes;
+}
+
+function buildMailboxHistorySummary_(startDate, maxThreads, topN, minSenderCount) {
+  const query = `after:${Utilities.formatDate(startDate, Session.getScriptTimeZone(), 'yyyy/MM/dd')} -in:trash -in:spam`;
+  const pageSize = 100;
+  const senderMap = {};
+  const bucketCounts = {};
+  const monthlyCounts = {};
+  let offset = 0;
+  let threadsAnalyzed = 0;
+  let fetched = [];
+  let truncated = false;
+
+  while (threadsAnalyzed < maxThreads) {
+    fetched = GmailApp.search(query, offset, Math.min(pageSize, maxThreads - threadsAnalyzed));
+    if (!fetched.length) break;
+
+    fetched.forEach(thread => {
+      const labels = thread.getLabels().map(label => label.getName());
+      const bucket = classifyMailboxLabelBucket_(labels);
+      const sender = extractSenderKey_(selectRepresentativeMessageForHistory_(thread).getFrom()) || '(unknown)';
+      const lastDate = thread.getLastMessageDate();
+      const month = lastDate instanceof Date ? Utilities.formatDate(lastDate, Session.getScriptTimeZone(), 'yyyy-MM') : 'unknown';
+      const subject = String(thread.getFirstMessageSubject() || '').trim();
+
+      bucketCounts[bucket] = (bucketCounts[bucket] || 0) + 1;
+      monthlyCounts[month] = monthlyCounts[month] || {};
+      monthlyCounts[month][bucket] = (monthlyCounts[month][bucket] || 0) + 1;
+
+      if (!senderMap[sender]) {
+        senderMap[sender] = {
+          sender: sender,
+          total: 0,
+          buckets: {},
+          examples: {},
+          latestTimestamp: null
+        };
+      }
+
+      const entry = senderMap[sender];
+      entry.total += 1;
+      entry.buckets[bucket] = (entry.buckets[bucket] || 0) + 1;
+      if (!entry.examples[bucket]) entry.examples[bucket] = truncateRunNote_(subject, 140);
+      if (lastDate instanceof Date && (!entry.latestTimestamp || entry.latestTimestamp.getTime() < lastDate.getTime())) {
+        entry.latestTimestamp = lastDate;
+      }
+    });
+
+    threadsAnalyzed += fetched.length;
+    offset += fetched.length;
+    if (fetched.length < pageSize) break;
+  }
+
+  if (threadsAnalyzed >= maxThreads && fetched.length === pageSize) {
+    truncated = true;
+  }
+
+  const senders = Object.keys(senderMap).map(key => finalizeMailboxHistorySenderEntry_(senderMap[key]))
+    .sort((left, right) => right.total - left.total);
+
+  const filteredSenders = senders.filter(entry => entry.total >= minSenderCount);
+  const topByBucket = ['review-only', 'explicit-fyi', 'notification', 'news-blank', 'news-with-workflow', 'to-respond', 'important', 'commercial', 'other']
+    .reduce((result, bucket) => {
+      result[bucket] = filteredSenders.filter(entry => entry.dominantBucket === bucket).slice(0, topN);
+      return result;
+    }, {});
+
+  const mixedSenders = filteredSenders.filter(entry => entry.mixed).slice(0, topN);
+
+  return {
+    startDate: Utilities.formatDate(startDate, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+    query: query,
+    truncated: truncated,
+    threadsAnalyzed: threadsAnalyzed,
+    senderCount: senders.length,
+    bucketCounts: bucketCounts,
+    monthlyCounts: monthlyCounts,
+    topByBucket: topByBucket,
+    mixedSenders: mixedSenders,
+    notes: buildHistoricalClassificationNotes_(bucketCounts, mixedSenders)
+  };
+}
+
+function buildMailboxHistoryByBucketSummary_(startDate, perBucketMax, topN, minSenderCount) {
+  const bucketQueries = getMailboxHistoryBucketQueries_(startDate);
+  const senderMap = {};
+  const bucketSamples = {};
+  let totalThreadsSampled = 0;
+
+  bucketQueries.forEach(definition => {
+    const threads = GmailApp.search(definition.query, 0, perBucketMax);
+    totalThreadsSampled += threads.length;
+    bucketSamples[definition.bucket] = {
+      query: definition.query,
+      sampledThreads: threads.length,
+      topSenders: []
+    };
+
+    threads.forEach(thread => {
+      const sender = extractSenderKey_(selectRepresentativeMessageForHistory_(thread).getFrom()) || '(unknown)';
+      const subject = String(thread.getFirstMessageSubject() || '').trim();
+      const lastDate = thread.getLastMessageDate();
+
+      if (!senderMap[sender]) {
+        senderMap[sender] = {
+          sender: sender,
+          total: 0,
+          buckets: {},
+          examples: {},
+          latestTimestamp: null
+        };
+      }
+
+      const entry = senderMap[sender];
+      entry.total += 1;
+      entry.buckets[definition.bucket] = (entry.buckets[definition.bucket] || 0) + 1;
+      if (!entry.examples[definition.bucket]) entry.examples[definition.bucket] = truncateRunNote_(subject, 140);
+      if (lastDate instanceof Date && (!entry.latestTimestamp || entry.latestTimestamp.getTime() < lastDate.getTime())) {
+        entry.latestTimestamp = lastDate;
+      }
+    });
+  });
+
+  const senders = Object.keys(senderMap).map(key => finalizeMailboxHistorySenderEntry_(senderMap[key]))
+    .sort((left, right) => right.total - left.total);
+
+  bucketQueries.forEach(definition => {
+    bucketSamples[definition.bucket].topSenders = senders
+      .filter(entry => (entry.bucketMix.find(item => item.bucket === definition.bucket) || {}).count >= minSenderCount)
+      .sort((left, right) => {
+        const leftCount = (left.bucketMix.find(item => item.bucket === definition.bucket) || {}).count || 0;
+        const rightCount = (right.bucketMix.find(item => item.bucket === definition.bucket) || {}).count || 0;
+        return rightCount - leftCount;
+      })
+      .slice(0, topN)
+      .map(entry => ({
+        sender: entry.sender,
+        count: (entry.bucketMix.find(item => item.bucket === definition.bucket) || {}).count || 0,
+        sampleSubject: (entry.bucketMix.find(item => item.bucket === definition.bucket) || {}).sampleSubject || '',
+        latestTimestamp: entry.latestTimestamp,
+        mixed: entry.mixed
+      }));
+  });
+
+  const mixedSenders = senders.filter(entry => entry.mixed && entry.total >= minSenderCount).slice(0, topN);
+
+  return {
+    startDate: Utilities.formatDate(startDate, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+    perBucketMax: perBucketMax,
+    totalThreadsSampled: totalThreadsSampled,
+    bucketSamples: bucketSamples,
+    mixedSenders: mixedSenders,
+    notes: [
+      'Bucket queries sample current mailbox labels directly, so this is better for January-forward semantics than DecisionLog alone.',
+      'Mixed senders appearing across review/FYI/notification/news are the main rule-tuning candidates.'
+    ]
+  };
+}
+
+function getMailboxHistoryBucketQueries_(startDate) {
+  const after = Utilities.formatDate(startDate, Session.getScriptTimeZone(), 'yyyy/MM/dd');
+  const q = query => `after:${after} -in:trash -in:spam ${query}`;
+  return [
+    { bucket: 'review-only', query: q(`label:"${CONFIG.labels.review}" -label:"${CONFIG.labels.fyi}" -label:"${CONFIG.labels.notification}" -label:"${CONFIG.labels.newsDigest}" -label:"${CONFIG.labels.toRespond}"`) },
+    { bucket: 'explicit-fyi', query: q(`label:"${CONFIG.labels.fyi}"`) },
+    { bucket: 'notification', query: q(`label:"${CONFIG.labels.notification}"`) },
+    { bucket: 'news-blank', query: q(`label:"${CONFIG.labels.newsDigest}" -label:"${CONFIG.labels.fyi}" -label:"${CONFIG.labels.notification}" -label:"${CONFIG.labels.toRespond}" -label:"${CONFIG.labels.review}"`) },
+    { bucket: 'to-respond', query: q(`label:"${CONFIG.labels.toRespond}"`) },
+    { bucket: 'important', query: q(`{label:"${CONFIG.labels.importantServices}" OR label:"${CONFIG.labels.importantFinance}" OR label:"${CONFIG.labels.importantShipping}" OR label:"${CONFIG.labels.importantCalendar}" OR label:"${CONFIG.labels.importantOpportunities}"}`) },
+    { bucket: 'commercial', query: q(`{label:"${CONFIG.labels.commercialNewsletters}" OR label:"${CONFIG.labels.commercialAds}" OR label:"${CONFIG.labels.commercialCampaigns}"}`) }
+  ];
+}
+
+function finalizeMailboxHistorySenderEntry_(entry) {
+  const bucketNames = Object.keys(entry.buckets).sort((left, right) => entry.buckets[right] - entry.buckets[left]);
+  const dominantBucket = bucketNames[0] || 'other';
+  return {
+    sender: entry.sender,
+    total: entry.total,
+    dominantBucket: dominantBucket,
+    dominantCount: entry.buckets[dominantBucket] || 0,
+    bucketMix: bucketNames.map(name => ({ bucket: name, count: entry.buckets[name], sampleSubject: entry.examples[name] || '' })),
+    latestTimestamp: entry.latestTimestamp ? formatControlSurfaceTimestamp_(entry.latestTimestamp) : '',
+    mixed: bucketNames.length > 1
+  };
+}
+
+function selectRepresentativeMessageForHistory_(thread) {
+  const messages = thread.getMessages();
+  return messages && messages.length ? messages[0] : thread.getMessages()[thread.getMessageCount() - 1];
+}
+
+function classifyMailboxLabelBucket_(labels) {
+  const labelString = (labels || []).join(', ');
+  return classifyDecisionRowBucket_({ appliedLabels: labelString });
 }
 
 function setTuningSuggestionStatusPhase10(rowNumber, status, note) {
