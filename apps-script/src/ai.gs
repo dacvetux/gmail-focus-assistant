@@ -90,7 +90,7 @@ function generateAiRecommendationsPhase11() {
   const raw = callGeminiJson_(prompt);
   const parsed = JSON.parse(raw);
   const normalizedRecommendations = sanitizePhase11AiRecommendations_(parsed && parsed.recommendations, candidateSummary.candidates);
-  const rows = normalizedRecommendations.map(buildAiRecommendationRow_);
+  const rows = normalizedRecommendations.map(entry => buildAiRecommendationRow_(entry, 'generateAiRecommendationsPhase11'));
   flushAiRecommendations_(rows);
 
   logRunSummary_({
@@ -139,7 +139,7 @@ function generateAiNewsSourceRecommendationsPhase11() {
   const raw = callGeminiJson_(prompt);
   const parsed = JSON.parse(raw);
   const normalizedRecommendations = sanitizePhase11AiNewsRecommendations_(parsed && parsed.recommendations, candidateSummary.candidates);
-  const rows = normalizedRecommendations.map(buildAiRecommendationRow_);
+  const rows = normalizedRecommendations.map(entry => buildAiRecommendationRow_(entry, 'generateAiNewsSourceRecommendationsPhase11'));
   flushAiRecommendations_(rows);
 
   logRunSummary_({
@@ -188,7 +188,7 @@ function generateAiWorkflowRecommendationsPhase11() {
   const raw = callGeminiJson_(prompt);
   const parsed = JSON.parse(raw);
   const normalizedRecommendations = sanitizePhase11AiWorkflowRecommendations_(parsed && parsed.recommendations, candidateSummary.candidates);
-  const rows = normalizedRecommendations.map(buildAiRecommendationRow_);
+  const rows = normalizedRecommendations.map(entry => buildAiRecommendationRow_(entry, 'generateAiWorkflowRecommendationsPhase11'));
   flushAiRecommendations_(rows);
 
   logRunSummary_({
@@ -737,6 +737,8 @@ function sanitizePhase11AiRecommendations_(recommendations, candidates) {
         evidenceCount: candidate.evidenceCount,
         currentState: candidate.currentState,
         exampleSubject: candidate.sampleSubject,
+        recommendedWorkflow: candidate.workflowTargetHint || '',
+        operatorAction: buildPhase11OperatorAction_(candidate, proposedChange),
         reasoning: truncatePhase11Text_(entry.reasoning, 300) || 'ai recommendation',
         notes: truncatePhase11Text_(entry.notes, 220)
       };
@@ -767,6 +769,8 @@ function sanitizePhase11AiNewsRecommendations_(recommendations, candidates) {
         evidenceCount: candidate.evidenceCount,
         currentState: candidate.currentState,
         exampleSubject: candidate.sampleSubject,
+        recommendedWorkflow: candidate.workflowTargetHint || '',
+        operatorAction: buildPhase11OperatorAction_(candidate, proposedChange),
         reasoning: truncatePhase11Text_(entry.reasoning, 300) || 'ai news-source recommendation',
         notes: truncatePhase11Text_(entry.notes, 220)
       };
@@ -797,6 +801,8 @@ function sanitizePhase11AiWorkflowRecommendations_(recommendations, candidates) 
         evidenceCount: candidate.evidenceCount,
         currentState: candidate.currentState,
         exampleSubject: candidate.sampleSubject,
+        recommendedWorkflow: candidate.workflowTargetHint || '',
+        operatorAction: buildPhase11OperatorAction_(candidate, proposedChange),
         reasoning: truncatePhase11Text_(entry.reasoning, 300) || 'ai workflow recommendation',
         notes: truncatePhase11Text_(entry.notes, 220)
       };
@@ -810,10 +816,36 @@ function truncatePhase11Text_(value, maxLength) {
   return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
 }
 
-function buildAiRecommendationRow_(entry) {
+function buildPhase11OperatorAction_(candidate, proposedChange) {
+  const action = String(proposedChange || '').trim();
+  if (!action || action === 'none' || action === 'keep-review') {
+    return 'review evidence and leave runtime unchanged unless the operator strongly disagrees with current behavior';
+  }
+
+  if (action === 'historical-reclassification-only') {
+    return 'keep runtime/config as-is; consider targeted historical reclassification only';
+  }
+
+  if (action === 'newsSenders' || action === 'newsExcludedSenders') {
+    return 'review in AiRecommendations, then add/update the sender in NewsSources if approved';
+  }
+
+  if (action === 'forceCommercialSenders' || action === 'forceImportantSenders' || action === 'forceShippingSenders' || action === 'forceFyiSenders') {
+    return 'review in AiRecommendations, then convert to an explicit approved rule or config override if accepted';
+  }
+
+  if (action === 'prefer-notification' || action === 'prefer-to-respond') {
+    return 'review in AiRecommendations, then decide whether to express this through sender overrides, pattern tuning, or an approved rule';
+  }
+
+  return 'review manually before any config or historical changes';
+}
+
+function buildAiRecommendationRow_(entry, sourceHelper) {
   return [[
     new Date(),
     'Phase 11',
+    sourceHelper || '',
     entry.candidateType || '',
     entry.sender || '',
     entry.proposedChange || '',
@@ -821,6 +853,8 @@ function buildAiRecommendationRow_(entry) {
     entry.evidenceCount === undefined ? '' : entry.evidenceCount,
     entry.currentState || '',
     entry.exampleSubject || '',
+    entry.recommendedWorkflow || '',
+    entry.operatorAction || '',
     entry.reasoning || '',
     'new',
     entry.notes || ''

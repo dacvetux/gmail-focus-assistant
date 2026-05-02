@@ -30,6 +30,7 @@ The main active roadmap focus is now **Phase 11**: widening AI into operator-fac
 - `ApprovedRules` supports operator-friendly category aliases plus `add` / `remove` actions
 - `ControlSurfaceStatus`, `ValidationStatus`, `RecentRunSummary`, `WorkflowAudit`, `TuningReviewQueue`, `OperatorGuide`, and `AutomationHealthLog` are live
 - `AiRecommendations` is now the first Phase 11 surface; `generateAiRecommendationsPhase11()` writes general AI-assisted operator recommendations there, `generateAiNewsSourceRecommendationsPhase11()` handles curated-news include/exclude review separately, and `generateAiWorkflowRecommendationsPhase11()` handles review/FYI/notification semantics separately
+- `AiRecommendations` should increasingly behave like a real operator queue, not just a dump table; helper provenance and follow-through hints now travel with each row
 - active operational logs can now be rotated into `*Archive` sheets via Phase 10 log-maintenance helpers so the main workbook tabs stay usable over time
 - automation-health auditing is live
 - ambiguous mail no longer auto-gets `2: FYI`; review and FYI semantics are being cleaned up further

@@ -53,6 +53,8 @@ Important tabs:
 - `TuningSuggestions`
 - `TuningReviewQueue`
 - `AiRecommendations`
+  - review-first Phase 11 queue for AI-assisted recommendations
+  - now includes source-helper provenance plus operator-action hints so general, news-source, and workflow-semantics suggestions are easier to review in one place
 - `ControlSurfaceStatus`
 - `ValidationStatus`
 - `RecentRunSummary`

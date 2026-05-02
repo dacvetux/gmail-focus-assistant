@@ -84,6 +84,7 @@ Status: opened on 2026-05-02; initial implementation started with review-first A
 - initial shipped slice: `generateAiRecommendationsPhase11()` batches a small set of sender/routing candidates, asks Gemini for review-first recommendations, and writes them to `AiRecommendations` without mutating runtime behavior
 - next Phase 11 pass split out `generateAiNewsSourceRecommendationsPhase11()` so curated-news include/exclude decisions get their own AI-assisted review loop instead of being mixed into the generic sender-candidate pass
 - the next Phase 11 slice adds `generateAiWorkflowRecommendationsPhase11()` so recurring review-only / mixed-semantics senders can get explicit review-first FYI vs notification vs to-respond recommendations without changing runtime behavior automatically
+- the operator queue now carries helper provenance plus follow-through hints so mixed Phase 11 recommendations can be reviewed in one sheet without losing what each row is asking the operator to do
 - add AI-assisted tuning suggestions that can propose clearer rule candidates, group similar leaks, and explain why a suggestion exists
 - add AI-assisted `NewsSources` proposals to recommend likely `news` / `exclude` entries for operator review
 - improve AI help with workflow semantics, especially distinguishing `Review/Ambiguous`, `2: FYI`, and `3: notification`

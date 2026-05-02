@@ -278,41 +278,66 @@ function flushTuningSuggestions_(rows) {
 function getOrCreateAiRecommendationsSheet_() {
   const spreadsheet = getLogSpreadsheet_();
   let sheet = spreadsheet.getSheetByName('AiRecommendations');
+  const header = [[
+    'Timestamp',
+    'Phase',
+    'Source Helper',
+    'Candidate Type',
+    'Sender',
+    'Proposed Change',
+    'Confidence',
+    'Evidence Count',
+    'Current State',
+    'Example Subject',
+    'Recommended Workflow',
+    'Operator Action',
+    'Reasoning',
+    'Status',
+    'Notes'
+  ]];
 
   if (!sheet) {
     sheet = spreadsheet.insertSheet('AiRecommendations');
-    sheet.getRange(1, 1, 1, 12).setValues([[
-      'Timestamp',
-      'Phase',
-      'Candidate Type',
-      'Sender',
-      'Proposed Change',
-      'Confidence',
-      'Evidence Count',
-      'Current State',
-      'Example Subject',
-      'Reasoning',
-      'Status',
-      'Notes'
-    ]]);
+    sheet.getRange(1, 1, 1, header[0].length).setValues(header);
     return sheet;
   }
 
   if (sheet.getLastRow() === 0) {
-    sheet.getRange(1, 1, 1, 12).setValues([[
-      'Timestamp',
-      'Phase',
-      'Candidate Type',
-      'Sender',
-      'Proposed Change',
-      'Confidence',
-      'Evidence Count',
-      'Current State',
-      'Example Subject',
-      'Reasoning',
-      'Status',
-      'Notes'
-    ]]);
+    sheet.getRange(1, 1, 1, header[0].length).setValues(header);
+    return sheet;
+  }
+
+  const existingHeader = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 12)).getDisplayValues()[0];
+  if (existingHeader[2] !== 'Source Helper' || existingHeader[10] !== 'Recommended Workflow' || existingHeader[11] !== 'Operator Action' || existingHeader[14] !== 'Notes') {
+    if (sheet.getLastColumn() < header[0].length) {
+      sheet.insertColumnsAfter(sheet.getLastColumn(), header[0].length - sheet.getLastColumn());
+    }
+
+    if (sheet.getLastRow() > 1 && existingHeader[2] === 'Candidate Type') {
+      const lastRow = sheet.getLastRow();
+      const oldValues = sheet.getRange(2, 1, lastRow - 1, Math.min(12, sheet.getLastColumn())).getValues();
+      const migratedValues = oldValues.map(row => ([
+        row[0],
+        row[1],
+        '',
+        row[2],
+        row[3],
+        row[4],
+        row[5],
+        row[6],
+        row[7],
+        row[8],
+        '',
+        '',
+        row[9],
+        row[10],
+        row[11]
+      ]));
+      sheet.getRange(2, 1, lastRow - 1, header[0].length).clearContent();
+      sheet.getRange(2, 1, migratedValues.length, header[0].length).setValues(migratedValues);
+    }
+
+    sheet.getRange(1, 1, 1, header[0].length).setValues(header);
   }
 
   return sheet;

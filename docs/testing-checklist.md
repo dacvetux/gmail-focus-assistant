@@ -102,6 +102,7 @@ Run:
 Check:
 - `AiRecommendations`
 - `RunLog`
+- each row should show which helper produced it and what the likely operator follow-through is
 - recommendations stay review-first and do not mutate runtime behavior by themselves
 - obvious cases produce plausible `forceCommercialSenders`, `forceImportantSenders`, `newsSenders`, `newsExcludedSenders`, or `historical-reclassification-only` suggestions
 - weak/messy cases can safely come back as `none`
