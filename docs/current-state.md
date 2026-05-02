@@ -15,7 +15,8 @@ Implemented and actively usable:
 - **Phase 7:** operational reporting via `RunLog`
 - **Phase 8:** separate `News/Digest` lane with dedicated digests (shipped; residual polish now tracked under Phase 10)
 - **Phase 9:** recommendation-first tuning suggestions in `TuningSuggestions` (shipped; residual polish now tracked under Phase 10)
-- **Phase 10:** sheet-backed control surface with runtime-loaded preferences, approved rules, review/import workflow, validation checkpoint, status dashboard, and log rotation/archival
+- **Phase 10:** sheet-backed control surface with runtime-loaded preferences, approved rules, review/import workflow, validation checkpoint, status dashboard, and log rotation/archival (usable now; remaining polish is on hold)
+- **Phase 11:** first assisted-AI surface is now underway via `AiRecommendations` and `generateAiRecommendationsPhase11()`
 
 Operationally live now:
 - Apps Script API execution and `clasp run` are working again
@@ -37,8 +38,8 @@ These parts are deliberately narrow today:
 - follow-up tracking is conservative and visibility-first
 - tuning suggestions are recommendation-first, not auto-applied
 
-Planned next broadening step:
-- Phase 11 will widen AI in review-first/operator-facing ways, but still not allow silent live rule mutation
+Current broadening step:
+- Phase 11 is now widening AI in review-first/operator-facing ways, still without allowing silent live rule mutation
 
 ## Current operator workflow
 
@@ -51,6 +52,7 @@ Important tabs:
 - `ApprovedRules`
 - `TuningSuggestions`
 - `TuningReviewQueue`
+- `AiRecommendations`
 - `ControlSurfaceStatus`
 - `ValidationStatus`
 - `RecentRunSummary`
@@ -90,20 +92,18 @@ Current loop:
 - curated news-source handling was corrected in live use so TLDR, Economist, Telecompaper, and Zeteo-family mail route to `News/Digest`, while Google Play / Play Store mail is treated as important service/store traffic instead of news
 - long-term FYI vs review semantics cleanup now lives directly inside active Phase 10 work rather than a separately open phase-tracking issue
 - operational log rotation now archives older `DecisionLog`, `RunLog`, `DigestLog`, `AutomationHealthLog`, `DraftLog`, and `FollowUpLog` rows into matching `*Archive` sheets so the active tabs stay focused on recent activity
+- Phase 11 has now started with `generateAiRecommendationsPhase11()`, which batches a small set of sender/routing candidates and writes AI-assisted review-first recommendations into `AiRecommendations`
 
 ## Current roadmap focus
 
 ### Now
-- continue a short live-soak on the strengthened Phase 10 **Option A** Sheets workflow
-- validate the newer curated-news sender corrections from real traffic and digest windows
-- carry the remaining Phase 9 suggestion-quality cleanup inside Phase 10 from live evidence
-- live-soak the new log rotation/archival behavior and tune retention if the operator workbook still feels too heavy
-- keep docs aligned with the now-shipped operator dashboard/validation/reclassification flow
-- keep validating the sharper workflow model: review = unresolved, FYI = explicit info-only, notification = transactional/system updates
+- validate the first `AiRecommendations` output in real use and tune candidate quality / prompt quality
+- extend AI-assisted review-first help into news-source and workflow-semantics recommendations
+- keep using the existing Sheets operator loop as the control point while Phase 11 grows around it
+- leave remaining Phase 10 polish on hold unless it blocks the Phase 11 operator loop
 
 ### Next
-- finish Phase 10 Option A until the Sheets workflow is stable and obvious
-- then start **Phase 11** for assisted AI expansion: AI-backed tuning suggestions, `NewsSources` recommendations, and workflow-semantics help
+- deepen **Phase 11** into AI-backed tuning suggestions, `NewsSources` recommendations, and workflow-semantics help
 - add lightweight escalation/notification for automation-health warnings
 
 ### Later
@@ -111,6 +111,6 @@ Current loop:
 
 ## Next 3 practical milestones
 
-1. live-soak the current control-surface workflow and confirm the new dashboard signals are sufficient in day-to-day use
-2. keep validating curated-news sender handling and the sharper workflow-label semantics in live use
-3. confirm the new log rotation defaults keep active log tabs manageable without making recent troubleshooting harder
+1. validate `generateAiRecommendationsPhase11()` output and tune it against real operator judgment
+2. expand the first AI recommendation loop into explicit news-source and workflow-semantics suggestions
+3. keep the existing control-surface/log-rotation base healthy while Phase 11 grows on top of it

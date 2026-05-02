@@ -92,6 +92,19 @@ Check:
 - commercial/shipping/finance candidates are sensible
 - no noisy flood of low-value suggestions
 
+## Phase 11 AI recommendations
+
+Run:
+- `generateAiRecommendationsPhase11()`
+
+Check:
+- `AiRecommendations`
+- `RunLog`
+- recommendations stay review-first and do not mutate runtime behavior by themselves
+- obvious cases produce plausible `forceCommercialSenders`, `forceImportantSenders`, `newsSenders`, `newsExcludedSenders`, or `historical-reclassification-only` suggestions
+- weak/messy cases can safely come back as `none`
+- reasoning is concise enough for an operator to accept/reject quickly
+
 ## Suggested validation order for a full checkpoint
 
 Fast path:

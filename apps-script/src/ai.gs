@@ -62,6 +62,304 @@ function classifyWithAI_(thread) {
   }
 }
 
+function generateAiRecommendationsPhase11() {
+  refreshConfigFromPreferencesPhase10_({ suppressLog: true });
+  const candidateSummary = buildPhase11AiRecommendationCandidates_(6);
+
+  if (!candidateSummary.candidates.length) {
+    logRunSummary_({
+      runType: 'ai-assist',
+      mode: 'internal',
+      entryPoint: 'generateAiRecommendationsPhase11',
+      processedThreads: candidateSummary.scannedRows,
+      itemCount: 0,
+      outcome: 'phase11-ai-no-candidates',
+      notes: `scanned=${candidateSummary.scannedRows}; lookback=${candidateSummary.lookbackRows}`
+    });
+
+    return {
+      scannedRows: candidateSummary.scannedRows,
+      lookbackRows: candidateSummary.lookbackRows,
+      candidateCount: 0,
+      writtenCount: 0,
+      recommendations: []
+    };
+  }
+
+  const prompt = buildPhase11AiRecommendationsPrompt_(candidateSummary.candidates);
+  const raw = callGeminiJson_(prompt);
+  const parsed = JSON.parse(raw);
+  const normalizedRecommendations = sanitizePhase11AiRecommendations_(parsed && parsed.recommendations, candidateSummary.candidates);
+  const rows = normalizedRecommendations.map(buildAiRecommendationRow_);
+  flushAiRecommendations_(rows);
+
+  logRunSummary_({
+    runType: 'ai-assist',
+    mode: 'internal',
+    entryPoint: 'generateAiRecommendationsPhase11',
+    processedThreads: candidateSummary.scannedRows,
+    itemCount: normalizedRecommendations.length,
+    outcome: normalizedRecommendations.length ? 'phase11-ai-recommendations-written' : 'phase11-ai-empty-output',
+    notes: `candidates=${candidateSummary.candidates.length}; written=${normalizedRecommendations.length}; lookback=${candidateSummary.lookbackRows}`
+  });
+
+  return {
+    scannedRows: candidateSummary.scannedRows,
+    lookbackRows: candidateSummary.lookbackRows,
+    candidateCount: candidateSummary.candidates.length,
+    writtenCount: normalizedRecommendations.length,
+    recommendations: normalizedRecommendations
+  };
+}
+
+function buildPhase11AiRecommendationCandidates_(maxCandidates) {
+  const lookbackRows = CONFIG.tuningSuggestionLookbackRows || 500;
+  const rows = readRecentDecisionRows_(lookbackRows);
+  const approvedRules = readApprovedRules_();
+  const newsConfig = readNewsSourceConfig_();
+  const bySender = new Map();
+
+  rows.forEach(row => {
+    const senderKey = extractSenderKey_(row.from);
+    if (!senderKey) return;
+
+    if (!bySender.has(senderKey)) {
+      bySender.set(senderKey, {
+        sender: senderKey,
+        totalCount: 0,
+        reviewCount: 0,
+        fyiCount: 0,
+        notificationCount: 0,
+        newsCount: 0,
+        toRespondCount: 0,
+        otherCount: 0,
+        examples: [],
+        labelCounts: {},
+        latestTimestamp: null
+      });
+    }
+
+    const entry = bySender.get(senderKey);
+    const labels = String(row.appliedLabels || '').trim();
+    entry.totalCount += 1;
+    entry.labelCounts[labels] = (entry.labelCounts[labels] || 0) + 1;
+    if (isReviewLabelSet_(labels)) entry.reviewCount += 1;
+    if (hasAppliedLabel_(labels, CONFIG.labels.fyi)) entry.fyiCount += 1;
+    if (hasAppliedLabel_(labels, CONFIG.labels.notification)) entry.notificationCount += 1;
+    if (hasAppliedLabel_(labels, CONFIG.labels.newsDigest)) entry.newsCount += 1;
+    if (hasAppliedLabel_(labels, CONFIG.labels.toRespond)) entry.toRespondCount += 1;
+    if (!labels) entry.otherCount += 1;
+
+    if (row.timestamp instanceof Date && (!entry.latestTimestamp || entry.latestTimestamp.getTime() < row.timestamp.getTime())) {
+      entry.latestTimestamp = row.timestamp;
+    }
+
+    if (entry.examples.length < 4) {
+      entry.examples.push({
+        from: String(row.from || '').trim(),
+        subject: String(row.subject || '').trim(),
+        reason: String(row.reason || '').trim(),
+        labels: labels,
+        archived: String(row.archived || '').trim(),
+        timestamp: formatTuningSuggestionTimestamp_(row.timestamp)
+      });
+    }
+  });
+
+  const candidates = [];
+
+  bySender.forEach(entry => {
+    const representative = entry.examples[0] || {};
+    const alreadyCoveredByRule = isSenderAlreadyCoveredByApprovedRules_(entry.sender, approvedRules);
+    const alreadyCoveredByRuntime = isSenderCoveredByRuntimeOverride_(entry.sender);
+    const alreadyNews = containsAny_(entry.sender, newsConfig.senders || []);
+    const alreadyExcluded = containsAny_(entry.sender, newsConfig.excludedSenders || []);
+    const mixedLabelFamilies = countNonZeroValues_([
+      entry.reviewCount,
+      entry.fyiCount,
+      entry.notificationCount,
+      entry.newsCount,
+      entry.toRespondCount
+    ]);
+    const currentState = buildPhase11CandidateCurrentState_(entry, alreadyCoveredByRule, alreadyCoveredByRuntime, alreadyNews, alreadyExcluded);
+
+    if (entry.reviewCount && !alreadyCoveredByRule && !alreadyCoveredByRuntime) {
+      candidates.push({
+        sender: entry.sender,
+        candidateType: 'review-leak',
+        evidenceCount: entry.reviewCount,
+        currentState: currentState,
+        sampleSubject: representative.subject || '',
+        sampleReason: representative.reason || '',
+        sampleLabels: representative.labels || '',
+        examples: entry.examples,
+        score: entry.reviewCount * 10 + mixedLabelFamilies
+      });
+    }
+
+    if (!alreadyNews && !alreadyExcluded && !alreadyCoveredByRule && !alreadyCoveredByRuntime && isLikelyNewsIncludeCandidate_(entry, representative)) {
+      candidates.push({
+        sender: entry.sender,
+        candidateType: 'news-include-candidate',
+        evidenceCount: Math.max(entry.reviewCount, entry.totalCount),
+        currentState: currentState,
+        sampleSubject: representative.subject || '',
+        sampleReason: representative.reason || '',
+        sampleLabels: representative.labels || '',
+        examples: entry.examples,
+        score: entry.totalCount * 4 + entry.reviewCount * 6
+      });
+    }
+
+    if (alreadyNews && isLikelyNewsExcludeCandidate_(entry, representative)) {
+      candidates.push({
+        sender: entry.sender,
+        candidateType: 'news-exclude-candidate',
+        evidenceCount: Math.max(entry.newsCount, entry.totalCount),
+        currentState: currentState,
+        sampleSubject: representative.subject || '',
+        sampleReason: representative.reason || '',
+        sampleLabels: representative.labels || '',
+        examples: entry.examples,
+        score: entry.newsCount * 8 + entry.totalCount
+      });
+    }
+
+    if (mixedLabelFamilies >= 2 && entry.totalCount >= 2) {
+      candidates.push({
+        sender: entry.sender,
+        candidateType: 'workflow-mixed',
+        evidenceCount: entry.totalCount,
+        currentState: currentState,
+        sampleSubject: representative.subject || '',
+        sampleReason: representative.reason || '',
+        sampleLabels: representative.labels || '',
+        examples: entry.examples,
+        score: mixedLabelFamilies * 5 + entry.totalCount + entry.reviewCount * 3
+      });
+    }
+  });
+
+  const deduped = [];
+  const seenSenders = new Set();
+  candidates
+    .sort((left, right) => Number(right.score || 0) - Number(left.score || 0) || String(left.sender || '').localeCompare(String(right.sender || '')))
+    .forEach(candidate => {
+      if (seenSenders.has(candidate.sender)) return;
+      seenSenders.add(candidate.sender);
+      deduped.push(candidate);
+    });
+
+  return {
+    scannedRows: rows.length,
+    lookbackRows: lookbackRows,
+    candidates: deduped.slice(0, maxCandidates || 6)
+  };
+}
+
+function buildPhase11CandidateCurrentState_(entry, alreadyCoveredByRule, alreadyCoveredByRuntime, alreadyNews, alreadyExcluded) {
+  const flags = [];
+  if (alreadyCoveredByRule) flags.push('approved-rule-covered');
+  if (alreadyCoveredByRuntime) flags.push('runtime-covered');
+  if (alreadyNews) flags.push('news-source');
+  if (alreadyExcluded) flags.push('news-excluded');
+
+  return [
+    `review=${entry.reviewCount}`,
+    `fyi=${entry.fyiCount}`,
+    `notification=${entry.notificationCount}`,
+    `news=${entry.newsCount}`,
+    `toRespond=${entry.toRespondCount}`,
+    flags.length ? `flags=${flags.join('|')}` : 'flags=none'
+  ].join('; ');
+}
+
+function countNonZeroValues_(values) {
+  return (values || []).filter(value => Number(value || 0) > 0).length;
+}
+
+function buildPhase11AiRecommendationsPrompt_(candidates) {
+  return [
+    'You are helping a rules-first Gmail assistant operator review potential Phase 11 AI recommendations.',
+    'Return JSON only.',
+    'Use this schema: {"recommendations":[{"sender":"...","candidateType":"...","proposedChange":"...","confidence":"high|medium|low","reasoning":"...","notes":"..."}]}',
+    'Allowed proposedChange values:',
+    ['forceCommercialSenders', 'forceImportantSenders', 'forceShippingSenders', 'forceFyiSenders', 'newsSenders', 'newsExcludedSenders', 'historical-reclassification-only', 'none'].join(', '),
+    'Rules:',
+    '- prefer recommendation-first behavior; do not suggest automatic mutation',
+    '- if the sender already looks covered and the issue seems like old mailbox state, use historical-reclassification-only',
+    '- use none when the evidence is too weak or mixed to justify a recommendation',
+    '- prefer forceImportantSenders for service/account/security traffic',
+    '- prefer newsSenders/newsExcludedSenders only for genuine curated-news boundary cases',
+    '- prefer forceCommercialSenders only for obvious commercial/promotional senders',
+    '',
+    'Candidates:',
+    JSON.stringify(candidates, null, 2)
+  ].join('\n');
+}
+
+function sanitizePhase11AiRecommendations_(recommendations, candidates) {
+  const allowedChanges = [
+    'forceCommercialSenders',
+    'forceImportantSenders',
+    'forceShippingSenders',
+    'forceFyiSenders',
+    'newsSenders',
+    'newsExcludedSenders',
+    'historical-reclassification-only',
+    'none'
+  ];
+  const candidateMap = new Map((candidates || []).map(candidate => [candidate.sender, candidate]));
+
+  return (Array.isArray(recommendations) ? recommendations : [])
+    .map(entry => {
+      const sender = String(entry && entry.sender || '').trim().toLowerCase();
+      if (!candidateMap.has(sender)) return null;
+
+      const candidate = candidateMap.get(sender);
+      const proposedChange = allowedChanges.includes(entry.proposedChange) ? entry.proposedChange : 'none';
+      const confidence = ['high', 'medium', 'low'].includes(String(entry.confidence || '').trim().toLowerCase())
+        ? String(entry.confidence || '').trim().toLowerCase()
+        : 'low';
+
+      return {
+        sender: sender,
+        candidateType: candidate.candidateType,
+        proposedChange: proposedChange,
+        confidence: confidence,
+        evidenceCount: candidate.evidenceCount,
+        currentState: candidate.currentState,
+        exampleSubject: candidate.sampleSubject,
+        reasoning: truncatePhase11Text_(entry.reasoning, 300) || 'ai recommendation',
+        notes: truncatePhase11Text_(entry.notes, 220)
+      };
+    })
+    .filter(Boolean);
+}
+
+function truncatePhase11Text_(value, maxLength) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
+}
+
+function buildAiRecommendationRow_(entry) {
+  return [[
+    new Date(),
+    'Phase 11',
+    entry.candidateType || '',
+    entry.sender || '',
+    entry.proposedChange || '',
+    entry.confidence || '',
+    entry.evidenceCount === undefined ? '' : entry.evidenceCount,
+    entry.currentState || '',
+    entry.exampleSubject || '',
+    entry.reasoning || '',
+    'new',
+    entry.notes || ''
+  ]][0];
+}
+
 function callGeminiJson_(prompt) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!apiKey) throw new Error('missing GEMINI_API_KEY');

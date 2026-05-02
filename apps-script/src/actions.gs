@@ -275,6 +275,57 @@ function flushTuningSuggestions_(rows) {
   sheet.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
 }
 
+function getOrCreateAiRecommendationsSheet_() {
+  const spreadsheet = getLogSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName('AiRecommendations');
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('AiRecommendations');
+    sheet.getRange(1, 1, 1, 12).setValues([[
+      'Timestamp',
+      'Phase',
+      'Candidate Type',
+      'Sender',
+      'Proposed Change',
+      'Confidence',
+      'Evidence Count',
+      'Current State',
+      'Example Subject',
+      'Reasoning',
+      'Status',
+      'Notes'
+    ]]);
+    return sheet;
+  }
+
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, 12).setValues([[
+      'Timestamp',
+      'Phase',
+      'Candidate Type',
+      'Sender',
+      'Proposed Change',
+      'Confidence',
+      'Evidence Count',
+      'Current State',
+      'Example Subject',
+      'Reasoning',
+      'Status',
+      'Notes'
+    ]]);
+  }
+
+  return sheet;
+}
+
+function flushAiRecommendations_(rows) {
+  if (!rows.length) return;
+
+  const sheet = getOrCreateAiRecommendationsSheet_();
+  const startRow = sheet.getLastRow() + 1;
+  sheet.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
+}
+
 function getOrCreateAutomationHealthLogSheet_() {
   const spreadsheet = getLogSpreadsheet_();
   let sheet = spreadsheet.getSheetByName('AutomationHealthLog');
