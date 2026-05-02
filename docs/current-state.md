@@ -16,7 +16,7 @@ Implemented and actively usable:
 - **Phase 8:** separate `News/Digest` lane with dedicated digests (shipped; residual polish now tracked under Phase 10)
 - **Phase 9:** recommendation-first tuning suggestions in `TuningSuggestions` (shipped; residual polish now tracked under Phase 10)
 - **Phase 10:** sheet-backed control surface with runtime-loaded preferences, approved rules, review/import workflow, validation checkpoint, status dashboard, and log rotation/archival (usable now; remaining polish is on hold)
-- **Phase 11:** first assisted-AI surfaces are now underway via `AiRecommendations`, `generateAiRecommendationsPhase11()`, and `generateAiNewsSourceRecommendationsPhase11()`
+- **Phase 11:** first assisted-AI surfaces are now underway via `AiRecommendations`, `generateAiRecommendationsPhase11()`, `generateAiNewsSourceRecommendationsPhase11()`, and `generateAiWorkflowRecommendationsPhase11()`
 
 Operationally live now:
 - Apps Script API execution and `clasp run` are working again
@@ -92,7 +92,7 @@ Current loop:
 - curated news-source handling was corrected in live use so TLDR, Economist, Telecompaper, and Zeteo-family mail route to `News/Digest`, while Google Play / Play Store mail is treated as important service/store traffic instead of news
 - long-term FYI vs review semantics cleanup now lives directly inside active Phase 10 work rather than a separately open phase-tracking issue
 - operational log rotation now archives older `DecisionLog`, `RunLog`, `DigestLog`, `AutomationHealthLog`, `DraftLog`, and `FollowUpLog` rows into matching `*Archive` sheets so the active tabs stay focused on recent activity
-- Phase 11 has now started with `generateAiRecommendationsPhase11()` plus `generateAiNewsSourceRecommendationsPhase11()`, splitting general sender/routing recommendations from news-source-specific review-first recommendations in `AiRecommendations`
+- Phase 11 has now started with `generateAiRecommendationsPhase11()`, `generateAiNewsSourceRecommendationsPhase11()`, and `generateAiWorkflowRecommendationsPhase11()`, splitting general sender/routing recommendations, news-source-specific recommendations, and workflow-semantics recommendations into separate review-first passes in `AiRecommendations`
 
 ## Current roadmap focus
 

@@ -97,6 +97,7 @@ Check:
 Run:
 - `generateAiRecommendationsPhase11()`
 - `generateAiNewsSourceRecommendationsPhase11()`
+- `generateAiWorkflowRecommendationsPhase11()`
 
 Check:
 - `AiRecommendations`
@@ -106,6 +107,7 @@ Check:
 - weak/messy cases can safely come back as `none`
 - reasoning is concise enough for an operator to accept/reject quickly
 - general sender/routing suggestions should no longer be dominated by curated-news boundary cases; those should mostly show up through the dedicated news-source helper
+- workflow-semantics suggestions should only surface recurring ambiguous/mixed cases and should use review-first outcomes like `forceFyiSenders`, `prefer-notification`, `prefer-to-respond`, `keep-review`, or `none`
 
 ## Suggested validation order for a full checkpoint
 

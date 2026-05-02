@@ -160,6 +160,56 @@ function generateAiNewsSourceRecommendationsPhase11() {
   };
 }
 
+function generateAiWorkflowRecommendationsPhase11() {
+  refreshConfigFromPreferencesPhase10_({ suppressLog: true });
+  const candidateSummary = buildPhase11AiWorkflowCandidates_(6);
+
+  if (!candidateSummary.candidates.length) {
+    logRunSummary_({
+      runType: 'ai-assist',
+      mode: 'internal',
+      entryPoint: 'generateAiWorkflowRecommendationsPhase11',
+      processedThreads: candidateSummary.scannedRows,
+      itemCount: 0,
+      outcome: 'phase11-ai-workflow-no-candidates',
+      notes: `scanned=${candidateSummary.scannedRows}; lookback=${candidateSummary.lookbackRows}`
+    });
+
+    return {
+      scannedRows: candidateSummary.scannedRows,
+      lookbackRows: candidateSummary.lookbackRows,
+      candidateCount: 0,
+      writtenCount: 0,
+      recommendations: []
+    };
+  }
+
+  const prompt = buildPhase11AiWorkflowRecommendationsPrompt_(candidateSummary.candidates);
+  const raw = callGeminiJson_(prompt);
+  const parsed = JSON.parse(raw);
+  const normalizedRecommendations = sanitizePhase11AiWorkflowRecommendations_(parsed && parsed.recommendations, candidateSummary.candidates);
+  const rows = normalizedRecommendations.map(buildAiRecommendationRow_);
+  flushAiRecommendations_(rows);
+
+  logRunSummary_({
+    runType: 'ai-assist',
+    mode: 'internal',
+    entryPoint: 'generateAiWorkflowRecommendationsPhase11',
+    processedThreads: candidateSummary.scannedRows,
+    itemCount: normalizedRecommendations.length,
+    outcome: normalizedRecommendations.length ? 'phase11-ai-workflow-written' : 'phase11-ai-workflow-empty-output',
+    notes: `candidates=${candidateSummary.candidates.length}; written=${normalizedRecommendations.length}; lookback=${candidateSummary.lookbackRows}`
+  });
+
+  return {
+    scannedRows: candidateSummary.scannedRows,
+    lookbackRows: candidateSummary.lookbackRows,
+    candidateCount: candidateSummary.candidates.length,
+    writtenCount: normalizedRecommendations.length,
+    recommendations: normalizedRecommendations
+  };
+}
+
 function buildPhase11AiRecommendationCandidates_(maxCandidates) {
   const lookbackRows = CONFIG.tuningSuggestionLookbackRows || 500;
   const rows = readRecentDecisionRows_(lookbackRows);
@@ -338,6 +388,91 @@ function buildPhase11AiNewsSourceCandidates_(maxCandidates) {
   };
 }
 
+function buildPhase11AiWorkflowCandidates_(maxCandidates) {
+  const lookbackRows = CONFIG.tuningSuggestionLookbackRows || 500;
+  const rows = readRecentDecisionRows_(lookbackRows);
+  const newsConfig = readNewsSourceConfig_();
+  const approvedRules = readApprovedRules_();
+  const bySender = new Map();
+
+  rows.forEach(row => {
+    const senderKey = extractSenderKey_(row.from);
+    if (!senderKey) return;
+
+    if (!bySender.has(senderKey)) {
+      bySender.set(senderKey, {
+        sender: senderKey,
+        totalCount: 0,
+        reviewCount: 0,
+        fyiCount: 0,
+        notificationCount: 0,
+        toRespondCount: 0,
+        newsCount: 0,
+        examples: []
+      });
+    }
+
+    const entry = bySender.get(senderKey);
+    const labels = String(row.appliedLabels || '').trim();
+    entry.totalCount += 1;
+    if (isReviewLabelSet_(labels)) entry.reviewCount += 1;
+    if (hasAppliedLabel_(labels, CONFIG.labels.fyi)) entry.fyiCount += 1;
+    if (hasAppliedLabel_(labels, CONFIG.labels.notification)) entry.notificationCount += 1;
+    if (hasAppliedLabel_(labels, CONFIG.labels.toRespond)) entry.toRespondCount += 1;
+    if (hasAppliedLabel_(labels, CONFIG.labels.newsDigest)) entry.newsCount += 1;
+
+    if (entry.examples.length < 4) {
+      entry.examples.push({
+        from: String(row.from || '').trim(),
+        subject: String(row.subject || '').trim(),
+        reason: String(row.reason || '').trim(),
+        labels: labels,
+        archived: String(row.archived || '').trim(),
+        timestamp: formatTuningSuggestionTimestamp_(row.timestamp)
+      });
+    }
+  });
+
+  const candidates = [];
+
+  bySender.forEach(entry => {
+    const representative = entry.examples[0] || {};
+    const currentState = buildPhase11CandidateCurrentState_(
+      entry,
+      isSenderAlreadyCoveredByApprovedRules_(entry.sender, approvedRules),
+      isSenderCoveredByRuntimeOverride_(entry.sender),
+      containsAny_(entry.sender, newsConfig.senders || []),
+      containsAny_(entry.sender, newsConfig.excludedSenders || [])
+    );
+
+    const workflowCandidate = inferPhase11WorkflowCandidate_(entry, representative);
+    if (!workflowCandidate) return;
+    if (shouldSuppressPhase11WorkflowSemanticsCandidate_(entry, representative)) return;
+
+    candidates.push({
+      sender: entry.sender,
+      candidateType: workflowCandidate.candidateType,
+      evidenceCount: workflowCandidate.evidenceCount,
+      currentState: currentState,
+      sampleSubject: representative.subject || '',
+      sampleReason: representative.reason || '',
+      sampleLabels: representative.labels || '',
+      examples: entry.examples,
+      score: workflowCandidate.score,
+      proposedActionHint: workflowCandidate.proposedActionHint,
+      workflowTargetHint: workflowCandidate.workflowTargetHint
+    });
+  });
+
+  return {
+    scannedRows: rows.length,
+    lookbackRows: lookbackRows,
+    candidates: candidates
+      .sort((left, right) => Number(right.score || 0) - Number(left.score || 0) || String(left.sender || '').localeCompare(String(right.sender || '')))
+      .slice(0, maxCandidates || 6)
+  };
+}
+
 function buildPhase11CandidateCurrentState_(entry, alreadyCoveredByRule, alreadyCoveredByRuntime, alreadyNews, alreadyExcluded) {
   const flags = [];
   if (alreadyCoveredByRule) flags.push('approved-rule-covered');
@@ -400,6 +535,111 @@ function shouldIncludePhase11NewsCandidate_(candidate) {
   return true;
 }
 
+function inferPhase11WorkflowCandidate_(entry, representative) {
+  const reviewOnlyCount = Math.max(0, Number(entry.reviewCount || 0) - Number(entry.fyiCount || 0));
+  const representativeWorkflow = inferWorkflowLabelFromExample_(entry, representative);
+
+  if (representativeWorkflow === CONFIG.labels.fyi && reviewOnlyCount >= 2) {
+    return {
+      candidateType: 'workflow-fyi-candidate',
+      evidenceCount: reviewOnlyCount,
+      score: reviewOnlyCount * 9 + Number(entry.totalCount || 0),
+      proposedActionHint: 'forceFyiSenders',
+      workflowTargetHint: 'fyi'
+    };
+  }
+
+  if (representativeWorkflow === CONFIG.labels.notification && reviewOnlyCount >= 2) {
+    return {
+      candidateType: 'workflow-notification-candidate',
+      evidenceCount: reviewOnlyCount,
+      score: reviewOnlyCount * 9 + Number(entry.totalCount || 0),
+      proposedActionHint: 'prefer-notification',
+      workflowTargetHint: 'notification'
+    };
+  }
+
+  if (representativeWorkflow === CONFIG.labels.toRespond && reviewOnlyCount >= 2) {
+    return {
+      candidateType: 'workflow-to-respond-candidate',
+      evidenceCount: reviewOnlyCount,
+      score: reviewOnlyCount * 10 + Number(entry.totalCount || 0),
+      proposedActionHint: 'prefer-to-respond',
+      workflowTargetHint: 'to-respond'
+    };
+  }
+
+  if (entry.totalCount >= 3) {
+    const dominantWorkflow = inferDominantWorkflowState_(entry);
+    if (dominantWorkflow && entry.reviewCount >= 1) {
+      return {
+        candidateType: 'workflow-mixed-semantics',
+        evidenceCount: entry.totalCount,
+        score: Number(entry.totalCount || 0) * 5 + Number(entry.reviewCount || 0) * 3,
+        proposedActionHint: dominantWorkflow === CONFIG.labels.fyi
+          ? 'forceFyiSenders'
+          : dominantWorkflow === CONFIG.labels.notification
+            ? 'prefer-notification'
+            : 'prefer-to-respond',
+        workflowTargetHint: normalizePhase11WorkflowHint_(dominantWorkflow)
+      };
+    }
+  }
+
+  return null;
+}
+
+function shouldSuppressPhase11WorkflowSemanticsCandidate_(entry, representative) {
+  if (entry.newsCount > 0) return true;
+  if (looksCommercialSuggestion_(representative) || looksStrongCommercialSuggestion_(entry, representative)) return true;
+  if (isLikelyNewsIncludeCandidate_(entry, representative) || isLikelyNewsExcludeCandidate_(entry, representative)) return true;
+  if (looksSocialActivitySuggestion_(entry, representative)) return true;
+  return false;
+}
+
+function inferWorkflowLabelFromExample_(entry, representative) {
+  const haystack = `${entry.sender || ''}\n${representative.subject || ''}\n${representative.reason || ''}`.toLowerCase();
+
+  if (matchesAny_(haystack, CONFIG.responsePatterns) || /reply requested|action required|confirm|please respond|interview|meeting|availability/i.test(haystack)) {
+    return CONFIG.labels.toRespond;
+  }
+
+  if (
+    looksShippingSuggestion_(representative) ||
+    looksFinanceSuggestion_(representative) ||
+    looksMarketplaceTransactionalSuggestion_(representative) ||
+    looksServiceNotificationSuggestion_(representative) ||
+    looksStrongServiceNotificationSuggestion_(entry, representative) ||
+    matchesAny_(haystack, CONFIG.notificationPatterns)
+  ) {
+    return CONFIG.labels.notification;
+  }
+
+  if (looksLowPriorityFyiSuggestion_(entry, representative, Number(entry.reviewCount || 0)) || matchesAny_(haystack, CONFIG.fyiPatterns)) {
+    return CONFIG.labels.fyi;
+  }
+
+  return null;
+}
+
+function inferDominantWorkflowState_(entry) {
+  const ranked = [
+    { label: CONFIG.labels.toRespond, count: Number(entry.toRespondCount || 0) },
+    { label: CONFIG.labels.notification, count: Number(entry.notificationCount || 0) },
+    { label: CONFIG.labels.fyi, count: Number(entry.fyiCount || 0) }
+  ].sort((left, right) => right.count - left.count);
+
+  if (!ranked[0] || ranked[0].count < 2) return null;
+  return ranked[0].label;
+}
+
+function normalizePhase11WorkflowHint_(label) {
+  if (label === CONFIG.labels.toRespond) return 'to-respond';
+  if (label === CONFIG.labels.notification) return 'notification';
+  if (label === CONFIG.labels.fyi) return 'fyi';
+  return 'review';
+}
+
 function looksSocialActivitySuggestion_(entry, representative) {
   const haystack = `${entry.sender || ''}\n${entry.examples && entry.examples[0] ? entry.examples[0].from || '' : ''}\n${representative.subject || ''}\n${representative.reason || ''}`.toLowerCase();
   return /(messages-noreply@linkedin\.com|notifications-noreply@linkedin\.com|news@mail\.xing\.com|noticed you|profile|messaging digest|kudos|followers|connections|network)/i.test(haystack);
@@ -420,6 +660,25 @@ function buildPhase11AiNewsRecommendationsPrompt_(candidates) {
     '- choose newsExcludedSenders only when something currently treated as news should stay out of News/Digest',
     '- choose historical-reclassification-only if the sender already seems configured correctly and the issue is mainly old mailbox state',
     '- choose none when the evidence is weak or mixed',
+    '',
+    'Candidates:',
+    JSON.stringify(candidates, null, 2)
+  ].join('\n');
+}
+
+function buildPhase11AiWorkflowRecommendationsPrompt_(candidates) {
+  return [
+    'You are helping a rules-first Gmail assistant operator review workflow-semantics drift for recurring senders.',
+    'Return JSON only.',
+    'Use this schema: {"recommendations":[{"sender":"...","candidateType":"...","proposedChange":"forceFyiSenders|prefer-notification|prefer-to-respond|keep-review|historical-reclassification-only|none","confidence":"high|medium|low","reasoning":"...","notes":"..."}]}',
+    'Rules:',
+    '- this is review-first only; do not mutate live behavior',
+    '- use forceFyiSenders only for recurring low-priority informational mail that should reliably land in FYI',
+    '- use prefer-notification for recurring service/status/transactional mail that should likely route with notification semantics',
+    '- use prefer-to-respond for recurring mail where the operator likely wants response-oriented handling',
+    '- use keep-review when review-only still looks correct and the sender should remain ambiguous',
+    '- use historical-reclassification-only if the main issue seems to be older mailbox state rather than a future-rule change',
+    '- use none when evidence is weak or mixed',
     '',
     'Candidates:',
     JSON.stringify(candidates, null, 2)
@@ -509,6 +768,36 @@ function sanitizePhase11AiNewsRecommendations_(recommendations, candidates) {
         currentState: candidate.currentState,
         exampleSubject: candidate.sampleSubject,
         reasoning: truncatePhase11Text_(entry.reasoning, 300) || 'ai news-source recommendation',
+        notes: truncatePhase11Text_(entry.notes, 220)
+      };
+    })
+    .filter(Boolean);
+}
+
+function sanitizePhase11AiWorkflowRecommendations_(recommendations, candidates) {
+  const allowedChanges = ['forceFyiSenders', 'prefer-notification', 'prefer-to-respond', 'keep-review', 'historical-reclassification-only', 'none'];
+  const candidateMap = new Map((candidates || []).map(candidate => [candidate.sender, candidate]));
+
+  return (Array.isArray(recommendations) ? recommendations : [])
+    .map(entry => {
+      const sender = String(entry && entry.sender || '').trim().toLowerCase();
+      if (!candidateMap.has(sender)) return null;
+
+      const candidate = candidateMap.get(sender);
+      const proposedChange = allowedChanges.includes(entry.proposedChange) ? entry.proposedChange : 'none';
+      const confidence = ['high', 'medium', 'low'].includes(String(entry.confidence || '').trim().toLowerCase())
+        ? String(entry.confidence || '').trim().toLowerCase()
+        : 'low';
+
+      return {
+        sender: sender,
+        candidateType: candidate.candidateType,
+        proposedChange: proposedChange,
+        confidence: confidence,
+        evidenceCount: candidate.evidenceCount,
+        currentState: candidate.currentState,
+        exampleSubject: candidate.sampleSubject,
+        reasoning: truncatePhase11Text_(entry.reasoning, 300) || 'ai workflow recommendation',
         notes: truncatePhase11Text_(entry.notes, 220)
       };
     })
