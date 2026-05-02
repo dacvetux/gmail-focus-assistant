@@ -29,7 +29,7 @@ The main active roadmap focus is now **Phase 11**: widening AI into operator-fac
 - tuning suggestions can be promoted into approved rules via a sheet-based review loop
 - `ApprovedRules` supports operator-friendly category aliases plus `add` / `remove` actions
 - `ControlSurfaceStatus`, `ValidationStatus`, `RecentRunSummary`, `WorkflowAudit`, `TuningReviewQueue`, `OperatorGuide`, and `AutomationHealthLog` are live
-- `AiRecommendations` is now the first Phase 11 surface; `generateAiRecommendationsPhase11()` writes AI-assisted operator recommendations there for review
+- `AiRecommendations` is now the first Phase 11 surface; `generateAiRecommendationsPhase11()` writes general AI-assisted operator recommendations there, while `generateAiNewsSourceRecommendationsPhase11()` handles curated-news include/exclude review separately
 - active operational logs can now be rotated into `*Archive` sheets via Phase 10 log-maintenance helpers so the main workbook tabs stay usable over time
 - automation-health auditing is live
 - ambiguous mail no longer auto-gets `2: FYI`; review and FYI semantics are being cleaned up further
@@ -38,8 +38,8 @@ The main active roadmap focus is now **Phase 11**: widening AI into operator-fac
 - curated news-source handling has been corrected in live use for TLDR, Economist, Telecompaper, and Zeteo-family mail, while Google Play / Play Store mail now routes toward important service handling instead of news
 
 ### What is next inside Phase 11
-- validate the first `AiRecommendations` output against real mailbox evidence and tune candidate selection / prompt quality
-- add AI-assisted `NewsSources` proposals that can explicitly suggest `news` vs `exclude` rows for operator review
+- validate the first `AiRecommendations` outputs against real mailbox evidence and tune candidate selection / prompt quality
+- expand the dedicated AI-assisted `NewsSources` path so it can explicitly suggest `news` vs `exclude` rows for operator review without polluting the generic sender loop
 - add AI help for workflow semantics, especially `Review/Ambiguous` vs `2: FYI` vs `3: notification`
 - keep all AI outputs recommendation-first: write suggestions, explanations, and clustering only; no silent config or mailbox mutation
 - resume remaining Phase 10 polish later only where the Phase 11 loop exposes real operator pain

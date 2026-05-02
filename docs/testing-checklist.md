@@ -96,6 +96,7 @@ Check:
 
 Run:
 - `generateAiRecommendationsPhase11()`
+- `generateAiNewsSourceRecommendationsPhase11()`
 
 Check:
 - `AiRecommendations`
@@ -104,6 +105,7 @@ Check:
 - obvious cases produce plausible `forceCommercialSenders`, `forceImportantSenders`, `newsSenders`, `newsExcludedSenders`, or `historical-reclassification-only` suggestions
 - weak/messy cases can safely come back as `none`
 - reasoning is concise enough for an operator to accept/reject quickly
+- general sender/routing suggestions should no longer be dominated by curated-news boundary cases; those should mostly show up through the dedicated news-source helper
 
 ## Suggested validation order for a full checkpoint
 

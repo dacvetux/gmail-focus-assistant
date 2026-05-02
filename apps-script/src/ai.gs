@@ -112,6 +112,54 @@ function generateAiRecommendationsPhase11() {
   };
 }
 
+function generateAiNewsSourceRecommendationsPhase11() {
+  refreshConfigFromPreferencesPhase10_({ suppressLog: true });
+  const candidateSummary = buildPhase11AiNewsSourceCandidates_(6);
+
+  if (!candidateSummary.candidates.length) {
+    logRunSummary_({
+      runType: 'ai-assist',
+      mode: 'internal',
+      entryPoint: 'generateAiNewsSourceRecommendationsPhase11',
+      processedThreads: candidateSummary.scannedRows,
+      itemCount: 0,
+      outcome: 'phase11-ai-news-no-candidates',
+      notes: `scanned=${candidateSummary.scannedRows}; include=${candidateSummary.includeCount}; exclude=${candidateSummary.excludeCount}`
+    });
+
+    return {
+      scannedRows: candidateSummary.scannedRows,
+      candidateCount: 0,
+      writtenCount: 0,
+      recommendations: []
+    };
+  }
+
+  const prompt = buildPhase11AiNewsRecommendationsPrompt_(candidateSummary.candidates);
+  const raw = callGeminiJson_(prompt);
+  const parsed = JSON.parse(raw);
+  const normalizedRecommendations = sanitizePhase11AiNewsRecommendations_(parsed && parsed.recommendations, candidateSummary.candidates);
+  const rows = normalizedRecommendations.map(buildAiRecommendationRow_);
+  flushAiRecommendations_(rows);
+
+  logRunSummary_({
+    runType: 'ai-assist',
+    mode: 'internal',
+    entryPoint: 'generateAiNewsSourceRecommendationsPhase11',
+    processedThreads: candidateSummary.scannedRows,
+    itemCount: normalizedRecommendations.length,
+    outcome: normalizedRecommendations.length ? 'phase11-ai-news-written' : 'phase11-ai-news-empty-output',
+    notes: `candidates=${candidateSummary.candidates.length}; written=${normalizedRecommendations.length}; include=${candidateSummary.includeCount}; exclude=${candidateSummary.excludeCount}`
+  });
+
+  return {
+    scannedRows: candidateSummary.scannedRows,
+    candidateCount: candidateSummary.candidates.length,
+    writtenCount: normalizedRecommendations.length,
+    recommendations: normalizedRecommendations
+  };
+}
+
 function buildPhase11AiRecommendationCandidates_(maxCandidates) {
   const lookbackRows = CONFIG.tuningSuggestionLookbackRows || 500;
   const rows = readRecentDecisionRows_(lookbackRows);
@@ -182,8 +230,15 @@ function buildPhase11AiRecommendationCandidates_(maxCandidates) {
       entry.toRespondCount
     ]);
     const currentState = buildPhase11CandidateCurrentState_(entry, alreadyCoveredByRule, alreadyCoveredByRuntime, alreadyNews, alreadyExcluded);
+    const looksNewsCandidate = isLikelyNewsIncludeCandidate_(entry, representative) || isLikelyNewsExcludeCandidate_(entry, representative);
 
-    if (entry.reviewCount && !alreadyCoveredByRule && !alreadyCoveredByRuntime) {
+    if (shouldIncludePhase11ReviewLeakCandidate_(entry, representative, {
+      alreadyCoveredByRule: alreadyCoveredByRule,
+      alreadyCoveredByRuntime: alreadyCoveredByRuntime,
+      alreadyNews: alreadyNews,
+      alreadyExcluded: alreadyExcluded,
+      looksNewsCandidate: looksNewsCandidate
+    })) {
       candidates.push({
         sender: entry.sender,
         candidateType: 'review-leak',
@@ -197,35 +252,12 @@ function buildPhase11AiRecommendationCandidates_(maxCandidates) {
       });
     }
 
-    if (!alreadyNews && !alreadyExcluded && !alreadyCoveredByRule && !alreadyCoveredByRuntime && isLikelyNewsIncludeCandidate_(entry, representative)) {
-      candidates.push({
-        sender: entry.sender,
-        candidateType: 'news-include-candidate',
-        evidenceCount: Math.max(entry.reviewCount, entry.totalCount),
-        currentState: currentState,
-        sampleSubject: representative.subject || '',
-        sampleReason: representative.reason || '',
-        sampleLabels: representative.labels || '',
-        examples: entry.examples,
-        score: entry.totalCount * 4 + entry.reviewCount * 6
-      });
-    }
-
-    if (alreadyNews && isLikelyNewsExcludeCandidate_(entry, representative)) {
-      candidates.push({
-        sender: entry.sender,
-        candidateType: 'news-exclude-candidate',
-        evidenceCount: Math.max(entry.newsCount, entry.totalCount),
-        currentState: currentState,
-        sampleSubject: representative.subject || '',
-        sampleReason: representative.reason || '',
-        sampleLabels: representative.labels || '',
-        examples: entry.examples,
-        score: entry.newsCount * 8 + entry.totalCount
-      });
-    }
-
-    if (mixedLabelFamilies >= 2 && entry.totalCount >= 2) {
+    if (shouldIncludePhase11WorkflowMixedCandidate_(entry, representative, mixedLabelFamilies, {
+      alreadyCoveredByRuntime: alreadyCoveredByRuntime,
+      alreadyNews: alreadyNews,
+      alreadyExcluded: alreadyExcluded,
+      looksNewsCandidate: looksNewsCandidate
+    })) {
       candidates.push({
         sender: entry.sender,
         candidateType: 'workflow-mixed',
@@ -257,6 +289,55 @@ function buildPhase11AiRecommendationCandidates_(maxCandidates) {
   };
 }
 
+function buildPhase11AiNewsSourceCandidates_(maxCandidates) {
+  const summary = inspectNewsSourceCandidatesPhase10();
+  const includeCandidates = (summary.includeCandidates || []).map(candidate => ({
+    sender: String(candidate.sender || '').trim().toLowerCase(),
+    candidateType: 'news-source-include',
+    evidenceCount: Number(candidate.reviewCount || candidate.totalCount || 0),
+    currentState: buildPhase11NewsCurrentState_(candidate),
+    sampleSubject: candidate.exampleSubject || '',
+    sampleReason: candidate.exampleReason || '',
+    sampleLabels: '',
+    examples: [{
+      subject: candidate.exampleSubject || '',
+      reason: candidate.exampleReason || '',
+      labels: ''
+    }],
+    score: Number(candidate.reviewCount || 0) * 8 + Number(candidate.totalCount || 0) * 2,
+    proposedActionHint: 'newsSenders'
+  }));
+
+  const excludeCandidates = (summary.excludeCandidates || []).map(candidate => ({
+    sender: String(candidate.sender || '').trim().toLowerCase(),
+    candidateType: 'news-source-exclude',
+    evidenceCount: Number(candidate.newsCount || candidate.totalCount || 0),
+    currentState: buildPhase11NewsCurrentState_(candidate),
+    sampleSubject: candidate.exampleSubject || '',
+    sampleReason: candidate.exampleReason || '',
+    sampleLabels: '',
+    examples: [{
+      subject: candidate.exampleSubject || '',
+      reason: candidate.exampleReason || '',
+      labels: ''
+    }],
+    score: Number(candidate.newsCount || 0) * 8 + Number(candidate.totalCount || 0) * 2,
+    proposedActionHint: 'newsExcludedSenders'
+  }));
+
+  const candidates = includeCandidates.concat(excludeCandidates)
+    .filter(candidate => shouldIncludePhase11NewsCandidate_(candidate))
+    .sort((left, right) => Number(right.score || 0) - Number(left.score || 0) || String(left.sender || '').localeCompare(String(right.sender || '')))
+    .slice(0, maxCandidates || 6);
+
+  return {
+    scannedRows: Number(summary.scannedRows || 0),
+    includeCount: includeCandidates.length,
+    excludeCount: excludeCandidates.length,
+    candidates: candidates
+  };
+}
+
 function buildPhase11CandidateCurrentState_(entry, alreadyCoveredByRule, alreadyCoveredByRuntime, alreadyNews, alreadyExcluded) {
   const flags = [];
   if (alreadyCoveredByRule) flags.push('approved-rule-covered');
@@ -274,8 +355,75 @@ function buildPhase11CandidateCurrentState_(entry, alreadyCoveredByRule, already
   ].join('; ');
 }
 
+function buildPhase11NewsCurrentState_(candidate) {
+  const flags = [];
+  if (candidate.alreadyNews) flags.push('news-source');
+  if (candidate.alreadyExcluded) flags.push('news-excluded');
+
+  return [
+    `review=${Number(candidate.reviewCount || 0)}`,
+    `news=${Number(candidate.newsCount || 0)}`,
+    `total=${Number(candidate.totalCount || 0)}`,
+    flags.length ? `flags=${flags.join('|')}` : 'flags=none'
+  ].join('; ');
+}
+
+function shouldIncludePhase11ReviewLeakCandidate_(entry, representative, state) {
+  const settings = state || {};
+  if (!entry.reviewCount) return false;
+  if (settings.alreadyCoveredByRule || settings.alreadyCoveredByRuntime) return false;
+  if (settings.looksNewsCandidate || settings.alreadyNews || settings.alreadyExcluded) return false;
+  if (looksSocialActivitySuggestion_(entry, representative)) return false;
+  if (entry.reviewCount >= 2) return true;
+  return looksStrongCommercialSuggestion_(entry, representative) ||
+    looksStrongServiceNotificationSuggestion_(entry, representative) ||
+    looksMarketplaceTransactionalSuggestion_(representative) ||
+    looksFinanceSuggestion_(representative) ||
+    looksShippingSuggestion_(representative);
+}
+
+function shouldIncludePhase11WorkflowMixedCandidate_(entry, representative, mixedLabelFamilies, state) {
+  const settings = state || {};
+  if (mixedLabelFamilies < 2 || entry.totalCount < 3) return false;
+  if (settings.alreadyCoveredByRuntime) return false;
+  if (settings.looksNewsCandidate || settings.alreadyNews || settings.alreadyExcluded) return false;
+  if (looksSocialActivitySuggestion_(entry, representative)) return false;
+  if (looksCommercialSuggestion_(representative) || looksStrongCommercialSuggestion_(entry, representative)) return false;
+  return entry.reviewCount > 0 || entry.fyiCount > 0 || entry.notificationCount > 0;
+}
+
+function shouldIncludePhase11NewsCandidate_(candidate) {
+  if (!candidate || !candidate.sender) return false;
+  if ((candidate.candidateType === 'news-source-include' || candidate.candidateType === 'news-source-exclude') && Number(candidate.evidenceCount || 0) < 2) {
+    return false;
+  }
+  return true;
+}
+
+function looksSocialActivitySuggestion_(entry, representative) {
+  const haystack = `${entry.sender || ''}\n${entry.examples && entry.examples[0] ? entry.examples[0].from || '' : ''}\n${representative.subject || ''}\n${representative.reason || ''}`.toLowerCase();
+  return /(messages-noreply@linkedin\.com|notifications-noreply@linkedin\.com|news@mail\.xing\.com|noticed you|profile|messaging digest|kudos|followers|connections|network)/i.test(haystack);
+}
+
 function countNonZeroValues_(values) {
   return (values || []).filter(value => Number(value || 0) > 0).length;
+}
+
+function buildPhase11AiNewsRecommendationsPrompt_(candidates) {
+  return [
+    'You are helping a rules-first Gmail assistant operator review potential NewsSources changes.',
+    'Return JSON only.',
+    'Use this schema: {"recommendations":[{"sender":"...","candidateType":"...","proposedChange":"newsSenders|newsExcludedSenders|historical-reclassification-only|none","confidence":"high|medium|low","reasoning":"...","notes":"..."}]}',
+    'Rules:',
+    '- this is review-first only; do not mutate live behavior',
+    '- choose newsSenders only for genuine curated news/newsletter sources worth putting into News/Digest',
+    '- choose newsExcludedSenders only when something currently treated as news should stay out of News/Digest',
+    '- choose historical-reclassification-only if the sender already seems configured correctly and the issue is mainly old mailbox state',
+    '- choose none when the evidence is weak or mixed',
+    '',
+    'Candidates:',
+    JSON.stringify(candidates, null, 2)
+  ].join('\n');
 }
 
 function buildPhase11AiRecommendationsPrompt_(candidates) {
@@ -331,6 +479,36 @@ function sanitizePhase11AiRecommendations_(recommendations, candidates) {
         currentState: candidate.currentState,
         exampleSubject: candidate.sampleSubject,
         reasoning: truncatePhase11Text_(entry.reasoning, 300) || 'ai recommendation',
+        notes: truncatePhase11Text_(entry.notes, 220)
+      };
+    })
+    .filter(Boolean);
+}
+
+function sanitizePhase11AiNewsRecommendations_(recommendations, candidates) {
+  const allowedChanges = ['newsSenders', 'newsExcludedSenders', 'historical-reclassification-only', 'none'];
+  const candidateMap = new Map((candidates || []).map(candidate => [candidate.sender, candidate]));
+
+  return (Array.isArray(recommendations) ? recommendations : [])
+    .map(entry => {
+      const sender = String(entry && entry.sender || '').trim().toLowerCase();
+      if (!candidateMap.has(sender)) return null;
+
+      const candidate = candidateMap.get(sender);
+      const proposedChange = allowedChanges.includes(entry.proposedChange) ? entry.proposedChange : 'none';
+      const confidence = ['high', 'medium', 'low'].includes(String(entry.confidence || '').trim().toLowerCase())
+        ? String(entry.confidence || '').trim().toLowerCase()
+        : 'low';
+
+      return {
+        sender: sender,
+        candidateType: candidate.candidateType,
+        proposedChange: proposedChange,
+        confidence: confidence,
+        evidenceCount: candidate.evidenceCount,
+        currentState: candidate.currentState,
+        exampleSubject: candidate.sampleSubject,
+        reasoning: truncatePhase11Text_(entry.reasoning, 300) || 'ai news-source recommendation',
         notes: truncatePhase11Text_(entry.notes, 220)
       };
     })
