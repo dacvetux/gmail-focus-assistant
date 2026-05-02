@@ -111,6 +111,18 @@ Detailed path:
 6. targeted Phase 5 draft validation if there are promising threads
 7. targeted Phase 6 query-mode validation if there are real waiting-on-them threads
 
+## Mailbox history / semantics audit helpers
+
+When you want a broader live-soak semantics pass beyond the default checkpoint, run:
+- `analyzeMailboxHistoryByBucketPhase10()` to see which current-label buckets have the heaviest sender concentrations
+- `inspectMailboxHistoryBucketPhase10(bucketName)` to drill into one bucket like `review-only` or `news-blank`
+- `inspectMailboxHistorySenderPhase10(senderQuery)` to inspect one mixed sender and decide whether it needs a rule change or only targeted historical reclassification
+
+Good use cases:
+- review-only senders that obviously look commercial or transactional
+- senders that appear mixed across `Review/Ambiguous`, `2: FYI`, `3: notification`, and `News/Digest`
+- validating that sender-specific fixes really moved newer mailbox threads into the intended bucket
+
 ## What to record after each checkpoint
 
 Write down:

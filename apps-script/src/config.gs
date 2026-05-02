@@ -20,7 +20,8 @@ const CONFIG = {
     'sparkassepay.si',
     'myfritz.net',
     'googleplay-noreply@google.com',
-    'play.google.com'
+    'play.google.com',
+    'families-noreply@google.com'
   ],
   forceFyiSenders: [
     'hello@ollama.com'
@@ -115,13 +116,13 @@ const CONFIG = {
     'marketing@lon.si',
     'no-reply@m1.email.samsung.com',
     'global.narwal.com',
-    'e.wmg.com'
+    'e.wmg.com',
+    'edjvntge.com'
   ],
   forceReviewSenders: [
     'developers.google.com',
     'googledev-noreply@google.com',
     'ifttt.com',
-    'families-noreply@google.com',
     'invitations@linkedin.com'
   ],
   forceShippingSenders: [

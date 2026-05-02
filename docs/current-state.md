@@ -25,6 +25,7 @@ Operationally live now:
 - script timezone is corrected to `Europe/Ljubljana`
 - approved sheet rules affect runtime behavior
 - targeted query-based reclassification helpers now exist for mailbox catch-up passes when older preserved threads need to reflect newer sender/routing rules
+- mailbox-history analysis helpers now exist for Phase 10 live-soak work, including bucket-level scans and sender-specific drilldowns when semantics drift needs inspection
 
 ## Conservative / intentionally limited areas
 

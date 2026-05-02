@@ -1312,6 +1312,28 @@ function inspectMailboxHistoryBucketPhase10(bucketName, startDate, perBucketMax,
   return summary.bucketSamples[bucket];
 }
 
+function inspectMailboxHistorySenderPhase10(senderQuery, startDate, maxThreads) {
+  const normalizedSenderQuery = String(senderQuery || '').trim();
+  if (!normalizedSenderQuery) {
+    throw new Error('Sender query is required');
+  }
+
+  const threshold = coerceHistoricalAnalysisDate_(startDate || '2026-01-01');
+  const summary = buildMailboxHistorySenderSummary_(normalizedSenderQuery, threshold, maxThreads || 50);
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'inspectMailboxHistorySenderPhase10',
+    processedThreads: summary.sampledThreads,
+    itemCount: Object.keys(summary.bucketCounts).length,
+    outcome: summary.sampledThreads ? 'mailbox-history-sender-inspected' : 'mailbox-history-sender-empty',
+    notes: `sender=${normalizedSenderQuery}; start=${summary.startDate}; sampled=${summary.sampledThreads}`
+  });
+
+  return summary;
+}
+
 function inspectLogRotationControlSurfacePhase10() {
   const preferenceKeys = ['logRotationEnabled', 'logRetentionDays'];
   const statusKeys = ['log-rotation-last-status', 'log-rotation-retention-days', 'phase10-last-checkpoint'];
@@ -1689,6 +1711,41 @@ function buildMailboxHistoryByBucketSummary_(startDate, perBucketMax, topN, minS
       'Bucket queries sample current mailbox labels directly, so this is better for January-forward semantics than DecisionLog alone.',
       'Mixed senders appearing across review/FYI/notification/news are the main rule-tuning candidates.'
     ]
+  };
+}
+
+function buildMailboxHistorySenderSummary_(senderQuery, startDate, maxThreads) {
+  const normalizedSender = String(senderQuery || '').trim().toLowerCase();
+  const after = Utilities.formatDate(startDate, Session.getScriptTimeZone(), 'yyyy/MM/dd');
+  const query = `after:${after} -in:trash -in:spam from:"${normalizedSender.replace(/"/g, '\\"')}"`;
+  const threads = GmailApp.search(query, 0, maxThreads);
+  const bucketCounts = {};
+  const examples = [];
+
+  threads.forEach(thread => {
+    const labels = thread.getLabels().map(label => label.getName());
+    const bucket = classifyMailboxLabelBucket_(labels);
+    bucketCounts[bucket] = (bucketCounts[bucket] || 0) + 1;
+    examples.push({
+      subject: String(thread.getFirstMessageSubject() || '').trim(),
+      from: thread.getMessages().length ? String(thread.getMessages()[0].getFrom() || '') : '',
+      bucket: bucket,
+      labels: labels,
+      lastDate: formatControlSurfaceTimestamp_(thread.getLastMessageDate()),
+      messageCount: thread.getMessageCount()
+    });
+  });
+
+  return {
+    startDate: Utilities.formatDate(startDate, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+    senderQuery: normalizedSender,
+    query: query,
+    sampledThreads: threads.length,
+    bucketCounts: bucketCounts,
+    examples: examples.slice(0, 25),
+    notes: threads.length
+      ? ['Use these examples to decide whether the sender needs a stronger explicit sender rule or only a targeted historical reclassification pass.']
+      : ['No matching mailbox threads were found for this sender query in the requested date window.']
   };
 }
 

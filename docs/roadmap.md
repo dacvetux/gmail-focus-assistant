@@ -35,7 +35,7 @@ The main active roadmap focus is now **Phase 10 Option A**: making the Google Sh
 - curated news-source handling has been corrected in live use for TLDR, Economist, Telecompaper, and Zeteo-family mail, while Google Play / Play Store mail now routes toward important service handling instead of news
 
 ### What is next inside Phase 10
-- keep validating workflow-label semantics between `Review/Ambiguous`, `2: FYI`, and `3: notification` from live evidence
+- keep validating workflow-label semantics between `Review/Ambiguous`, `2: FYI`, and `3: notification` from live evidence, using the newer mailbox-history bucket/sender audit helpers where raw recent logs are too narrow
 - keep validating `News/Digest` boundaries/defaults from live evidence now that curated news sender handling has been corrected further
 - continue tuning-suggestion quality improvements from live evidence
 - live-soak the new log rotation/archival behavior so `RunLog`, `AutomationHealthLog`, `DigestLog`, and related tabs stay compact without hiding useful recent context
