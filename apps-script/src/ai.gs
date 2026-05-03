@@ -91,23 +91,26 @@ function generateAiRecommendationsPhase11() {
   const parsed = JSON.parse(raw);
   const normalizedRecommendations = sanitizePhase11AiRecommendations_(parsed && parsed.recommendations, candidateSummary.candidates);
   const rows = normalizedRecommendations.map(entry => buildAiRecommendationRow_(entry, 'generateAiRecommendationsPhase11'));
-  flushAiRecommendations_(rows);
+  const flushSummary = flushAiRecommendations_(rows);
 
   logRunSummary_({
     runType: 'ai-assist',
     mode: 'internal',
     entryPoint: 'generateAiRecommendationsPhase11',
     processedThreads: candidateSummary.scannedRows,
-    itemCount: normalizedRecommendations.length,
-    outcome: normalizedRecommendations.length ? 'phase11-ai-recommendations-written' : 'phase11-ai-empty-output',
-    notes: `candidates=${candidateSummary.candidates.length}; written=${normalizedRecommendations.length}; lookback=${candidateSummary.lookbackRows}`
+    itemCount: flushSummary.insertedCount + flushSummary.refreshedCount,
+    outcome: normalizedRecommendations.length
+      ? (flushSummary.insertedCount ? 'phase11-ai-recommendations-written' : 'phase11-ai-recommendations-refreshed')
+      : 'phase11-ai-empty-output',
+    notes: `candidates=${candidateSummary.candidates.length}; inserted=${flushSummary.insertedCount}; refreshed=${flushSummary.refreshedCount}; skipped=${flushSummary.skippedCount}; model-output=${normalizedRecommendations.length}; lookback=${candidateSummary.lookbackRows}`
   });
 
   return {
     scannedRows: candidateSummary.scannedRows,
     lookbackRows: candidateSummary.lookbackRows,
     candidateCount: candidateSummary.candidates.length,
-    writtenCount: normalizedRecommendations.length,
+    writtenCount: flushSummary.insertedCount,
+    refreshedCount: flushSummary.refreshedCount,
     recommendations: normalizedRecommendations
   };
 }
@@ -140,22 +143,25 @@ function generateAiNewsSourceRecommendationsPhase11() {
   const parsed = JSON.parse(raw);
   const normalizedRecommendations = sanitizePhase11AiNewsRecommendations_(parsed && parsed.recommendations, candidateSummary.candidates);
   const rows = normalizedRecommendations.map(entry => buildAiRecommendationRow_(entry, 'generateAiNewsSourceRecommendationsPhase11'));
-  flushAiRecommendations_(rows);
+  const flushSummary = flushAiRecommendations_(rows);
 
   logRunSummary_({
     runType: 'ai-assist',
     mode: 'internal',
     entryPoint: 'generateAiNewsSourceRecommendationsPhase11',
     processedThreads: candidateSummary.scannedRows,
-    itemCount: normalizedRecommendations.length,
-    outcome: normalizedRecommendations.length ? 'phase11-ai-news-written' : 'phase11-ai-news-empty-output',
-    notes: `candidates=${candidateSummary.candidates.length}; written=${normalizedRecommendations.length}; include=${candidateSummary.includeCount}; exclude=${candidateSummary.excludeCount}`
+    itemCount: flushSummary.insertedCount + flushSummary.refreshedCount,
+    outcome: normalizedRecommendations.length
+      ? (flushSummary.insertedCount ? 'phase11-ai-news-written' : 'phase11-ai-news-refreshed')
+      : 'phase11-ai-news-empty-output',
+    notes: `candidates=${candidateSummary.candidates.length}; inserted=${flushSummary.insertedCount}; refreshed=${flushSummary.refreshedCount}; skipped=${flushSummary.skippedCount}; include=${candidateSummary.includeCount}; exclude=${candidateSummary.excludeCount}`
   });
 
   return {
     scannedRows: candidateSummary.scannedRows,
     candidateCount: candidateSummary.candidates.length,
-    writtenCount: normalizedRecommendations.length,
+    writtenCount: flushSummary.insertedCount,
+    refreshedCount: flushSummary.refreshedCount,
     recommendations: normalizedRecommendations
   };
 }
@@ -189,23 +195,26 @@ function generateAiWorkflowRecommendationsPhase11() {
   const parsed = JSON.parse(raw);
   const normalizedRecommendations = sanitizePhase11AiWorkflowRecommendations_(parsed && parsed.recommendations, candidateSummary.candidates);
   const rows = normalizedRecommendations.map(entry => buildAiRecommendationRow_(entry, 'generateAiWorkflowRecommendationsPhase11'));
-  flushAiRecommendations_(rows);
+  const flushSummary = flushAiRecommendations_(rows);
 
   logRunSummary_({
     runType: 'ai-assist',
     mode: 'internal',
     entryPoint: 'generateAiWorkflowRecommendationsPhase11',
     processedThreads: candidateSummary.scannedRows,
-    itemCount: normalizedRecommendations.length,
-    outcome: normalizedRecommendations.length ? 'phase11-ai-workflow-written' : 'phase11-ai-workflow-empty-output',
-    notes: `candidates=${candidateSummary.candidates.length}; written=${normalizedRecommendations.length}; lookback=${candidateSummary.lookbackRows}`
+    itemCount: flushSummary.insertedCount + flushSummary.refreshedCount,
+    outcome: normalizedRecommendations.length
+      ? (flushSummary.insertedCount ? 'phase11-ai-workflow-written' : 'phase11-ai-workflow-refreshed')
+      : 'phase11-ai-workflow-empty-output',
+    notes: `candidates=${candidateSummary.candidates.length}; inserted=${flushSummary.insertedCount}; refreshed=${flushSummary.refreshedCount}; skipped=${flushSummary.skippedCount}; lookback=${candidateSummary.lookbackRows}`
   });
 
   return {
     scannedRows: candidateSummary.scannedRows,
     lookbackRows: candidateSummary.lookbackRows,
     candidateCount: candidateSummary.candidates.length,
-    writtenCount: normalizedRecommendations.length,
+    writtenCount: flushSummary.insertedCount,
+    refreshedCount: flushSummary.refreshedCount,
     recommendations: normalizedRecommendations
   };
 }

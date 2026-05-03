@@ -55,6 +55,7 @@ Important tabs:
 - `AiRecommendations`
   - review-first Phase 11 queue for AI-assisted recommendations
   - now includes source-helper provenance plus operator-action hints so general, news-source, and workflow-semantics suggestions are easier to review in one place
+  - duplicate still-open recommendations are refreshed in place instead of being appended again, which keeps the queue cleaner during repeated helper runs
 - `ControlSurfaceStatus`
 - `ValidationStatus`
 - `RecentRunSummary`
@@ -95,6 +96,7 @@ Current loop:
 - long-term FYI vs review semantics cleanup now lives directly inside active Phase 10 work rather than a separately open phase-tracking issue
 - operational log rotation now archives older `DecisionLog`, `RunLog`, `DigestLog`, `AutomationHealthLog`, `DraftLog`, and `FollowUpLog` rows into matching `*Archive` sheets so the active tabs stay focused on recent activity
 - Phase 11 has now started with `generateAiRecommendationsPhase11()`, `generateAiNewsSourceRecommendationsPhase11()`, and `generateAiWorkflowRecommendationsPhase11()`, splitting general sender/routing recommendations, news-source-specific recommendations, and workflow-semantics recommendations into separate review-first passes in `AiRecommendations`
+- repeated runs of the same Phase 11 helper now refresh matching still-open `AiRecommendations` rows in place and log inserted vs refreshed counts, so the sheet behaves more like a queue than an append-only history
 
 ## Current roadmap focus
 

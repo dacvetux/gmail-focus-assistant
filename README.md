@@ -35,7 +35,7 @@ Recent operational status:
 - approved sheet rules now affect runtime behavior
 - operator-friendly approved-rule aliases such as `shipping-sender`, `news-sender`, and `news-exclude-sender` are supported
 - the Phase 10 operator loop now centers on `ControlSurfaceStatus`, `ValidationStatus`, `RecentRunSummary`, `WorkflowAudit`, and `TuningReviewQueue`
-- new Phase 11 helpers `generateAiRecommendationsPhase11()`, `generateAiNewsSourceRecommendationsPhase11()`, and `generateAiWorkflowRecommendationsPhase11()` write AI-assisted review-first recommendations into `AiRecommendations`, including helper provenance and operator follow-through hints
+- new Phase 11 helpers `generateAiRecommendationsPhase11()`, `generateAiNewsSourceRecommendationsPhase11()`, and `generateAiWorkflowRecommendationsPhase11()` write AI-assisted review-first recommendations into `AiRecommendations`, including helper provenance and operator follow-through hints; duplicate still-open recommendations are refreshed in place so the sheet behaves more like a queue than an append-only log
 - targeted reclassification helpers now exist for catch-up relabeling when older mailbox state is blocking newer rule improvements
 - curated news handling was corrected recently so TLDR, Economist, Telecompaper, and Zeteo-style mail route to `News/Digest`, while Google Play / Play Store mail routes toward important service handling instead of news
 

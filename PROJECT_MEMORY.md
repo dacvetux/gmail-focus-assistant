@@ -118,6 +118,13 @@ Core intent:
 - found a Phase 5 debug-run failure caused by Gmail object lookup errors while iterating the broader inbox pool during debug mode
 - patched `drafts.gs` so debug mode resolves configured debug thread ids directly and safely skips unreadable threads/messages instead of crashing
 - ran `generateDraftRepliesPhase5DebugDryRun()` successfully against thread `19daf77006243bc4`
+
+### 2026-05-03
+- continued Phase 11 by making `AiRecommendations` behave more like a queue: duplicate still-open recommendations are now refreshed in place instead of being appended again
+- updated helper logging so Phase 11 runs now distinguish inserted vs refreshed recommendation rows
+- pushed the updated Apps Script code live with `clasp push`
+- validated the live news-source helper after deploy; Reuters (`dailybriefing@thomsonreuters.com`) refreshed cleanly as an existing still-open `newsSenders` recommendation instead of creating duplicate queue noise
+- updated project docs and workspace memory to capture the new queue semantics and deployment state
 - confirmed one genuinely useful end-to-end Phase 5 draft in `DraftLog` for `Manuela Rath <Manuela.Rath@a1.at>` / `Einladung Bewerbungsgespräch Team Lead Network & Security Services @ A1`
 - accepted this as the first successful Phase 5 end-to-end validation, while keeping the gate intentionally strict pending a few more targeted checks
 - validated two additional focused debug cases on 2026-04-23:

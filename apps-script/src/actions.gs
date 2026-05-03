@@ -344,11 +344,121 @@ function getOrCreateAiRecommendationsSheet_() {
 }
 
 function flushAiRecommendations_(rows) {
-  if (!rows.length) return;
+  if (!rows.length) {
+    return {
+      insertedCount: 0,
+      refreshedCount: 0,
+      skippedCount: 0
+    };
+  }
 
   const sheet = getOrCreateAiRecommendationsSheet_();
-  const startRow = sheet.getLastRow() + 1;
-  sheet.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
+  const openIndex = buildOpenAiRecommendationIndex_(sheet);
+  const newRows = [];
+  let refreshedCount = 0;
+  let skippedCount = 0;
+
+  rows.forEach(row => {
+    const rowKey = buildAiRecommendationQueueKey_(row);
+    if (!rowKey) {
+      skippedCount += 1;
+      return;
+    }
+
+    const existingRowNumber = openIndex[rowKey];
+    if (existingRowNumber) {
+      sheet.getRange(existingRowNumber, 1, 1, row.length).setValues([[
+        row[0],
+        row[1],
+        row[2],
+        row[3],
+        row[4],
+        row[5],
+        row[6],
+        row[7],
+        row[8],
+        row[9],
+        row[10],
+        row[11],
+        row[12],
+        sheet.getRange(existingRowNumber, 14).getValue() || 'new',
+        mergeAiRecommendationNotes_(sheet.getRange(existingRowNumber, 15).getValue(), row[14], 'refreshed duplicate open recommendation')
+      ]]);
+      refreshedCount += 1;
+      return;
+    }
+
+    newRows.push(row);
+    openIndex[rowKey] = sheet.getLastRow() + newRows.length;
+  });
+
+  if (newRows.length) {
+    const startRow = sheet.getLastRow() + 1;
+    sheet.getRange(startRow, 1, newRows.length, newRows[0].length).setValues(newRows);
+  }
+
+  return {
+    insertedCount: newRows.length,
+    refreshedCount: refreshedCount,
+    skippedCount: skippedCount
+  };
+}
+
+function buildOpenAiRecommendationIndex_(sheet) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return {};
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 15).getDisplayValues();
+  const index = {};
+
+  values.forEach((row, offset) => {
+    const status = String(row[13] || '').trim().toLowerCase();
+    if (isTerminalAiRecommendationStatus_(status)) return;
+
+    const rowKey = buildAiRecommendationQueueKey_(row);
+    if (!rowKey) return;
+    index[rowKey] = offset + 2;
+  });
+
+  return index;
+}
+
+function buildAiRecommendationQueueKey_(row) {
+  if (!row || row.length < 6) return '';
+  const sourceHelper = String(row[2] || '').trim().toLowerCase();
+  const candidateType = String(row[3] || '').trim().toLowerCase();
+  const sender = String(row[4] || '').trim().toLowerCase();
+  const proposedChange = String(row[5] || '').trim().toLowerCase();
+  if (!sourceHelper || !candidateType || !sender || !proposedChange) return '';
+  return [sourceHelper, candidateType, sender, proposedChange].join('||');
+}
+
+function isTerminalAiRecommendationStatus_(status) {
+  return [
+    'rejected',
+    'skipped',
+    'superseded',
+    'imported',
+    'already-imported',
+    'applied',
+    'done',
+    'closed'
+  ].includes(String(status || '').trim().toLowerCase());
+}
+
+function mergeAiRecommendationNotes_(existingNotes, incomingNotes, suffix) {
+  const parts = [];
+  const existing = String(existingNotes || '').trim();
+  const incoming = String(incomingNotes || '').trim();
+  const trailing = String(suffix || '').trim();
+
+  if (existing) parts.push(existing);
+  if (incoming && incoming !== existing) parts.push(incoming);
+  if (trailing && parts.join('; ').toLowerCase().indexOf(trailing.toLowerCase()) === -1) {
+    parts.push(trailing);
+  }
+
+  return parts.join('; ');
 }
 
 function getOrCreateAutomationHealthLogSheet_() {
