@@ -97,6 +97,8 @@ Current loop:
 - operational log rotation now archives older `DecisionLog`, `RunLog`, `DigestLog`, `AutomationHealthLog`, `DraftLog`, and `FollowUpLog` rows into matching `*Archive` sheets so the active tabs stay focused on recent activity
 - Phase 11 has now started with `generateAiRecommendationsPhase11()`, `generateAiNewsSourceRecommendationsPhase11()`, and `generateAiWorkflowRecommendationsPhase11()`, splitting general sender/routing recommendations, news-source-specific recommendations, and workflow-semantics recommendations into separate review-first passes in `AiRecommendations`
 - repeated runs of the same Phase 11 helper now refresh matching still-open `AiRecommendations` rows in place and log inserted vs refreshed counts, so the sheet behaves more like a queue than an append-only history
+- operator-approved live routing now includes Reuters `dailybriefing@thomsonreuters.com` as an explicit `NewsSources` include and Linkin Park `noreply@linkinpark.com` as an approved commercial sender
+- a focused post-approval cleanup pass was run live: Linkin Park recent mail reclassified successfully as commercial, while Reuters sender-history inspection confirms the explicit-news rule is the right long-term fix even though older preserved threads still need a broader catch-up pass if historical labels matter
 
 ## Current roadmap focus
 
@@ -117,4 +119,4 @@ Current loop:
 
 1. validate `generateAiRecommendationsPhase11()` output and tune it against real operator judgment
 2. expand the first AI recommendation loop into explicit news-source and workflow-semantics suggestions
-3. keep the existing control-surface/log-rotation base healthy while Phase 11 grows on top of it
+3. decide whether to run a broader historical Reuters catch-up pass later, since sender-history validation still shows older `news-blank` preserved threads after the explicit-news approval

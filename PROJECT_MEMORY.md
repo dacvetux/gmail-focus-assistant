@@ -125,6 +125,11 @@ Core intent:
 - pushed the updated Apps Script code live with `clasp push`
 - validated the live news-source helper after deploy; Reuters (`dailybriefing@thomsonreuters.com`) refreshed cleanly as an existing still-open `newsSenders` recommendation instead of creating duplicate queue noise
 - updated project docs and workspace memory to capture the new queue semantics and deployment state
+- applied the accepted operator decisions live through the Phase 10 control surface: `upsertNewsSourcePhase10` enabled Reuters `dailybriefing@thomsonreuters.com` as an explicit news source at row 13, and `upsertApprovedRulePhase10` added `noreply@linkinpark.com` as an approved `commercial-sender` at row 11
+- refreshed runtime config and confirmed `dailybriefing@thomsonreuters.com` is now loaded in the live `newsSenders` set
+- ran a smaller sender-specific cleanup/validation cycle that finished successfully: recent Linkin Park mail reclassified live (`processedThreads: 1`) and recent Reuters mail reclassified live (`processedThreads: 12`)
+- post-run sender inspection showed the Linkin Park fix taking effect on recent traffic (`commercial: 1`, `other: 3` older unlabeled store threads), while Reuters still shows a large preserved historical `news-blank` tail (`50` sampled rows), confirming the explicit-news rule is correct but broader historical catch-up should stay optional and separate
+- rebuilt the cleanup/status surfaces after the operator pass: `RecentRunSummary` ended with `missingFamilies: 0` and `staleFamilies: 4`, `WorkflowAudit` ended with `warningCount: 0` and `newsBlankCount: 12`, and `ControlSurfaceStatus` reported `No actionable tuning suggestions right now.`
 - confirmed one genuinely useful end-to-end Phase 5 draft in `DraftLog` for `Manuela Rath <Manuela.Rath@a1.at>` / `Einladung Bewerbungsgespräch Team Lead Network & Security Services @ A1`
 - accepted this as the first successful Phase 5 end-to-end validation, while keeping the gate intentionally strict pending a few more targeted checks
 - validated two additional focused debug cases on 2026-04-23:
@@ -214,6 +219,7 @@ Core intent:
 - the live Sheet control surface now makes workflow semantics explicit, including a visible `newsWorkflowLabel` preference and status rows for review-default vs news-default behavior
 - optional automation-health email escalation was added on 2026-04-27 via sheet-backed preferences, but it is disabled by default, requires an explicit recipient, and deduplicates identical alerts to avoid spam
 - the latest Option A polish pass turned `ControlSurfaceStatus` into more of an operator checklist with explicit `operator-step-1/2/3` rows, while `OperatorGuide` now includes a fast-commands section for the main review/import helpers
+- on 2026-05-03, the first operator-approved Phase 11 recommendations were successfully converted into live Phase 10 control-surface state: Reuters became an explicit news source, Linkin Park became an approved commercial sender, and a smaller sender-specific cleanup pass proved much more practical than the earlier broad reclassification attempts
 
 ## Open questions
 

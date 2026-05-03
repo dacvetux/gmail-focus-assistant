@@ -38,6 +38,9 @@ Recent operational status:
 - new Phase 11 helpers `generateAiRecommendationsPhase11()`, `generateAiNewsSourceRecommendationsPhase11()`, and `generateAiWorkflowRecommendationsPhase11()` write AI-assisted review-first recommendations into `AiRecommendations`, including helper provenance and operator follow-through hints; duplicate still-open recommendations are refreshed in place so the sheet behaves more like a queue than an append-only log
 - targeted reclassification helpers now exist for catch-up relabeling when older mailbox state is blocking newer rule improvements
 - curated news handling was corrected recently so TLDR, Economist, Telecompaper, and Zeteo-style mail route to `News/Digest`, while Google Play / Play Store mail routes toward important service handling instead of news
+- the operator-approved Reuters decision is now encoded live: `dailybriefing@thomsonreuters.com` is an explicit `NewsSources` include and loads into runtime `newsSenders`
+- the operator-approved Linkin Park fix is now encoded live: `noreply@linkinpark.com` is an approved `commercial-sender`, so offer/store traffic no longer belongs in FYI-style handling
+- a focused cleanup pass was run after those approvals: Linkin Park recent mail was reclassified live, and sender-history validation now shows one recent commercial classification plus older unlabeled historical store mail still available for broader catch-up later if needed
 
 ## Principles
 
