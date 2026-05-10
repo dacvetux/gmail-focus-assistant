@@ -13,7 +13,8 @@ const AUTOMATION_TRIGGER_SPECS = [
   { functionName: 'runEveningMainDigestLiveWrapper', hour: 19, minute: 5 },
   { functionName: 'runEveningNewsDigestLiveWrapper', hour: 19, minute: 10 },
   { functionName: 'runAutomationHealthAuditWrapper', hour: 19, minute: 20 },
-  { functionName: 'runAutomationHealthAuditWrapper', hour: 22, minute: 20 }
+  { functionName: 'runAutomationHealthAuditWrapper', hour: 22, minute: 20 },
+  { functionName: 'runPhase10MaintenanceWrapper', hour: 23, minute: 10 }
 ];
 
 const AUTOMATION_AUDIT_ALLOWED_DELAY_MINUTES = 45;
@@ -130,6 +131,7 @@ function runFrequentProcessingLiveWrapper() {
   return runAutomationWrapper_({
     wrapperName: 'runFrequentProcessingLiveWrapper',
     lockKey: 'runFrequentProcessingLiveWrapper',
+    includeWorkflowAuditRefresh: true,
     action: function() {
       return processInboxFocusPhase2Live();
     }
@@ -182,6 +184,17 @@ function runAutomationHealthAuditWrapper() {
     lockKey: 'runAutomationHealthAuditWrapper',
     action: function() {
       return auditAutomationHealth();
+    }
+  });
+}
+
+function runPhase10MaintenanceWrapper() {
+  return runAutomationWrapper_({
+    wrapperName: 'runPhase10MaintenanceWrapper',
+    lockKey: 'runPhase10MaintenanceWrapper',
+    includeWorkflowAuditRefresh: true,
+    action: function() {
+      return runPhase10ValidationCheckpoint();
     }
   });
 }
@@ -689,7 +702,8 @@ function hasDebugFilters_() {
 }
 
 function runAutomationWrapper_(options) {
-  const wrapperName = options.wrapperName || 'runAutomationWrapper';
+  const settings = options || {};
+  const wrapperName = settings.wrapperName || 'runAutomationWrapper';
   const lock = LockService.getScriptLock();
   const startedAt = new Date();
 
@@ -704,15 +718,24 @@ function runAutomationWrapper_(options) {
       notes: 'lock-busy'
     });
 
+    refreshAutomationStatusSurfacesForWrapper_({
+      wrapperName: wrapperName,
+      includeWorkflowAudit: false
+    });
+
     return {
       wrapperName: wrapperName,
       outcome: 'skipped-overlap'
     };
   }
 
+  let result = null;
+  let wrappedError = null;
+  let releaseError = null;
+
   try {
     refreshConfigFromPreferencesPhase10();
-    const result = options.action ? options.action() : null;
+    result = settings.action ? settings.action() : null;
     const durationMs = new Date().getTime() - startedAt.getTime();
 
     logRunSummary_({
@@ -724,9 +747,8 @@ function runAutomationWrapper_(options) {
       outcome: 'completed',
       notes: `duration-ms=${durationMs}`
     });
-
-    return result;
   } catch (error) {
+    wrappedError = error;
     logRunSummary_({
       runType: 'automation-wrapper',
       mode: 'internal',
@@ -736,9 +758,48 @@ function runAutomationWrapper_(options) {
       outcome: 'failed',
       notes: truncateRunNote_(error && error.message ? error.message : String(error), 400)
     });
-    throw error;
-  } finally {
+  }
+
+  try {
     lock.releaseLock();
+  } catch (error) {
+    releaseError = error;
+  }
+
+  refreshAutomationStatusSurfacesForWrapper_({
+    wrapperName: wrapperName,
+    includeWorkflowAudit: Boolean(settings.includeWorkflowAuditRefresh)
+  });
+
+  if (wrappedError) {
+    throw wrappedError;
+  }
+  if (releaseError) {
+    throw releaseError;
+  }
+
+  return result;
+}
+
+function refreshAutomationStatusSurfacesForWrapper_(options) {
+  const settings = options || {};
+
+  try {
+    rebuildRecentRunSummarySheet_(getOrCreateRecentRunSummarySheet_());
+    if (settings.includeWorkflowAudit) {
+      rebuildWorkflowAuditSheet_(getOrCreateWorkflowAuditSheet_());
+    }
+    rebuildControlSurfaceStatusSheet_(getOrCreateControlSurfaceStatusSheet_());
+  } catch (error) {
+    logRunSummary_({
+      runType: 'control-surface',
+      mode: 'internal',
+      entryPoint: 'refreshAutomationStatusSurfacesForWrapper',
+      processedThreads: 0,
+      itemCount: 0,
+      outcome: 'refresh-failed',
+      notes: `${settings.wrapperName || 'unknown-wrapper'}; ${truncateRunNote_(error && error.message ? error.message : String(error), 320)}`
+    });
   }
 }
 
