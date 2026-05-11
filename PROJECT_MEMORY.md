@@ -16,39 +16,28 @@ Core intent:
 ## Current status
 
 ### Repository
-- Local repo created at `projects/gmail-focus-assistant`
-- GitHub repo created and pushed: `https://github.com/dacvetux/gmail-focus-assistant`
-- Initial scaffold committed
-- Initial commit: `471ccc2` - `Initial scaffold for Gmail Focus Assistant`
-
-### Included so far
-- `README.md`
-- `docs/architecture.md`
-- `docs/phases.md`
-- `docs/labels.md`
-- `docs/roadmap.md`
-- `docs/phase-1.md`
-- `docs/phase-2.md`
-- `docs/phase-3.md`
-- `docs/testing-phase-1.md`
-- `docs/deployment.md`
-- `docs/first-run-checklist.md`
-- `docs/implementation-notes.md`
-- `apps-script/` starter structure
+- Local repo exists at `/home/cvetko/.openclaw/workspace/assistant/gmail-focus-assistant`
+- GitHub repo: `https://github.com/dacvetux/gmail-focus-assistant`
+- Product/documentation name: `Focuna - Gmail Assistant`
+- Default branch: `main`
 
 ### Current code state
-- phase 1 classifier implemented with concrete pattern families
-- phase 1 Gmail actions helper implemented
-- phase 1 logging implemented
-- phase 1 dry-run and live modes implemented
-- phase 2 workflow priority labeling implemented
-- validation and tuning controls added for dry-run review
-- phase 3 digest generation implemented and refined from live log review
-- phase 4 selective AI review implemented and validated for ambiguous mail
-- phase 5 first narrow draft-only implementation added for `1: to respond` threads
-- phase 6 follow-up tracking implementation added with `FollowUpLog` output and query-based validation entrypoints
-- `CONFIG.logSpreadsheetId` is now set to the main Focuna - Gmail Assistant log sheet
-- main phase entrypoints exist
+- **Phases 1-4:** implemented and actively usable (rules-first classification, workflow labeling, digests, selective AI review)
+- **Phase 5:** narrow draft-only reply assistance is practically validated; on-demand query-based drafting is the preferred path
+- **Phase 6:** visibility-first follow-up tracking is implemented, with broader waiting-state intelligence intentionally deferred
+- **Phase 7:** operational reporting is live via `RunLog`
+- **Phase 8:** separate `News/Digest` lane and dedicated news digests are shipped
+- **Phase 9:** recommendation-first tuning suggestions are shipped
+- **Phase 10:** Sheets control surface is live with runtime-loaded preferences, approved rules, review/import workflow, validation helpers, workflow audit, status dashboards, and log rotation/archival
+- **Phase 11:** active roadmap phase; AI-assisted operator recommendations are live through `AiRecommendations`, including general, news-source, and workflow-semantics helper entrypoints
+- **Phase 12:** planned later as a dedicated HTML UI after the Sheets workflow is proven
+
+### Operational state
+- `clasp run` and Apps Script execution API deployment are working
+- wrapper-based live automation and managed time triggers are in place
+- approved sheet rules affect runtime behavior
+- log-backed digest architecture is the accepted automation path
+- local repo currently contains an uncommitted `apps-script/src/main.gs` update that adds a nightly Phase 10 maintenance wrapper plus automatic status-surface refresh after wrapper runs
 
 ## Planned phases
 
@@ -59,6 +48,11 @@ Core intent:
 5. Draft assistant
 6. Follow-up memory
 7. Continuous tuning
+8. Separate news lane
+9. Recommendation-first tuning assistant
+10. Spreadsheet operator control surface
+11. Assisted AI expansion
+12. Dedicated HTML UI
 
 ## Decisions already made
 
@@ -177,13 +171,21 @@ Core intent:
 - accepted the next architectural direction: keep frequent live processing conservative, but move automated morning/evening/news digests toward explicit time-window summaries backed primarily by `DecisionLog` instead of current inbox state
 - accepted the next automation direction: add Apps Script wrapper entrypoints for frequent live processing and later for digest windows, but only after the log-backed digest path exists
 
+### 2026-05-11
+- repaired local `clasp` auth after an `invalid_grant` failure and revalidated the main dry-run / validation entrypoints, including the full `runPhase10ValidationCheckpoint()` path
+- refreshed stale/missing `RecentRunSummary` families by running the review loop plus evening wrapper catch-up runs until the status surface returned to zero missing / zero stale families
+- continued Phase 11 by running the three AI recommendation helpers and reviewing fresh queue output across general, news-source, and workflow-semantics paths
+- added a new general no-reply workflow rule: senders whose address/display text looks like `noreply`, `no-reply`, `do-not-reply`, or similar can no longer end up in `1: to respond`; such cases now downgrade to non-reply workflow handling, defaulting to `3: notification` unless explicit FYI semantics fit better
+- aligned the Phase 11 workflow-semantics helper with that same rule so no-reply-like senders no longer produce `prefer-to-respond` recommendations; after deployment, examples like Google Drive share requests and Google Photos action-required notices shifted toward `prefer-notification`
+- pushed the updated Apps Script project live with `clasp push` and confirmed fresh dry-runs still execute successfully after the rule change
+
 ## Immediate next steps
 
-1. continue polishing **Phase 10 Option A** until the Google Sheets operator workflow feels close to final in day-to-day use
-2. keep docs/testing aligned with the real runtime behavior as the control surface evolves
-3. validate the sharpened workflow semantics in live use, especially the boundary between explicit `2: FYI` and `3: notification`
-4. only enable automation-health email escalation intentionally through `Preferences` after deciding the recipient and desired severity threshold
-5. revisit the known log-backed digest duplicate-entry bug later via the section-candidate construction path (tracked in GitHub issue `#1`)
+1. validate the current **Phase 11** `AiRecommendations` output quality against real operator judgment and tune candidate selection/prompt quality where needed
+2. keep the dedicated Phase 11 news-source and workflow-semantics recommendation loops cleanly separated from the generic sender loop
+3. keep docs/testing aligned with the real runtime behavior while Phase 11 grows around the existing Phase 10 Sheets workflow
+4. restore direct local observability for production logs by re-enabling a reliable Gmail/Sheets inspection path from the local environment
+5. decide whether to commit, deploy, and then validate the pending nightly Phase 10 maintenance/status-refresh wrapper change
 
 ## Recent decisions and lessons
 
@@ -220,6 +222,7 @@ Core intent:
 - optional automation-health email escalation was added on 2026-04-27 via sheet-backed preferences, but it is disabled by default, requires an explicit recipient, and deduplicates identical alerts to avoid spam
 - the latest Option A polish pass turned `ControlSurfaceStatus` into more of an operator checklist with explicit `operator-step-1/2/3` rows, while `OperatorGuide` now includes a fast-commands section for the main review/import helpers
 - on 2026-05-03, the first operator-approved Phase 11 recommendations were successfully converted into live Phase 10 control-surface state: Reuters became an explicit news source, Linkin Park became an approved commercial sender, and a smaller sender-specific cleanup pass proved much more practical than the earlier broad reclassification attempts
+- on 2026-05-11, the workflow model was tightened again: no-reply-like senders (`noreply`, `no-reply`, `do-not-reply`, and similar variants in sender address/display text) are now categorically blocked from `1: to respond` and instead fall back to non-reply workflows, with Phase 11 workflow recommendation logic kept consistent with that rule
 
 ## Open questions
 

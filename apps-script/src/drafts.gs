@@ -567,8 +567,7 @@ function extractReplyAddress_(message) {
 }
 
 function isNoReplySender_(from) {
-  const normalized = String(from || '').toLowerCase();
-  return normalized.includes('noreply@') || normalized.includes('no-reply@');
+  return isNoReplyLikeSenderText_(from);
 }
 
 function isOpportunityBroadcastSender_(from) {

@@ -547,6 +547,7 @@ function shouldIncludePhase11NewsCandidate_(candidate) {
 function inferPhase11WorkflowCandidate_(entry, representative) {
   const reviewOnlyCount = Math.max(0, Number(entry.reviewCount || 0) - Number(entry.fyiCount || 0));
   const representativeWorkflow = inferWorkflowLabelFromExample_(entry, representative);
+  const noReplyLikeSender = isNoReplyLikeSenderText_(`${entry.sender || ''}\n${representative && representative.from || ''}`);
 
   if (representativeWorkflow === CONFIG.labels.fyi && reviewOnlyCount >= 2) {
     return {
@@ -568,7 +569,7 @@ function inferPhase11WorkflowCandidate_(entry, representative) {
     };
   }
 
-  if (representativeWorkflow === CONFIG.labels.toRespond && reviewOnlyCount >= 2) {
+  if (representativeWorkflow === CONFIG.labels.toRespond && reviewOnlyCount >= 2 && !noReplyLikeSender) {
     return {
       candidateType: 'workflow-to-respond-candidate',
       evidenceCount: reviewOnlyCount,
@@ -579,7 +580,10 @@ function inferPhase11WorkflowCandidate_(entry, representative) {
   }
 
   if (entry.totalCount >= 3) {
-    const dominantWorkflow = inferDominantWorkflowState_(entry);
+    let dominantWorkflow = inferDominantWorkflowState_(entry);
+    if (noReplyLikeSender && dominantWorkflow === CONFIG.labels.toRespond) {
+      dominantWorkflow = CONFIG.labels.notification;
+    }
     if (dominantWorkflow && entry.reviewCount >= 1) {
       return {
         candidateType: 'workflow-mixed-semantics',
@@ -608,12 +612,14 @@ function shouldSuppressPhase11WorkflowSemanticsCandidate_(entry, representative)
 
 function inferWorkflowLabelFromExample_(entry, representative) {
   const haystack = `${entry.sender || ''}\n${representative.subject || ''}\n${representative.reason || ''}`.toLowerCase();
+  const noReplyLikeSender = isNoReplyLikeSenderText_(haystack);
 
-  if (matchesAny_(haystack, CONFIG.responsePatterns) || /reply requested|action required|confirm|please respond|interview|meeting|availability/i.test(haystack)) {
+  if (!noReplyLikeSender && (matchesAny_(haystack, CONFIG.responsePatterns) || /reply requested|action required|confirm|please respond|interview|meeting|availability/i.test(haystack))) {
     return CONFIG.labels.toRespond;
   }
 
   if (
+    noReplyLikeSender ||
     looksShippingSuggestion_(representative) ||
     looksFinanceSuggestion_(representative) ||
     looksMarketplaceTransactionalSuggestion_(representative) ||

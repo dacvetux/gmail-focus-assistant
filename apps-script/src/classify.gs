@@ -6,76 +6,77 @@ function classifyThread_(thread, options) {
   const subject = ((lastMessage && lastMessage.getSubject()) || '').toLowerCase();
   const subjectHaystack = `${from}\n${subject}`;
   const workflowHaystack = `${from}\n${subject}\n${((lastMessage && lastMessage.getPlainBody()) || '').slice(0, 1200).toLowerCase()}`;
+  const finalizeDecision = decision => sanitizeWorkflowDecisionForSender_(decision, from, workflowHaystack);
 
   if (hasBlockingPreserveLabels_(labels, settings)) {
-    return buildDecision_('preserve', null, false, 'preserve label present', null);
+    return finalizeDecision(buildDecision_('preserve', null, false, 'preserve label present', null));
   }
 
   if (containsAny_(subjectHaystack, CONFIG.forceReviewSenders)) {
-    return buildDecision_('label', CONFIG.labels.review, false, 'forced review sender override', null);
+    return finalizeDecision(buildDecision_('label', CONFIG.labels.review, false, 'forced review sender override', null));
   }
 
   if (isExplicitNewsSender_(from)) {
-    return buildDecision_('label', CONFIG.labels.newsDigest, false, 'explicit news sender override', CONFIG.newsWorkflowLabel || null);
+    return finalizeDecision(buildDecision_('label', CONFIG.labels.newsDigest, false, 'explicit news sender override', CONFIG.newsWorkflowLabel || null));
   }
 
   if (containsAny_(subjectHaystack, CONFIG.forceImportantSenders)) {
-    return classifyForcedImportant_(subjectHaystack, workflowHaystack);
+    return finalizeDecision(classifyForcedImportant_(subjectHaystack, workflowHaystack));
   }
 
   if (containsAny_(subjectHaystack, CONFIG.forceCalendarSenders) || matchesAny_(subjectHaystack, CONFIG.calendarPatterns)) {
-    return buildDecision_('label', CONFIG.labels.importantCalendar, false, containsAny_(subjectHaystack, CONFIG.forceCalendarSenders) ? 'forced calendar sender override' : 'calendar pattern', CONFIG.labels.toRespond);
+    return finalizeDecision(buildDecision_('label', CONFIG.labels.importantCalendar, false, containsAny_(subjectHaystack, CONFIG.forceCalendarSenders) ? 'forced calendar sender override' : 'calendar pattern', CONFIG.labels.toRespond));
   }
 
   if (containsAny_(subjectHaystack, CONFIG.forceShippingSenders) || matchesAny_(subjectHaystack, CONFIG.shippingPatterns)) {
-    return buildDecision_('label', CONFIG.labels.importantShipping, false, containsAny_(subjectHaystack, CONFIG.forceShippingSenders) ? 'forced shipping sender override' : 'shipping pattern', CONFIG.labels.notification);
+    return finalizeDecision(buildDecision_('label', CONFIG.labels.importantShipping, false, containsAny_(subjectHaystack, CONFIG.forceShippingSenders) ? 'forced shipping sender override' : 'shipping pattern', CONFIG.labels.notification));
   }
 
   if (containsAny_(subjectHaystack, CONFIG.forceCommercialSenders)) {
-    return classifyForcedCommercial_(subjectHaystack);
+    return finalizeDecision(classifyForcedCommercial_(subjectHaystack));
   }
 
   if (isNewsThread_(from, subjectHaystack)) {
-    return buildDecision_('label', CONFIG.labels.newsDigest, false, 'news pattern', CONFIG.newsWorkflowLabel || null);
+    return finalizeDecision(buildDecision_('label', CONFIG.labels.newsDigest, false, 'news pattern', CONFIG.newsWorkflowLabel || null));
   }
 
   if (containsAny_(subjectHaystack, CONFIG.forceFyiSenders || [])) {
-    return buildDecision_('label', null, false, 'forced FYI sender override', CONFIG.labels.fyi);
+    return finalizeDecision(buildDecision_('label', null, false, 'forced FYI sender override', CONFIG.labels.fyi));
   }
 
   if (matchesAny_(subjectHaystack, CONFIG.financePatterns)) {
-    return buildDecision_('label', CONFIG.labels.importantFinance, false, 'finance pattern', CONFIG.labels.notification);
+    return finalizeDecision(buildDecision_('label', CONFIG.labels.importantFinance, false, 'finance pattern', CONFIG.labels.notification));
   }
 
   if (matchesAny_(subjectHaystack, CONFIG.opportunityResponsePatterns)) {
-    return buildDecision_('label', CONFIG.labels.importantOpportunities, false, 'opportunity response pattern', CONFIG.labels.toRespond);
+    return finalizeDecision(buildDecision_('label', CONFIG.labels.importantOpportunities, false, 'opportunity response pattern', CONFIG.labels.toRespond));
   }
 
   if (isOpportunitySender_(from) || matchesAny_(subjectHaystack, CONFIG.opportunityPatterns)) {
-    return buildDecision_('label', CONFIG.labels.importantOpportunities, false, 'opportunity pattern', inferOpportunityWorkflowLabel_(from, subjectHaystack));
+    return finalizeDecision(buildDecision_('label', CONFIG.labels.importantOpportunities, false, 'opportunity pattern', inferOpportunityWorkflowLabel_(from, subjectHaystack)));
   }
 
   if (containsAny_(subjectHaystack, CONFIG.neverArchiveSenders)) {
-    return buildDecision_('label', CONFIG.labels.importantServices, false, 'important sender/domain', inferWorkflowLabel_(workflowHaystack) || CONFIG.labels.notification);
+    return finalizeDecision(buildDecision_('label', CONFIG.labels.importantServices, false, 'important sender/domain', inferWorkflowLabel_(workflowHaystack) || CONFIG.labels.notification));
   }
 
   if (matchesAny_(subjectHaystack, CONFIG.newsletterPatterns)) {
-    return buildDecision_('label', CONFIG.labels.commercialNewsletters, true, 'newsletter pattern', null);
+    return finalizeDecision(buildDecision_('label', CONFIG.labels.commercialNewsletters, true, 'newsletter pattern', null));
   }
 
   if (matchesAny_(subjectHaystack, CONFIG.adPatterns)) {
-    return buildDecision_('label', CONFIG.labels.commercialAds, true, 'ad pattern', null);
+    return finalizeDecision(buildDecision_('label', CONFIG.labels.commercialAds, true, 'ad pattern', null));
   }
 
   if (matchesAny_(subjectHaystack, CONFIG.campaignPatterns)) {
-    return buildDecision_('label', CONFIG.labels.commercialCampaigns, true, 'campaign pattern', null);
+    return finalizeDecision(buildDecision_('label', CONFIG.labels.commercialCampaigns, true, 'campaign pattern', null));
   }
 
   if (labels.includes('CATEGORY_PROMOTIONS')) {
-    return buildDecision_('label', CONFIG.labels.commercialAds, true, 'gmail promotions category fallback', null);
+    return finalizeDecision(buildDecision_('label', CONFIG.labels.commercialAds, true, 'gmail promotions category fallback', null));
   }
 
-  return buildDecision_('label', CONFIG.labels.review, false, 'no confident rule match', null);
+  return finalizeDecision(buildDecision_('label', CONFIG.labels.review, false, 'no confident rule match', null));
 }
 
 function inferWorkflowLabel_(haystack, options) {
@@ -167,6 +168,41 @@ function buildDecision_(action, label, archive, reason, workflowLabel) {
     reason: reason,
     workflowLabel: workflowLabel || null
   };
+}
+
+function sanitizeWorkflowDecisionForSender_(decision, from, workflowHaystack) {
+  if (!decision || decision.workflowLabel !== CONFIG.labels.toRespond) {
+    return decision;
+  }
+
+  if (!isNoReplyLikeSenderText_(from)) {
+    return decision;
+  }
+
+  return buildDecision_(
+    decision.action,
+    decision.label,
+    decision.archive,
+    `${decision.reason}; no-reply-like sender cannot be to-respond`,
+    inferNoReplyWorkflowFallback_(workflowHaystack)
+  );
+}
+
+function inferNoReplyWorkflowFallback_(haystack) {
+  if (matchesAny_(haystack, CONFIG.notificationPatterns)) {
+    return CONFIG.labels.notification;
+  }
+
+  if (matchesAny_(haystack, CONFIG.fyiPatterns)) {
+    return CONFIG.labels.fyi;
+  }
+
+  return CONFIG.labels.notification;
+}
+
+function isNoReplyLikeSenderText_(text) {
+  const normalized = String(text || '').toLowerCase();
+  return /(no[\s._-]*reply|do[\s._-]*not[\s._-]*reply|donotreply)/i.test(normalized);
 }
 
 function getSafeLabelNames_(thread) {
