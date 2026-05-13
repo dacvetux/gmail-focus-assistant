@@ -25,24 +25,11 @@ Implemented and in active use:
 - **Phase 7:** operational reporting and live tuning via `RunLog`
 - **Phase 8:** separate `News/Digest` lane with dedicated morning/evening news digests (shipped; remaining polish folded into Phase 10)
 - **Phase 9:** recommendation-first tuning suggestions via `TuningSuggestions` (shipped; remaining polish folded into Phase 10)
-- **Phase 10:** spreadsheet control surface with runtime-loaded preferences, approved-rule application, dashboard/validation helpers, targeted reclassification helpers, log rotation/archival, and the remaining live-operations polish (usable now; further polish is paused/on hold)
-- **Phase 11:** assisted AI expansion is live through a review-first operator loop, with `AiRecommendations` feeding direct sheet-backed imports where safe and now supporting durable sender-level notification semantics through `ApprovedRules` when the operator confirms them
+- **Phase 10:** spreadsheet control surface with runtime-loaded preferences, approved-rule application, dashboard/validation helpers, targeted reclassification helpers, and log rotation/archival
+- **Phase 11:** review-first AI operator support through `AiRecommendations`, with safe direct imports into `NewsSources` / `ApprovedRules`
 - **Phase 12 (planned):** dedicated HTML operator UI after the Sheets workflow is proven
 
-Recent operational status:
-- `clasp run` execution and API-executable deployment are working again
-- live wrapper automation and time triggers are in place
-- approved sheet rules now affect runtime behavior
-- operator-friendly approved-rule aliases such as `shipping-sender`, `news-sender`, and `news-exclude-sender` are supported
-- the Phase 10/11 operator loop now centers on `ControlSurfaceStatus`, `ValidationStatus`, `RecentRunSummary`, `WorkflowAudit`, `TuningReviewQueue`, and `AiRecommendations`
-- new Phase 11 helpers `generateAiRecommendationsPhase11()`, `generateAiNewsSourceRecommendationsPhase11()`, and `generateAiWorkflowRecommendationsPhase11()` write AI-assisted review-first recommendations into `AiRecommendations`, including helper provenance and operator follow-through hints; duplicate still-open recommendations are refreshed in place so the sheet behaves more like a queue than an append-only log
-- approved Phase 11 recommendations with direct sheet mappings can now flow through `runPhase10ReviewLoopOptionA()`: direct news/rule changes are applied into `NewsSources` / `ApprovedRules`, and sender-specific notification semantics now have a durable `notification-sender` rule path when the operator chooses it
-- the Phase 11 operator-loop integration was deployed live on 2026-05-13 and validated with `syncApprovedAiRecommendationsPhase11()`, `rebuildControlSurfaceStatusPhase10()`, and `runPhase10ReviewLoopOptionA()`; after triage plus manual follow-through, the live status surface now shows `AiRecommendations` cleared (`new=0`, `approved-manual=0`) and 23 active approved rules
-- targeted reclassification helpers now exist for catch-up relabeling when older mailbox state is blocking newer rule improvements
-- curated news handling was corrected recently so TLDR, Economist, Telecompaper, and Zeteo-style mail route to `News/Digest`, while Google Play / Play Store mail routes toward important service handling instead of news
-- the operator-approved Reuters decision is now encoded live: `dailybriefing@thomsonreuters.com` is an explicit `NewsSources` include and loads into runtime `newsSenders`
-- the operator-approved Linkin Park fix is now encoded live: `noreply@linkinpark.com` is an approved `commercial-sender`, so offer/store traffic no longer belongs in FYI-style handling
-- a focused cleanup pass was run after those approvals: Linkin Park recent mail was reclassified live, and sender-history validation now shows one recent commercial classification plus older unlabeled historical store mail still available for broader catch-up later if needed
+For the live operational picture, operator workflow, and next milestones, treat **`docs/current-state.md` as canonical**.
 
 ## Principles
 
@@ -70,15 +57,15 @@ Recent operational status:
 
 ## Key docs
 
-- `docs/current-state.md`
-- `docs/architecture.md`
-- `docs/roadmap.md`
-- `docs/phases.md`
-- `docs/implementation-notes.md`
-- `docs/testing-checklist.md`
-- `docs/deployment.md`
-- `docs/first-run-checklist.md`
-- `PROJECT_MEMORY.md`
+- `docs/current-state.md` — canonical live state and operator workflow
+- `docs/architecture.md` — system structure and runtime/control-surface layering
+- `docs/roadmap.md` — phase-level direction
+- `docs/phases.md` — historical phase breakdown
+- `docs/implementation-notes.md` — detailed engineering history
+- `docs/testing-checklist.md` — validation and live-check routines
+- `docs/deployment.md` — deployment/runbook notes
+- `docs/first-run-checklist.md` — setup checklist
+- `PROJECT_MEMORY.md` — project memory / decision chronology, not the canonical ops doc
 
 ## Scope / non-goals
 

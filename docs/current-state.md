@@ -1,5 +1,7 @@
 # Current State
 
+This is the canonical live-state / operator-workflow document for the project. Keep `README.md` shorter and use `PROJECT_MEMORY.md` for chronology and lessons learned.
+
 ## What Focuna is
 
 Focuna - Gmail Assistant is a rules-first Gmail automation system built on Google Apps Script.

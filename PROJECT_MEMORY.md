@@ -194,6 +194,9 @@ Core intent:
 - completed live follow-through for those 3 remaining semantics judgments: Google Drive shares and Google Photos now use `notification-sender`, while WeTransfer now uses `important-sender` for the desired important + notification behavior
 - after that follow-through, the live control surface shows `AiRecommendations` cleared (`newCount=0`, `approvedManualCount=0`) and 23 active approved rules
 - notable triage outcomes: ARTE weekly newsletter was accepted as a news source; Reuters duplicates were superseded because Reuters was already live; Alibaba news/FYI suggestions were rejected as the better framing is commercial, not curated news/FYI; `news@mail.xing.com` stayed explicitly excluded
+- ran a documentation/code cleanup pass immediately afterward: `README.md` was shortened into a pointer-oriented overview, `docs/current-state.md` was made explicitly canonical for live ops state, and `docs/architecture.md` was rewritten to reflect the real sheet-backed control-surface/runtime architecture
+- broke up the old `apps-script/src/preferences.gs` monolith by extracting Phase 11 AI recommendation import/apply logic into `apps-script/src/ai-recommendations.gs` and the control-surface setup/status/validation/dashboard subsystem into `apps-script/src/control-surface-status.gs`
+- replaced several branch-heavy mappings with table-driven registries (`PHASE11_AI_RECOMMENDATION_IMPORTERS_`, `PHASE11_MANUAL_PROPOSED_CHANGES_`, `APPROVED_RULE_CONFIG_FIELD_BY_CATEGORY_`) to make future extension safer and easier
 
 ## Immediate next steps
 

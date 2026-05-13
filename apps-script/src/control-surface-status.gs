@@ -1,0 +1,2172 @@
+function setupControlSurfacePhase10() {
+  const spreadsheet = getLogSpreadsheet_();
+  getOrCreatePreferencesSheet_();
+  getOrCreateDigestSettingsSheet_();
+  getOrCreateNewsSourcesSheet_();
+  getOrCreateApprovedRulesSheet_();
+  getOrCreateTuningSuggestionsSheet_();
+  getOrCreateTuningReviewQueueSheet_();
+  getOrCreateOperatorGuideSheet_();
+  getOrCreateControlSurfaceStatusSheet_();
+  getOrCreateValidationStatusSheet_();
+  getOrCreateRecentRunSummarySheet_();
+  getOrCreateWorkflowAuditSheet_();
+  const uxSummary = applyControlSurfaceOptionAUx_();
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'setupControlSurfacePhase10',
+    processedThreads: 0,
+    itemCount: uxSummary.sheetCount,
+    outcome: 'sheets-ready',
+    notes: uxSummary.notes
+  });
+
+  return {
+    spreadsheetId: spreadsheet.getId(),
+    sheetsReady: uxSummary.sheetsReady,
+    validationsApplied: uxSummary.validationsApplied,
+    guideUpdated: uxSummary.guideUpdated
+  };
+}
+
+function upgradeControlSurfacePhase10OptionA() {
+  getOrCreatePreferencesSheet_();
+  getOrCreateDigestSettingsSheet_();
+  getOrCreateNewsSourcesSheet_();
+  getOrCreateApprovedRulesSheet_();
+  getOrCreateTuningSuggestionsSheet_();
+  getOrCreateTuningReviewQueueSheet_();
+  getOrCreateOperatorGuideSheet_();
+  getOrCreateControlSurfaceStatusSheet_();
+  getOrCreateValidationStatusSheet_();
+  getOrCreateRecentRunSummarySheet_();
+  getOrCreateWorkflowAuditSheet_();
+
+  const summary = applyControlSurfaceOptionAUx_();
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'upgradeControlSurfacePhase10OptionA',
+    processedThreads: 0,
+    itemCount: summary.validationsApplied,
+    outcome: 'option-a-ux-ready',
+    notes: summary.notes
+  });
+
+  return summary;
+}
+
+function runPhase10ReviewLoopOptionA() {
+  const syncSummary = syncApprovedRulesFromTuningSuggestionsPhase10();
+  const aiSyncSummary = syncApprovedAiRecommendationsPhase11();
+  const refreshSummary = refreshConfigFromPreferencesPhase10_({ suppressLog: true });
+  const logRotationSummary = rotateOperationalLogsPhase10();
+  const tuningReviewQueueSummary = rebuildTuningReviewQueueSheet_(getOrCreateTuningReviewQueueSheet_());
+  const statusSummary = rebuildControlSurfaceStatusPhase10();
+  const importedCount = syncSummary.importedCount + aiSyncSummary.appliedCount;
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'runPhase10ReviewLoopOptionA',
+    processedThreads: statusSummary.tuningSummary.totalRows + statusSummary.aiRecommendationsSummary.totalRows,
+    itemCount: importedCount,
+    outcome: importedCount ? 'review-loop-applied' : 'review-loop-no-imports',
+    notes: `tuning-approved-pending=${statusSummary.tuningSummary.approved}; tuning-imported=${syncSummary.importedCount}; ai-approved-pending=${statusSummary.aiRecommendationsSummary.approved}; ai-applied=${aiSyncSummary.appliedCount}; ai-manual-pending=${aiSyncSummary.manualPendingCount}; approved-rules-configured=${refreshSummary.approvedRulesConfigured}; archived-log-rows=${logRotationSummary.archivedRows}`
+  });
+
+  const recentRunSummary = rebuildRecentRunSummarySheet_(getOrCreateRecentRunSummarySheet_());
+
+  return {
+    syncSummary: syncSummary,
+    aiSyncSummary: aiSyncSummary,
+    refreshSummary: refreshSummary,
+    logRotationSummary: logRotationSummary,
+    tuningReviewQueueSummary: tuningReviewQueueSummary,
+    recentRunSummary: recentRunSummary,
+    statusSummary: statusSummary
+  };
+}
+
+function runPhase10ValidationCheckpoint() {
+  return runPhase10ValidationCheckpointInternal_({
+    entryPoint: 'runPhase10ValidationCheckpoint',
+    checks: [
+      { key: 'phase1-dry-run', label: 'Phase 1 dry-run', runner: processInboxFocusPhase1DryRun },
+      { key: 'morning-digest-dry-run', label: 'Morning digest dry-run', runner: generateMorningDigestDryRun },
+      { key: 'news-morning-digest-dry-run', label: 'News morning digest dry-run', runner: generateNewsDigestMorningDryRun }
+    ]
+  });
+}
+
+function runPhase10ExtendedValidationCheckpoint() {
+  return runPhase10ValidationCheckpointInternal_({
+    entryPoint: 'runPhase10ExtendedValidationCheckpoint',
+    checks: [
+      { key: 'phase1-dry-run', label: 'Phase 1 dry-run', runner: processInboxFocusPhase1DryRun },
+      { key: 'phase4-ai-review-dry-run', label: 'Phase 4 AI review dry-run', runner: processInboxFocusPhase4AiReviewDryRun },
+      { key: 'morning-digest-dry-run', label: 'Morning digest dry-run', runner: generateMorningDigestDryRun },
+      { key: 'news-morning-digest-dry-run', label: 'News morning digest dry-run', runner: generateNewsDigestMorningDryRun },
+      { key: 'tuning-suggestions-dry-run', label: 'Tuning suggestions dry-run', runner: generateTuningSuggestionsPhase9DryRun }
+    ]
+  });
+}
+
+function runPhase10ValidationCheckpointInternal_(options) {
+  const entryPoint = options && options.entryPoint ? options.entryPoint : 'runPhase10ValidationCheckpoint';
+  const checks = options && options.checks ? options.checks : [];
+  const refreshSummary = refreshConfigFromPreferencesPhase10_({ suppressLog: true });
+  const logRotationSummary = rotateOperationalLogsPhase10();
+
+  const rows = [];
+  const passedChecks = [];
+  const failedChecks = [];
+  let successCount = 0;
+  let failureCount = 0;
+
+  checks.forEach(check => {
+    try {
+      const result = check.runner();
+      const summary = summarizeValidationCheckpointResult_(result);
+      rows.push([
+        check.key,
+        check.label,
+        'ok',
+        summary.primaryValue,
+        summary.notes,
+        formatControlSurfaceTimestamp_(new Date())
+      ]);
+      passedChecks.push({
+        key: check.key,
+        label: check.label,
+        primaryValue: summary.primaryValue,
+        notes: summary.notes
+      });
+      successCount += 1;
+    } catch (error) {
+      const message = truncateRunNote_(error && error.message ? error.message : String(error), 300);
+      rows.push([
+        check.key,
+        check.label,
+        'error',
+        '',
+        message,
+        formatControlSurfaceTimestamp_(new Date())
+      ]);
+      failedChecks.push({
+        key: check.key,
+        label: check.label,
+        message: message
+      });
+      failureCount += 1;
+    }
+  });
+
+  const validationSummary = rebuildValidationStatusSheet_(getOrCreateValidationStatusSheet_(), rows);
+  const tuningReviewQueueSummary = rebuildTuningReviewQueueSheet_(getOrCreateTuningReviewQueueSheet_());
+  const workflowAuditSummary = rebuildWorkflowAuditSheet_(getOrCreateWorkflowAuditSheet_());
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: entryPoint,
+    processedThreads: checks.length,
+    itemCount: successCount,
+    outcome: failureCount ? 'validation-checkpoint-failed' : 'validation-checkpoint-ok',
+    notes: `success=${successCount}; failed=${failureCount}; workflow-warning=${workflowAuditSummary.warningCount}; approved-rules-configured=${refreshSummary.approvedRulesConfigured}; archived-log-rows=${logRotationSummary.archivedRows}`
+  });
+
+  const recentRunSummary = rebuildRecentRunSummarySheet_(getOrCreateRecentRunSummarySheet_());
+  const statusSummary = rebuildControlSurfaceStatusPhase10();
+
+  return {
+    refreshSummary: refreshSummary,
+    logRotationSummary: logRotationSummary,
+    validationSummary: validationSummary,
+    tuningReviewQueueSummary: tuningReviewQueueSummary,
+    recentRunSummary: recentRunSummary,
+    workflowAuditSummary: workflowAuditSummary,
+    statusSummary: statusSummary,
+    passedChecks: passedChecks,
+    failedChecks: failedChecks,
+    entryPoint: entryPoint
+  };
+}
+
+function rebuildWorkflowAuditPhase10() {
+  const summary = rebuildWorkflowAuditSheet_(getOrCreateWorkflowAuditSheet_());
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'rebuildWorkflowAuditPhase10',
+    processedThreads: summary.rowsScanned,
+    itemCount: summary.warningCount,
+    outcome: summary.warningCount ? 'workflow-audit-warning' : 'workflow-audit-ok',
+    notes: `rows=${summary.rowsScanned}; warnings=${summary.warningCount}; review-only=${summary.reviewOnlyCount}; notification=${summary.notificationCount}`
+  });
+
+  return summary;
+}
+
+function rebuildTuningReviewQueuePhase10() {
+  const summary = rebuildTuningReviewQueueSheet_(getOrCreateTuningReviewQueueSheet_());
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'rebuildTuningReviewQueuePhase10',
+    processedThreads: summary.totalRows,
+    itemCount: summary.actionableRows,
+    outcome: summary.actionableRows ? 'tuning-review-queue-ready' : 'tuning-review-queue-empty',
+    notes: `actionable=${summary.actionableRows}; new=${summary.newRows}; approved=${summary.approvedRows}`
+  });
+
+  return summary;
+}
+
+function rebuildControlSurfaceStatusPhase10() {
+  const sheet = getOrCreateControlSurfaceStatusSheet_();
+  const summary = rebuildControlSurfaceStatusSheet_(sheet);
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'rebuildControlSurfaceStatusPhase10',
+    processedThreads: summary.tuningSummary.totalRows + summary.aiRecommendationsSummary.totalRows,
+    itemCount: summary.tuningSummary.pending + summary.aiRecommendationsSummary.approvedAutoApplyCount + summary.aiRecommendationsSummary.approvedManualCount,
+    outcome: 'status-refreshed',
+    notes: `tuning-pending=${summary.tuningSummary.pending}; ai-new=${summary.aiRecommendationsSummary.newCount}; ai-approved-auto=${summary.aiRecommendationsSummary.approvedAutoApplyCount}; ai-approved-manual=${summary.aiRecommendationsSummary.approvedManualCount}; approved-rules=${summary.approvedRulesSummary.totalRows}`
+  });
+
+  return summary;
+}
+
+function getOrCreateControlSurfaceStatusSheet_() {
+  const spreadsheet = getLogSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName('ControlSurfaceStatus');
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('ControlSurfaceStatus');
+  }
+
+  rebuildControlSurfaceStatusSheet_(sheet);
+  return sheet;
+}
+
+function getOrCreateValidationStatusSheet_() {
+  const spreadsheet = getLogSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName('ValidationStatus');
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('ValidationStatus');
+  }
+
+  ensureValidationStatusHeader_(sheet);
+  return sheet;
+}
+
+function getOrCreateRecentRunSummarySheet_() {
+  const spreadsheet = getLogSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName('RecentRunSummary');
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('RecentRunSummary');
+  }
+
+  ensureRecentRunSummaryHeader_(sheet);
+  return sheet;
+}
+
+function getOrCreateTuningReviewQueueSheet_() {
+  const spreadsheet = getLogSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName('TuningReviewQueue');
+
+  if (!sheet) {
+    try {
+      sheet = spreadsheet.insertSheet('TuningReviewQueue');
+    } catch (error) {
+      if (!/already exists/i.test(String(error && error.message ? error.message : error))) {
+        throw error;
+      }
+      sheet = spreadsheet.getSheetByName('TuningReviewQueue') || spreadsheet.getSheets().find(candidate => candidate.getName() === 'TuningReviewQueue');
+      if (!sheet) throw error;
+    }
+  }
+
+  ensureTuningReviewQueueHeader_(sheet);
+  return sheet;
+}
+
+function getOrCreateWorkflowAuditSheet_() {
+  const spreadsheet = getLogSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName('WorkflowAudit');
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('WorkflowAudit');
+  }
+
+  ensureWorkflowAuditHeader_(sheet);
+  return sheet;
+}
+
+function applyControlSurfaceOptionAUx_() {
+  const preferencesSheet = getOrCreatePreferencesSheet_();
+  const digestSettingsSheet = getOrCreateDigestSettingsSheet_();
+  const newsSourcesSheet = getOrCreateNewsSourcesSheet_();
+  const approvedRulesSheet = getOrCreateApprovedRulesSheet_();
+  const tuningSuggestionsSheet = getOrCreateTuningSuggestionsSheet_();
+  const tuningReviewQueueSheet = getOrCreateTuningReviewQueueSheet_();
+  const operatorGuideSheet = getOrCreateOperatorGuideSheet_();
+  const controlSurfaceStatusSheet = getOrCreateControlSurfaceStatusSheet_();
+  const validationStatusSheet = getOrCreateValidationStatusSheet_();
+  const recentRunSummarySheet = getOrCreateRecentRunSummarySheet_();
+  const workflowAuditSheet = getOrCreateWorkflowAuditSheet_();
+
+  let validationsApplied = 0;
+  validationsApplied += configurePreferencesSheetUx_(preferencesSheet);
+  validationsApplied += configureDigestSettingsSheetUx_(digestSettingsSheet);
+  validationsApplied += configureNewsSourcesSheetUx_(newsSourcesSheet);
+  validationsApplied += configureApprovedRulesSheetUx_(approvedRulesSheet);
+  validationsApplied += configureTuningSuggestionsSheetUx_(tuningSuggestionsSheet);
+  validationsApplied += configureTuningReviewQueueSheetUx_(tuningReviewQueueSheet);
+  styleControlSurfaceSheet_(operatorGuideSheet, [140, 260, 320, 320, 260]);
+  styleControlSurfaceSheet_(controlSurfaceStatusSheet, [180, 180, 420, 420]);
+  rebuildControlSurfaceStatusSheet_(controlSurfaceStatusSheet);
+  rebuildTuningReviewQueueSheet_(tuningReviewQueueSheet);
+  configureValidationStatusSheetUx_(validationStatusSheet);
+  configureRecentRunSummarySheetUx_(recentRunSummarySheet);
+  rebuildRecentRunSummarySheet_(recentRunSummarySheet);
+  configureWorkflowAuditSheetUx_(workflowAuditSheet);
+  rebuildWorkflowAuditSheet_(workflowAuditSheet);
+
+  return {
+    sheetsReady: ['Preferences', 'DigestSettings', 'NewsSources', 'ApprovedRules', 'TuningSuggestions', 'TuningReviewQueue', 'OperatorGuide', 'ControlSurfaceStatus', 'ValidationStatus', 'RecentRunSummary', 'WorkflowAudit'],
+    sheetCount: 11,
+    validationsApplied: validationsApplied + 3,
+    guideUpdated: true,
+    notes: `Option A UX prepared across 11 sheets; validations-applied=${validationsApplied + 3}`
+  };
+}
+
+function configurePreferencesSheetUx_(sheet) {
+  styleControlSurfaceSheet_(sheet, [220, 160, 380, 100]);
+  setHeaderNotes_(sheet, {
+    1: 'Stable config key read by runtime refresh.',
+    2: 'Editable value. Booleans accept true/false/yes/no. Numbers accept numeric text.',
+    3: 'Why this setting exists and how it affects behavior.',
+    4: 'Only enabled rows are applied at runtime.'
+  });
+
+  const rowCount = Math.max(1, sheet.getMaxRows() - 1);
+  setDropdownValidation_(sheet, 2, 4, rowCount, ['yes', 'no']);
+  applyPreferenceValueValidations_(sheet);
+  return 1;
+}
+
+function configureDigestSettingsSheetUx_(sheet) {
+  styleControlSurfaceSheet_(sheet, [150, 100, 260, 120, 320]);
+  setHeaderNotes_(sheet, {
+    1: 'Canonical digest type. Keep existing values unless code adds a new digest.',
+    2: 'Set to yes/no to allow or disable this digest type.',
+    3: 'Optional Gmail search hint retained for operator context.',
+    4: 'Per-digest thread limit override. Leave blank to fall back to config.',
+    5: 'Human notes for why this digest is enabled or constrained.'
+  });
+
+  const rowCount = Math.max(1, sheet.getMaxRows() - 1);
+  setDropdownValidation_(sheet, 2, 2, rowCount, ['yes', 'no']);
+  return 1;
+}
+
+function configureNewsSourcesSheetUx_(sheet) {
+  styleControlSurfaceSheet_(sheet, [260, 100, 120, 100, 320]);
+  setHeaderNotes_(sheet, {
+    1: 'Sender email/domain fragment used for news routing.',
+    2: 'Currently only sender rows are supported.',
+    3: 'news = include in news lane, exclude = explicitly keep out of news lane.',
+    4: 'Only enabled rows are applied at runtime.',
+    5: 'Short explanation for future review.'
+  });
+
+  const rowCount = Math.max(1, sheet.getMaxRows() - 1);
+  setDropdownValidation_(sheet, 2, 2, rowCount, ['sender']);
+  setDropdownValidation_(sheet, 2, 3, rowCount, ['news', 'exclude']);
+  setDropdownValidation_(sheet, 2, 4, rowCount, ['yes', 'no']);
+  return 3;
+}
+
+function configureApprovedRulesSheetUx_(sheet) {
+  styleControlSurfaceSheet_(sheet, [180, 220, 120, 110, 130, 120, 360]);
+  setHeaderNotes_(sheet, {
+    1: 'Operator-friendly rule category. These map into runtime config arrays.',
+    2: 'Usually a sender/domain fragment to add or remove.',
+    3: 'add = include in runtime config; remove = subtract from runtime config.',
+    4: 'Only affirmative values are applied at runtime. Prefer yes/no for clarity.',
+    5: 'Trace whether the row was seeded, imported, or added manually.',
+    6: 'Date the rule was created or imported.',
+    7: 'Context, rationale, or provenance for future review.'
+  });
+
+  const rowCount = Math.max(1, sheet.getMaxRows() - 1);
+  setDropdownValidation_(sheet, 2, 1, rowCount, [
+    'shipping-sender',
+    'commercial-sender',
+    'important-sender',
+    'fyi-sender',
+    'notification-sender',
+    'news-sender',
+    'news-exclude-sender'
+  ]);
+  setDropdownValidation_(sheet, 2, 3, rowCount, ['add', 'remove']);
+  setDropdownValidation_(sheet, 2, 4, rowCount, ['yes', 'no']);
+  normalizeBlankCellRange_(sheet, 2, 3, 'add');
+  return 3;
+}
+
+function configureTuningSuggestionsSheetUx_(sheet) {
+  styleControlSurfaceSheet_(sheet, [120, 210, 220, 220, 120, 100, 240, 280, 320, 140, 360]);
+  setHeaderNotes_(sheet, {
+    2: 'Suggestion family generated from recent evidence.',
+    3: 'Human-readable recommendation. This is not applied automatically.',
+    4: 'Usually the sender/domain to review.',
+    5: 'How many supporting review-bucket examples were seen.',
+    6: 'Heuristic confidence only; still requires operator judgment.',
+    7: 'Representative From field from the evidence set.',
+    8: 'Representative subject from the evidence set.',
+    9: 'Reason the suggestion exists.',
+    10: 'Operator workflow state. Move from new -> approved/rejected/superseded.',
+    11: 'Freeform operator notes plus import provenance.'
+  });
+
+  const rowCount = Math.max(1, sheet.getMaxRows() - 1);
+  setDropdownValidation_(sheet, 2, 10, rowCount, [
+    'new',
+    'approved',
+    'rejected',
+    'imported',
+    'already-imported',
+    'skipped',
+    'superseded',
+    'reclassified-shipping'
+  ]);
+  normalizeBlankCellRange_(sheet, 2, 10, 'new');
+  return 1;
+}
+
+function ensureTuningReviewQueueHeader_(sheet) {
+  if (!sheet) return;
+  const header = [['Queue Status', 'Next Action', 'Suggestion Category', 'Suggested Change', 'Target', 'Evidence', 'Confidence', 'Example Subject', 'Source Row', 'Notes']];
+  sheet.getRange(1, 1, 1, header[0].length).setValues(header);
+}
+
+function configureTuningReviewQueueSheetUx_(sheet) {
+  ensureTuningReviewQueueHeader_(sheet);
+  styleControlSurfaceSheet_(sheet, [120, 180, 220, 220, 220, 90, 100, 320, 90, 420]);
+  setHeaderNotes_(sheet, {
+    1: 'Current actionable queue state copied from TuningSuggestions.',
+    2: 'What the operator should do next for this row.',
+    3: 'Suggestion family generated by the tuner.',
+    4: 'Recommended config/routing change.',
+    5: 'Usually the sender/domain fragment under review.',
+    6: 'How many supporting examples were seen.',
+    7: 'Heuristic confidence only.',
+    8: 'Representative subject for quick scanning.',
+    9: 'Original row number in TuningSuggestions to edit.',
+    10: 'Existing notes/provenance carried over from the source row.'
+  });
+  return 1;
+}
+
+function ensureValidationStatusHeader_(sheet) {
+  if (!sheet) return;
+  const header = [['Check Key', 'Check', 'Status', 'Key Result', 'Notes', 'Last Run']];
+  sheet.getRange(1, 1, 1, header[0].length).setValues(header);
+}
+
+function configureValidationStatusSheetUx_(sheet) {
+  ensureValidationStatusHeader_(sheet);
+  styleControlSurfaceSheet_(sheet, [220, 220, 100, 160, 420, 150]);
+  setHeaderNotes_(sheet, {
+    1: 'Stable internal check identifier.',
+    2: 'Human-readable validation step.',
+    3: 'ok or error.',
+    4: 'Compact primary result to scan quickly.',
+    5: 'Extra notes or failure detail.',
+    6: 'When this row was last refreshed.'
+  });
+  return 1;
+}
+
+function ensureRecentRunSummaryHeader_(sheet) {
+  if (!sheet) return;
+  const header = [['Run Family', 'Latest Local Time', 'Entry Point', 'Outcome', 'Processed Threads', 'Primary Count', 'Notes', 'Operator Action']];
+  sheet.getRange(1, 1, 1, header[0].length).setValues(header);
+}
+
+function configureRecentRunSummarySheetUx_(sheet) {
+  ensureRecentRunSummaryHeader_(sheet);
+  styleControlSurfaceSheet_(sheet, [220, 160, 220, 180, 140, 120, 420, 320]);
+  setHeaderNotes_(sheet, {
+    1: 'Operator-facing summary group for the latest relevant run.',
+    2: 'Latest local timestamp seen in RunLog for this group.',
+    3: 'Exact entry point from RunLog.',
+    4: 'Latest recorded outcome, or stale/missing when the view thinks attention is needed.',
+    5: 'Processed Threads from the latest run.',
+    6: 'Primary Count from the latest run.',
+    7: 'Latest notes captured in RunLog.',
+    8: 'Suggested next operator action based on the latest outcome.'
+  });
+  return 1;
+}
+
+function ensureWorkflowAuditHeader_(sheet) {
+  if (!sheet) return;
+  const header = [['Audit Key', 'Status', 'Count', 'Example', 'Notes', 'Last Updated']];
+  sheet.getRange(1, 1, 1, header[0].length).setValues(header);
+}
+
+function configureWorkflowAuditSheetUx_(sheet) {
+  ensureWorkflowAuditHeader_(sheet);
+  styleControlSurfaceSheet_(sheet, [220, 120, 90, 420, 420, 150]);
+  setHeaderNotes_(sheet, {
+    1: 'Stable audit row identifier.',
+    2: 'ok, warning, or info.',
+    3: 'Recent DecisionLog count for this bucket.',
+    4: 'One representative recent row for operator context.',
+    5: 'Why this matters or what to do next.',
+    6: 'When the audit was last rebuilt.'
+  });
+  return 1;
+}
+
+function summarizeValidationCheckpointResult_(result) {
+  if (!result) {
+    return { primaryValue: '', notes: 'no result returned' };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(result, 'processedThreads')) {
+    const primaryParts = [`processed=${result.processedThreads}`];
+    if (Object.prototype.hasOwnProperty.call(result, 'itemCount')) primaryParts.push(`items=${result.itemCount}`);
+    const notes = [result.outcome || '', result.summary || '', result.notes || ''].filter(Boolean).join('; ');
+    return {
+      primaryValue: primaryParts.join('; '),
+      notes: truncateRunNote_(notes, 300)
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(result, 'itemCount')) {
+    const primaryParts = [`items=${result.itemCount}`];
+    if (result.type) primaryParts.push(`type=${result.type}`);
+    const notes = [result.summary || '', result.mode || '', result.outcome || ''].filter(Boolean).join('; ');
+    return {
+      primaryValue: primaryParts.join('; '),
+      notes: truncateRunNote_(notes, 300)
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(result, 'suggestionCount')) {
+    return {
+      primaryValue: `suggestions=${result.suggestionCount}`,
+      notes: truncateRunNote_(`rows-scanned=${result.scannedRows || ''}; mode=${result.mode || ''}`, 300)
+    };
+  }
+
+  return {
+    primaryValue: truncateRunNote_(JSON.stringify(result).slice(0, 120), 120),
+    notes: 'generic result summary'
+  };
+}
+
+function rebuildValidationStatusSheet_(sheet, rows) {
+  ensureValidationStatusHeader_(sheet);
+  const values = rows && rows.length ? rows : [];
+  const maxRowsToClear = Math.max(sheet.getLastRow() - 1, values.length, 1);
+  sheet.getRange(2, 1, maxRowsToClear, 6).clearContent();
+  if (values.length) {
+    sheet.getRange(2, 1, values.length, values[0].length).setValues(values);
+  }
+  configureValidationStatusSheetUx_(sheet);
+
+  const failedRows = values.filter(row => row[2] === 'error').map(row => ({
+    key: row[0],
+    check: row[1],
+    notes: row[4]
+  }));
+
+  return {
+    totalChecks: values.length,
+    successCount: values.filter(row => row[2] === 'ok').length,
+    failureCount: failedRows.length,
+    failedChecks: failedRows
+  };
+}
+
+function rebuildRecentRunSummaryPhase10() {
+  const summary = rebuildRecentRunSummarySheet_(getOrCreateRecentRunSummarySheet_());
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'rebuildRecentRunSummaryPhase10',
+    processedThreads: summary.totalFamilies,
+    itemCount: summary.missingFamilies,
+    outcome: summary.missingFamilies ? 'recent-run-summary-warning' : 'recent-run-summary-ok',
+    notes: `families=${summary.totalFamilies}; missing=${summary.missingFamilies}; stale=${summary.staleFamilies}`
+  });
+
+  return summary;
+}
+
+function rebuildWorkflowAuditSheet_(sheet) {
+  ensureWorkflowAuditHeader_(sheet);
+  const snapshot = buildWorkflowAuditSnapshot_();
+  const now = snapshot.lastUpdated;
+
+  const values = [
+    ['last-updated', 'info', '', '', 'When this workflow semantics audit was rebuilt.', now],
+    ['rows-scanned', snapshot.rowsScanned ? 'info' : 'warning', snapshot.rowsScanned, '', snapshot.rowsScanned ? 'Recent DecisionLog rows inspected for workflow semantics drift.' : 'No recent DecisionLog rows found; run a dry-run or live processing pass first.', now],
+    ['review-only', 'info', snapshot.reviewOnly.count, snapshot.reviewOnly.example, 'Expected baseline for unresolved ambiguous mail: review-only and workflow-blank.', now],
+    ['legacy-review-plus-fyi', snapshot.legacyReviewFyi.count ? 'warning' : 'ok', snapshot.legacyReviewFyi.count, snapshot.legacyReviewFyi.example, snapshot.legacyReviewFyi.count ? 'Older `Review/Ambiguous, 2: FYI` shape still appeared in recent logs; review whether a remaining path still emits it.' : 'No recent legacy review+FYI rows found.', now],
+    ['explicit-fyi', 'info', snapshot.explicitFyi.count, snapshot.explicitFyi.example, 'FYI should be intentional informational routing, not generic ambiguity fallback.', now],
+    ['notification', 'info', snapshot.notification.count, snapshot.notification.example, 'Notification should capture low-response transactional/system/status updates.', now],
+    ['news-blank-workflow', snapshot.newsBlank.count ? 'ok' : 'info', snapshot.newsBlank.count, snapshot.newsBlank.example, 'Default healthy shape when News/Digest stays separate from workflow labels.', now],
+    ['news-with-workflow', snapshot.newsWithWorkflow.count && !CONFIG.newsWorkflowLabel ? 'warning' : 'info', snapshot.newsWithWorkflow.count, snapshot.newsWithWorkflow.example, CONFIG.newsWorkflowLabel ? `News workflow label is intentionally set to ${CONFIG.newsWorkflowLabel}.` : 'Should usually stay at zero unless the operator intentionally enabled a news workflow label.', now],
+    ['archived-review', snapshot.archivedReview.count ? 'warning' : 'ok', snapshot.archivedReview.count, snapshot.archivedReview.example, snapshot.archivedReview.count ? 'Review/Ambiguous rows were archived recently; confirm this is intentional rather than hiding unresolved mail.' : 'No recent archived review rows found.', now]
+  ];
+
+  const maxRowsToClear = Math.max(sheet.getLastRow() - 1, values.length, 1);
+  sheet.getRange(2, 1, maxRowsToClear, 6).clearContent();
+  sheet.getRange(2, 1, values.length, values[0].length).setValues(values);
+  configureWorkflowAuditSheetUx_(sheet);
+
+  return {
+    rowsScanned: snapshot.rowsScanned,
+    reviewOnlyCount: snapshot.reviewOnly.count,
+    legacyReviewFyiCount: snapshot.legacyReviewFyi.count,
+    explicitFyiCount: snapshot.explicitFyi.count,
+    notificationCount: snapshot.notification.count,
+    newsBlankCount: snapshot.newsBlank.count,
+    newsWithWorkflowCount: snapshot.newsWithWorkflow.count,
+    archivedReviewCount: snapshot.archivedReview.count,
+    warningCount: values.filter(row => row[1] === 'warning').length
+  };
+}
+
+function buildWorkflowAuditSnapshot_() {
+  const rows = readRecentDecisionRows_(200);
+  return {
+    rowsScanned: rows.length,
+    lastUpdated: formatControlSurfaceTimestamp_(new Date()),
+    reviewOnly: summarizeWorkflowAuditBucket_(rows, row => hasExactAppliedLabels_(row.appliedLabels, [CONFIG.labels.review])),
+    legacyReviewFyi: summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.review) && hasAppliedLabel_(row.appliedLabels, CONFIG.labels.fyi)),
+    explicitFyi: summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.fyi) && !hasAppliedLabel_(row.appliedLabels, CONFIG.labels.review)),
+    notification: summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.notification)),
+    newsBlank: summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.newsDigest) && !hasAnyAppliedLabel_(row.appliedLabels, [CONFIG.labels.toRespond, CONFIG.labels.fyi, CONFIG.labels.notification])),
+    newsWithWorkflow: summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.newsDigest) && hasAnyAppliedLabel_(row.appliedLabels, [CONFIG.labels.toRespond, CONFIG.labels.fyi, CONFIG.labels.notification])),
+    archivedReview: summarizeWorkflowAuditBucket_(rows, row => hasAppliedLabel_(row.appliedLabels, CONFIG.labels.review) && String(row.archived || '').trim().toLowerCase() === 'yes')
+  };
+}
+
+function rebuildTuningReviewQueueSheet_(sheet) {
+  ensureTuningReviewQueueHeader_(sheet);
+  const queueRows = readTuningReviewQueueRows_();
+  const values = queueRows.length ? queueRows : [[
+    'info',
+    'No actionable tuning suggestions right now.',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    'Review queue is clear; generate new suggestions or continue validation work.'
+  ]];
+
+  const maxRowsToClear = Math.max(sheet.getLastRow() - 1, values.length, 1);
+  sheet.getRange(2, 1, maxRowsToClear, 10).clearContent();
+  sheet.getRange(2, 1, values.length, values[0].length).setValues(values);
+  configureTuningReviewQueueSheetUx_(sheet);
+
+  const summary = summarizeTuningReviewQueueRows_(queueRows);
+  return summary;
+}
+
+function readTuningReviewQueueRows_() {
+  const sheet = getOrCreateTuningSuggestionsSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return [];
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 11).getDisplayValues();
+  const queueRows = [];
+
+  values.forEach((row, index) => {
+    const status = String(row[9] || '').trim().toLowerCase() || 'new';
+    if (status !== 'new' && status !== 'approved') return;
+    const category = String(row[1] || '').trim().toLowerCase();
+    if (category === 'no-suggestions') return;
+
+    queueRows.push([
+      status,
+      status === 'approved' ? 'Run runPhase10ReviewLoopOptionA() to import this approved row.' : 'Review in TuningSuggestions and mark approved/rejected/superseded.',
+      row[1] || '',
+      row[2] || '',
+      row[3] || '',
+      row[4] || '',
+      row[5] || '',
+      row[7] || '',
+      index + 2,
+      row[10] || ''
+    ]);
+  });
+
+  return queueRows.sort((left, right) => {
+    const leftPriority = left[0] === 'approved' ? 0 : 1;
+    const rightPriority = right[0] === 'approved' ? 0 : 1;
+    if (leftPriority !== rightPriority) return leftPriority - rightPriority;
+    const leftEvidence = Number(left[5] || 0);
+    const rightEvidence = Number(right[5] || 0);
+    if (leftEvidence !== rightEvidence) return rightEvidence - leftEvidence;
+    return String(left[4] || '').localeCompare(String(right[4] || ''));
+  });
+}
+
+function summarizeTuningReviewQueueRows_(rows) {
+  return {
+    totalRows: (rows || []).length,
+    actionableRows: (rows || []).length,
+    approvedRows: (rows || []).filter(row => row[0] === 'approved').length,
+    newRows: (rows || []).filter(row => row[0] === 'new').length
+  };
+}
+
+function inspectTuningReviewQueuePhase10() {
+  const rows = readTuningReviewQueueRows_();
+  return {
+    totalRows: rows.length,
+    actionableRows: rows.map(row => ({
+      status: row[0],
+      nextAction: row[1],
+      category: row[2],
+      suggestedChange: row[3],
+      target: row[4],
+      evidenceCount: row[5],
+      confidence: row[6],
+      exampleSubject: row[7],
+      sourceRow: row[8],
+      notes: row[9]
+    }))
+  };
+}
+
+function inspectRecentDecisionRowsPhase10(senderQueries, maxRows) {
+  const queries = Array.isArray(senderQueries)
+    ? senderQueries.map(value => String(value || '').trim().toLowerCase()).filter(Boolean)
+    : [String(senderQueries || '').trim().toLowerCase()].filter(Boolean);
+  const rows = readRecentDecisionRows_(maxRows || 200);
+  const matches = rows.filter(row => {
+    const from = String(row.from || '').toLowerCase();
+    const subject = String(row.subject || '').toLowerCase();
+    return queries.some(query => from.includes(query) || subject.includes(query));
+  }).slice(-25).map(row => ({
+    timestamp: formatTuningSuggestionTimestamp_(row.timestamp),
+    from: row.from,
+    subject: row.subject,
+    appliedLabels: row.appliedLabels,
+    reason: row.reason,
+    archived: row.archived
+  }));
+
+  return {
+    queries: queries,
+    scannedRows: rows.length,
+    matchCount: matches.length,
+    matches: matches
+  };
+}
+
+function analyzeHistoricalClassificationPhase10(startDate, topN, minSenderCount) {
+  const threshold = coerceHistoricalAnalysisDate_(startDate || '2026-01-01');
+  const summary = buildHistoricalClassificationSummary_(threshold, topN || 12, minSenderCount || 4);
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'analyzeHistoricalClassificationPhase10',
+    processedThreads: summary.rowsAnalyzed,
+    itemCount: summary.senderCount,
+    outcome: 'historical-classification-analysis',
+    notes: `start=${Utilities.formatDate(threshold, Session.getScriptTimeZone(), 'yyyy-MM-dd')}; mixed=${summary.mixedSenders.length}`
+  });
+
+  return summary;
+}
+
+function analyzeMailboxHistoryPhase10(startDate, maxThreads, topN, minSenderCount) {
+  const threshold = coerceHistoricalAnalysisDate_(startDate || '2026-01-01');
+  const summary = buildMailboxHistorySummary_(threshold, maxThreads || 4000, topN || 12, minSenderCount || 5);
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'analyzeMailboxHistoryPhase10',
+    processedThreads: summary.threadsAnalyzed,
+    itemCount: summary.senderCount,
+    outcome: summary.truncated ? 'mailbox-history-analysis-truncated' : 'mailbox-history-analysis',
+    notes: `start=${summary.startDate}; fetched=${summary.threadsAnalyzed}; mixed=${summary.mixedSenders.length}`
+  });
+
+  return summary;
+}
+
+function analyzeMailboxHistoryByBucketPhase10(startDate, perBucketMax, topN, minSenderCount) {
+  const threshold = coerceHistoricalAnalysisDate_(startDate || '2026-01-01');
+  const summary = buildMailboxHistoryByBucketSummary_(threshold, perBucketMax || 250, topN || 10, minSenderCount || 3);
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'analyzeMailboxHistoryByBucketPhase10',
+    processedThreads: summary.totalThreadsSampled,
+    itemCount: summary.mixedSenders.length,
+    outcome: 'mailbox-history-bucket-analysis',
+    notes: `start=${summary.startDate}; sampled=${summary.totalThreadsSampled}; mixed=${summary.mixedSenders.length}`
+  });
+
+  return summary;
+}
+
+function inspectMailboxHistoryBucketPhase10(bucketName, startDate, perBucketMax, topN, minSenderCount) {
+  const threshold = coerceHistoricalAnalysisDate_(startDate || '2026-01-01');
+  const summary = buildMailboxHistoryByBucketSummary_(threshold, perBucketMax || 50, topN || 8, minSenderCount || 2);
+  const bucket = String(bucketName || '').trim();
+  if (!summary.bucketSamples[bucket]) {
+    throw new Error(`Unknown bucket: ${bucket}`);
+  }
+  return summary.bucketSamples[bucket];
+}
+
+function inspectMailboxHistorySenderPhase10(senderQuery, startDate, maxThreads) {
+  const normalizedSenderQuery = String(senderQuery || '').trim();
+  if (!normalizedSenderQuery) {
+    throw new Error('Sender query is required');
+  }
+
+  const threshold = coerceHistoricalAnalysisDate_(startDate || '2026-01-01');
+  const summary = buildMailboxHistorySenderSummary_(normalizedSenderQuery, threshold, maxThreads || 50);
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'inspectMailboxHistorySenderPhase10',
+    processedThreads: summary.sampledThreads,
+    itemCount: Object.keys(summary.bucketCounts).length,
+    outcome: summary.sampledThreads ? 'mailbox-history-sender-inspected' : 'mailbox-history-sender-empty',
+    notes: `sender=${normalizedSenderQuery}; start=${summary.startDate}; sampled=${summary.sampledThreads}`
+  });
+
+  return summary;
+}
+
+function inspectLogRotationControlSurfacePhase10() {
+  const preferenceKeys = ['logRotationEnabled', 'logRetentionDays'];
+  const statusKeys = ['log-rotation-last-status', 'log-rotation-retention-days', 'phase10-last-checkpoint'];
+  const preferences = readNamedPreferenceRowsPhase10_(preferenceKeys);
+  const controlSurfaceRows = readNamedControlSurfaceRowsPhase10_(statusKeys);
+  const latestByEntryPoint = readLatestRunLogEntriesByEntryPoint_();
+  const latestCheckpoint = pickLatestRunEntry_([
+    latestByEntryPoint.runPhase10ValidationCheckpoint,
+    latestByEntryPoint.runPhase10ExtendedValidationCheckpoint
+  ]);
+  const recentRunRows = [
+    buildRecentRunSummaryRow_({ label: 'Phase 10 log rotation', staleHours: 72 }, latestByEntryPoint.rotateOperationalLogsPhase10),
+    buildRecentRunSummaryRow_({ label: 'Phase 10 validation checkpoint', staleHours: 72 }, latestCheckpoint)
+  ].map(row => ({
+    family: row[0],
+    latestLocal: row[1],
+    entryPoint: row[2],
+    status: row[3],
+    processedThreads: row[4],
+    primaryCount: row[5],
+    notes: row[6],
+    nextAction: row[7]
+  }));
+
+  const archiveHealth = buildPhase10LogRotationSpecs_().map(spec => {
+    const activeSheet = spec.getSheet();
+    const archiveName = `${spec.sheetName}Archive`;
+    const archiveSheet = getLogSpreadsheet_().getSheetByName(archiveName);
+    return {
+      sheetName: spec.sheetName,
+      activeRows: Math.max(0, activeSheet.getLastRow() - 1),
+      archiveSheetName: archiveName,
+      archiveExists: Boolean(archiveSheet),
+      archiveRows: archiveSheet ? Math.max(0, archiveSheet.getLastRow() - 1) : 0
+    };
+  });
+
+  return {
+    preferences: preferences,
+    controlSurfaceRows: controlSurfaceRows,
+    recentRunRows: recentRunRows,
+    latestRunLog: {
+      rotateOperationalLogsPhase10: formatRunLogInspectionEntry_(latestByEntryPoint.rotateOperationalLogsPhase10),
+      runPhase10ValidationCheckpoint: formatRunLogInspectionEntry_(latestCheckpoint)
+    },
+    archiveHealth: archiveHealth
+  };
+}
+
+function readNamedPreferenceRowsPhase10_(keys) {
+  const wanted = new Set((keys || []).map(key => String(key || '').trim()).filter(Boolean));
+  const sheet = getOrCreatePreferencesSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1 || !wanted.size) return [];
+
+  return sheet.getRange(2, 1, lastRow - 1, 4).getDisplayValues()
+    .filter(row => wanted.has(String(row[0] || '').trim()))
+    .map(row => ({
+      key: row[0] || '',
+      value: row[1] || '',
+      description: row[2] || '',
+      enabled: row[3] || ''
+    }));
+}
+
+function readNamedControlSurfaceRowsPhase10_(keys) {
+  const wanted = new Set((keys || []).map(key => String(key || '').trim()).filter(Boolean));
+  const sheet = getOrCreateControlSurfaceStatusSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1 || !wanted.size) return [];
+
+  return sheet.getRange(2, 1, lastRow - 1, 4).getDisplayValues()
+    .filter(row => wanted.has(String(row[0] || '').trim()))
+    .map(row => ({
+      metric: row[0] || '',
+      value: row[1] || '',
+      meaning: row[2] || '',
+      nextAction: row[3] || ''
+    }));
+}
+
+function formatRunLogInspectionEntry_(entry) {
+  if (!entry) return null;
+  return {
+    timestamp: formatControlSurfaceTimestamp_(entry.timestamp),
+    entryPoint: entry.entryPoint,
+    outcome: entry.outcome,
+    processedThreads: entry.processedThreads,
+    primaryCount: entry.primaryCount,
+    notes: entry.notes
+  };
+}
+
+function coerceHistoricalAnalysisDate_(value) {
+  if (value instanceof Date) return value;
+  const parsed = new Date(value);
+  if (String(parsed) === 'Invalid Date') {
+    throw new Error(`Invalid start date: ${value}`);
+  }
+  return parsed;
+}
+
+function buildHistoricalClassificationSummary_(startDate, topN, minSenderCount) {
+  const rows = readDecisionRowsSinceDate_(startDate);
+  const senderMap = {};
+  const bucketCounts = {};
+  const monthlyCounts = {};
+
+  rows.forEach(row => {
+    const sender = extractSenderKey_(row.from) || String(row.from || '').trim().toLowerCase() || '(unknown)';
+    const bucket = classifyDecisionRowBucket_(row);
+    const month = row.timestamp instanceof Date ? Utilities.formatDate(row.timestamp, Session.getScriptTimeZone(), 'yyyy-MM') : 'unknown';
+
+    bucketCounts[bucket] = (bucketCounts[bucket] || 0) + 1;
+    monthlyCounts[month] = monthlyCounts[month] || {};
+    monthlyCounts[month][bucket] = (monthlyCounts[month][bucket] || 0) + 1;
+
+    if (!senderMap[sender]) {
+      senderMap[sender] = {
+        sender: sender,
+        total: 0,
+        buckets: {},
+        examples: {},
+        latestTimestamp: null
+      };
+    }
+
+    const entry = senderMap[sender];
+    entry.total += 1;
+    entry.buckets[bucket] = (entry.buckets[bucket] || 0) + 1;
+    if (!entry.examples[bucket]) {
+      entry.examples[bucket] = truncateRunNote_(String(row.subject || '').trim(), 140);
+    }
+    if (row.timestamp instanceof Date && (!entry.latestTimestamp || entry.latestTimestamp.getTime() < row.timestamp.getTime())) {
+      entry.latestTimestamp = row.timestamp;
+    }
+  });
+
+  const senders = Object.keys(senderMap).map(key => {
+    const entry = senderMap[key];
+    const bucketNames = Object.keys(entry.buckets).sort((left, right) => entry.buckets[right] - entry.buckets[left]);
+    const dominantBucket = bucketNames[0] || 'other';
+    const semanticBuckets = bucketNames.filter(name => entry.buckets[name] > 0);
+    return {
+      sender: entry.sender,
+      total: entry.total,
+      dominantBucket: dominantBucket,
+      dominantCount: entry.buckets[dominantBucket] || 0,
+      bucketMix: bucketNames.map(name => ({ bucket: name, count: entry.buckets[name], sampleSubject: entry.examples[name] || '' })),
+      latestTimestamp: entry.latestTimestamp ? formatControlSurfaceTimestamp_(entry.latestTimestamp) : '',
+      mixed: semanticBuckets.length > 1
+    };
+  }).sort((left, right) => right.total - left.total);
+
+  const filteredSenders = senders.filter(entry => entry.total >= minSenderCount);
+  const topByBucket = ['review-only', 'explicit-fyi', 'notification', 'news-blank', 'news-with-workflow', 'to-respond', 'important', 'commercial', 'other']
+    .reduce((result, bucket) => {
+      result[bucket] = filteredSenders
+        .filter(entry => entry.dominantBucket === bucket)
+        .slice(0, topN);
+      return result;
+    }, {});
+
+  const mixedSenders = filteredSenders
+    .filter(entry => entry.mixed)
+    .slice(0, topN);
+
+  return {
+    startDate: Utilities.formatDate(startDate, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+    rowsAnalyzed: rows.length,
+    senderCount: senders.length,
+    bucketCounts: bucketCounts,
+    monthlyCounts: monthlyCounts,
+    topByBucket: topByBucket,
+    mixedSenders: mixedSenders,
+    notes: buildHistoricalClassificationNotes_(bucketCounts, mixedSenders)
+  };
+}
+
+function readDecisionRowsSinceDate_(startDate) {
+  const sheet = getOrCreateDecisionLogSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return [];
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+  return values.map(row => ({
+    timestamp: row[0],
+    mode: String(row[1] || ''),
+    threadId: String(row[2] || ''),
+    from: String(row[3] || ''),
+    subject: String(row[4] || ''),
+    reason: String(row[5] || ''),
+    appliedLabels: String(row[6] || ''),
+    archived: String(row[7] || '')
+  })).filter(row => row.timestamp instanceof Date && row.timestamp.getTime() >= startDate.getTime());
+}
+
+function classifyDecisionRowBucket_(row) {
+  const labels = String(row.appliedLabels || '');
+  if (hasAppliedLabel_(labels, CONFIG.labels.toRespond)) return 'to-respond';
+  if (hasAppliedLabel_(labels, CONFIG.labels.notification)) return hasAppliedLabel_(labels, CONFIG.labels.newsDigest) ? 'news-with-workflow' : 'notification';
+  if (hasAppliedLabel_(labels, CONFIG.labels.fyi)) return hasAppliedLabel_(labels, CONFIG.labels.newsDigest) ? 'news-with-workflow' : 'explicit-fyi';
+  if (hasExactAppliedLabels_(labels, [CONFIG.labels.review])) return 'review-only';
+  if (hasAppliedLabel_(labels, CONFIG.labels.newsDigest)) return 'news-blank';
+  if (hasAnyAppliedLabel_(labels, [CONFIG.labels.importantServices, CONFIG.labels.importantFinance, CONFIG.labels.importantShipping, CONFIG.labels.importantCalendar, CONFIG.labels.importantOpportunities])) return 'important';
+  if (hasAnyAppliedLabel_(labels, [CONFIG.labels.commercialNewsletters, CONFIG.labels.commercialAds, CONFIG.labels.commercialCampaigns])) return 'commercial';
+  return 'other';
+}
+
+function buildHistoricalClassificationNotes_(bucketCounts, mixedSenders) {
+  const notes = [];
+  if ((bucketCounts['review-only'] || 0) > (bucketCounts['explicit-fyi'] || 0) * 2) {
+    notes.push('Review-only volume is much higher than explicit FYI volume; there may still be senders that deserve clearer FYI/notification/news treatment.');
+  }
+  if (mixedSenders.length) {
+    notes.push('Mixed senders are the best place to inspect for missing sender-specific rules or inconsistent semantics.');
+  }
+  if ((bucketCounts['news-with-workflow'] || 0) > 0) {
+    notes.push('There are still news rows carrying workflow labels; verify those were intentional rather than semantic drift.');
+  }
+  return notes;
+}
+
+function buildMailboxHistorySummary_(startDate, maxThreads, topN, minSenderCount) {
+  const query = `after:${Utilities.formatDate(startDate, Session.getScriptTimeZone(), 'yyyy/MM/dd')} -in:trash -in:spam`;
+  const pageSize = 100;
+  const senderMap = {};
+  const bucketCounts = {};
+  const monthlyCounts = {};
+  let offset = 0;
+  let threadsAnalyzed = 0;
+  let fetched = [];
+  let truncated = false;
+
+  while (threadsAnalyzed < maxThreads) {
+    fetched = GmailApp.search(query, offset, Math.min(pageSize, maxThreads - threadsAnalyzed));
+    if (!fetched.length) break;
+
+    fetched.forEach(thread => {
+      const labels = thread.getLabels().map(label => label.getName());
+      const bucket = classifyMailboxLabelBucket_(labels);
+      const sender = extractSenderKey_(selectRepresentativeMessageForHistory_(thread).getFrom()) || '(unknown)';
+      const lastDate = thread.getLastMessageDate();
+      const month = lastDate instanceof Date ? Utilities.formatDate(lastDate, Session.getScriptTimeZone(), 'yyyy-MM') : 'unknown';
+      const subject = String(thread.getFirstMessageSubject() || '').trim();
+
+      bucketCounts[bucket] = (bucketCounts[bucket] || 0) + 1;
+      monthlyCounts[month] = monthlyCounts[month] || {};
+      monthlyCounts[month][bucket] = (monthlyCounts[month][bucket] || 0) + 1;
+
+      if (!senderMap[sender]) {
+        senderMap[sender] = {
+          sender: sender,
+          total: 0,
+          buckets: {},
+          examples: {},
+          latestTimestamp: null
+        };
+      }
+
+      const entry = senderMap[sender];
+      entry.total += 1;
+      entry.buckets[bucket] = (entry.buckets[bucket] || 0) + 1;
+      if (!entry.examples[bucket]) entry.examples[bucket] = truncateRunNote_(subject, 140);
+      if (lastDate instanceof Date && (!entry.latestTimestamp || entry.latestTimestamp.getTime() < lastDate.getTime())) {
+        entry.latestTimestamp = lastDate;
+      }
+    });
+
+    threadsAnalyzed += fetched.length;
+    offset += fetched.length;
+    if (fetched.length < pageSize) break;
+  }
+
+  if (threadsAnalyzed >= maxThreads && fetched.length === pageSize) {
+    truncated = true;
+  }
+
+  const senders = Object.keys(senderMap).map(key => finalizeMailboxHistorySenderEntry_(senderMap[key]))
+    .sort((left, right) => right.total - left.total);
+
+  const filteredSenders = senders.filter(entry => entry.total >= minSenderCount);
+  const topByBucket = ['review-only', 'explicit-fyi', 'notification', 'news-blank', 'news-with-workflow', 'to-respond', 'important', 'commercial', 'other']
+    .reduce((result, bucket) => {
+      result[bucket] = filteredSenders.filter(entry => entry.dominantBucket === bucket).slice(0, topN);
+      return result;
+    }, {});
+
+  const mixedSenders = filteredSenders.filter(entry => entry.mixed).slice(0, topN);
+
+  return {
+    startDate: Utilities.formatDate(startDate, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+    query: query,
+    truncated: truncated,
+    threadsAnalyzed: threadsAnalyzed,
+    senderCount: senders.length,
+    bucketCounts: bucketCounts,
+    monthlyCounts: monthlyCounts,
+    topByBucket: topByBucket,
+    mixedSenders: mixedSenders,
+    notes: buildHistoricalClassificationNotes_(bucketCounts, mixedSenders)
+  };
+}
+
+function buildMailboxHistoryByBucketSummary_(startDate, perBucketMax, topN, minSenderCount) {
+  const bucketQueries = getMailboxHistoryBucketQueries_(startDate);
+  const senderMap = {};
+  const bucketSamples = {};
+  let totalThreadsSampled = 0;
+
+  bucketQueries.forEach(definition => {
+    const threads = GmailApp.search(definition.query, 0, perBucketMax);
+    totalThreadsSampled += threads.length;
+    bucketSamples[definition.bucket] = {
+      query: definition.query,
+      sampledThreads: threads.length,
+      topSenders: []
+    };
+
+    threads.forEach(thread => {
+      const sender = extractSenderKey_(selectRepresentativeMessageForHistory_(thread).getFrom()) || '(unknown)';
+      const subject = String(thread.getFirstMessageSubject() || '').trim();
+      const lastDate = thread.getLastMessageDate();
+
+      if (!senderMap[sender]) {
+        senderMap[sender] = {
+          sender: sender,
+          total: 0,
+          buckets: {},
+          examples: {},
+          latestTimestamp: null
+        };
+      }
+
+      const entry = senderMap[sender];
+      entry.total += 1;
+      entry.buckets[definition.bucket] = (entry.buckets[definition.bucket] || 0) + 1;
+      if (!entry.examples[definition.bucket]) entry.examples[definition.bucket] = truncateRunNote_(subject, 140);
+      if (lastDate instanceof Date && (!entry.latestTimestamp || entry.latestTimestamp.getTime() < lastDate.getTime())) {
+        entry.latestTimestamp = lastDate;
+      }
+    });
+  });
+
+  const senders = Object.keys(senderMap).map(key => finalizeMailboxHistorySenderEntry_(senderMap[key]))
+    .sort((left, right) => right.total - left.total);
+
+  bucketQueries.forEach(definition => {
+    bucketSamples[definition.bucket].topSenders = senders
+      .filter(entry => (entry.bucketMix.find(item => item.bucket === definition.bucket) || {}).count >= minSenderCount)
+      .sort((left, right) => {
+        const leftCount = (left.bucketMix.find(item => item.bucket === definition.bucket) || {}).count || 0;
+        const rightCount = (right.bucketMix.find(item => item.bucket === definition.bucket) || {}).count || 0;
+        return rightCount - leftCount;
+      })
+      .slice(0, topN)
+      .map(entry => ({
+        sender: entry.sender,
+        count: (entry.bucketMix.find(item => item.bucket === definition.bucket) || {}).count || 0,
+        sampleSubject: (entry.bucketMix.find(item => item.bucket === definition.bucket) || {}).sampleSubject || '',
+        latestTimestamp: entry.latestTimestamp,
+        mixed: entry.mixed
+      }));
+  });
+
+  const mixedSenders = senders.filter(entry => entry.mixed && entry.total >= minSenderCount).slice(0, topN);
+
+  return {
+    startDate: Utilities.formatDate(startDate, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+    perBucketMax: perBucketMax,
+    totalThreadsSampled: totalThreadsSampled,
+    bucketSamples: bucketSamples,
+    mixedSenders: mixedSenders,
+    notes: [
+      'Bucket queries sample current mailbox labels directly, so this is better for January-forward semantics than DecisionLog alone.',
+      'Mixed senders appearing across review/FYI/notification/news are the main rule-tuning candidates.'
+    ]
+  };
+}
+
+function buildMailboxHistorySenderSummary_(senderQuery, startDate, maxThreads) {
+  const normalizedSender = String(senderQuery || '').trim().toLowerCase();
+  const after = Utilities.formatDate(startDate, Session.getScriptTimeZone(), 'yyyy/MM/dd');
+  const query = `after:${after} -in:trash -in:spam from:"${normalizedSender.replace(/"/g, '\\"')}"`;
+  const threads = GmailApp.search(query, 0, maxThreads);
+  const bucketCounts = {};
+  const examples = [];
+
+  threads.forEach(thread => {
+    const labels = thread.getLabels().map(label => label.getName());
+    const bucket = classifyMailboxLabelBucket_(labels);
+    bucketCounts[bucket] = (bucketCounts[bucket] || 0) + 1;
+    examples.push({
+      subject: String(thread.getFirstMessageSubject() || '').trim(),
+      from: thread.getMessages().length ? String(thread.getMessages()[0].getFrom() || '') : '',
+      bucket: bucket,
+      labels: labels,
+      lastDate: formatControlSurfaceTimestamp_(thread.getLastMessageDate()),
+      messageCount: thread.getMessageCount()
+    });
+  });
+
+  return {
+    startDate: Utilities.formatDate(startDate, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+    senderQuery: normalizedSender,
+    query: query,
+    sampledThreads: threads.length,
+    bucketCounts: bucketCounts,
+    examples: examples.slice(0, 25),
+    notes: threads.length
+      ? ['Use these examples to decide whether the sender needs a stronger explicit sender rule or only a targeted historical reclassification pass.']
+      : ['No matching mailbox threads were found for this sender query in the requested date window.']
+  };
+}
+
+function getMailboxHistoryBucketQueries_(startDate) {
+  const after = Utilities.formatDate(startDate, Session.getScriptTimeZone(), 'yyyy/MM/dd');
+  const q = query => `after:${after} -in:trash -in:spam ${query}`;
+  return [
+    { bucket: 'review-only', query: q(`label:"${CONFIG.labels.review}" -label:"${CONFIG.labels.fyi}" -label:"${CONFIG.labels.notification}" -label:"${CONFIG.labels.newsDigest}" -label:"${CONFIG.labels.toRespond}"`) },
+    { bucket: 'explicit-fyi', query: q(`label:"${CONFIG.labels.fyi}"`) },
+    { bucket: 'notification', query: q(`label:"${CONFIG.labels.notification}"`) },
+    { bucket: 'news-blank', query: q(`label:"${CONFIG.labels.newsDigest}" -label:"${CONFIG.labels.fyi}" -label:"${CONFIG.labels.notification}" -label:"${CONFIG.labels.toRespond}" -label:"${CONFIG.labels.review}"`) },
+    { bucket: 'to-respond', query: q(`label:"${CONFIG.labels.toRespond}"`) },
+    { bucket: 'important', query: q(`{label:"${CONFIG.labels.importantServices}" OR label:"${CONFIG.labels.importantFinance}" OR label:"${CONFIG.labels.importantShipping}" OR label:"${CONFIG.labels.importantCalendar}" OR label:"${CONFIG.labels.importantOpportunities}"}`) },
+    { bucket: 'commercial', query: q(`{label:"${CONFIG.labels.commercialNewsletters}" OR label:"${CONFIG.labels.commercialAds}" OR label:"${CONFIG.labels.commercialCampaigns}"}`) }
+  ];
+}
+
+function finalizeMailboxHistorySenderEntry_(entry) {
+  const bucketNames = Object.keys(entry.buckets).sort((left, right) => entry.buckets[right] - entry.buckets[left]);
+  const dominantBucket = bucketNames[0] || 'other';
+  return {
+    sender: entry.sender,
+    total: entry.total,
+    dominantBucket: dominantBucket,
+    dominantCount: entry.buckets[dominantBucket] || 0,
+    bucketMix: bucketNames.map(name => ({ bucket: name, count: entry.buckets[name], sampleSubject: entry.examples[name] || '' })),
+    latestTimestamp: entry.latestTimestamp ? formatControlSurfaceTimestamp_(entry.latestTimestamp) : '',
+    mixed: bucketNames.length > 1
+  };
+}
+
+function selectRepresentativeMessageForHistory_(thread) {
+  const messages = thread.getMessages();
+  return messages && messages.length ? messages[0] : thread.getMessages()[thread.getMessageCount() - 1];
+}
+
+function classifyMailboxLabelBucket_(labels) {
+  const labelString = (labels || []).join(', ');
+  return classifyDecisionRowBucket_({ appliedLabels: labelString });
+}
+
+function setTuningSuggestionStatusPhase10(rowNumber, status, note) {
+  const sheet = getOrCreateTuningSuggestionsSheet_();
+  const numericRow = Number(rowNumber);
+  if (!Number.isFinite(numericRow) || numericRow < 2) {
+    throw new Error(`Invalid tuning suggestion row: ${rowNumber}`);
+  }
+
+  const normalizedStatus = String(status || '').trim().toLowerCase();
+  if (!normalizedStatus) {
+    throw new Error('Status is required');
+  }
+
+  sheet.getRange(numericRow, 10).setValue(normalizedStatus);
+  if (note !== undefined && note !== null && String(note).trim()) {
+    const noteCell = sheet.getRange(numericRow, 11);
+    const existing = String(noteCell.getDisplayValue() || '').trim();
+    const appended = existing ? `${existing}; ${String(note).trim()}` : String(note).trim();
+    noteCell.setValue(appended);
+  }
+
+  const category = String(sheet.getRange(numericRow, 2).getDisplayValue() || '').trim();
+  const target = String(sheet.getRange(numericRow, 4).getDisplayValue() || '').trim();
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'setTuningSuggestionStatusPhase10',
+    processedThreads: 1,
+    itemCount: 1,
+    outcome: `tuning-status-${normalizedStatus}`,
+    notes: `row=${numericRow}; category=${category}; target=${target}`
+  });
+
+  return {
+    rowNumber: numericRow,
+    status: normalizedStatus,
+    category: category,
+    target: target
+  };
+}
+
+
+function rebuildRecentRunSummarySheet_(sheet) {
+  ensureRecentRunSummaryHeader_(sheet);
+  const latestByEntryPoint = readLatestRunLogEntriesByEntryPoint_();
+  const families = buildRecentRunSummaryFamilies_();
+  const rows = families.map(family => {
+    const match = family.entryPoints.map(entryPoint => latestByEntryPoint[entryPoint]).find(Boolean);
+    return buildRecentRunSummaryRow_(family, match);
+  });
+
+  const values = rows.length ? rows : [[
+    'info',
+    '',
+    '',
+    'no-runlog-data',
+    '',
+    '',
+    'RunLog has no non-header rows yet.',
+    'Run a dry-run, review loop, validation checkpoint, or wrapper before using this sheet.'
+  ]];
+
+  const maxRowsToClear = Math.max(sheet.getLastRow() - 1, values.length, 1);
+  sheet.getRange(2, 1, maxRowsToClear, 8).clearContent();
+  sheet.getRange(2, 1, values.length, values[0].length).setValues(values);
+  configureRecentRunSummarySheetUx_(sheet);
+
+  return {
+    totalFamilies: rows.length,
+    missingFamilies: rows.filter(row => row[3] === 'missing').length,
+    staleFamilies: rows.filter(row => row[3] === 'stale').length
+  };
+}
+
+function summarizeWorkflowAuditBucket_(rows, predicate) {
+  const matches = (rows || []).filter(row => predicate(row));
+  return {
+    count: matches.length,
+    example: formatWorkflowAuditExample_(matches[0])
+  };
+}
+
+function formatWorkflowAuditExample_(row) {
+  if (!row) return '';
+  const from = truncateRunNote_(String(row.from || '').trim(), 80);
+  const subject = truncateRunNote_(String(row.subject || '').trim(), 120);
+  if (from && subject) return `${from} — ${subject}`;
+  return from || subject || '';
+}
+
+function buildRecentRunSummaryFamilies_() {
+  return [
+    { label: 'Phase 10 review loop', entryPoints: ['runPhase10ReviewLoopOptionA'], staleHours: 72 },
+    { label: 'Phase 10 validation checkpoint', entryPoints: ['runPhase10ValidationCheckpoint'], staleHours: 72 },
+    { label: 'Phase 10 log rotation', entryPoints: ['rotateOperationalLogsPhase10'], staleHours: 72 },
+    { label: 'Automation health audit', entryPoints: ['runAutomationHealthAuditWrapper', 'auditAutomationHealth'], staleHours: 36 },
+    { label: 'Frequent processing wrapper', entryPoints: ['runFrequentProcessingLiveWrapper'], staleHours: 18 },
+    { label: 'Morning main digest wrapper', entryPoints: ['runMorningMainDigestLiveWrapper'], staleHours: 36 },
+    { label: 'Evening main digest wrapper', entryPoints: ['runEveningMainDigestLiveWrapper'], staleHours: 36 },
+    { label: 'Morning news digest wrapper', entryPoints: ['runMorningNewsDigestLiveWrapper'], staleHours: 36 },
+    { label: 'Evening news digest wrapper', entryPoints: ['runEveningNewsDigestLiveWrapper'], staleHours: 36 }
+  ];
+}
+
+function buildRecentRunSummaryRow_(family, run) {
+  if (!run) {
+    return [
+      family.label,
+      '',
+      '',
+      'missing',
+      '',
+      '',
+      'No RunLog entry found for this run family yet.',
+      'Run or wait for this helper/wrapper, then confirm it logs successfully.'
+    ];
+  }
+
+  const stale = isRecentRunSummaryStale_(run.timestamp, family.staleHours);
+  return [
+    family.label,
+    formatControlSurfaceTimestamp_(run.timestamp),
+    run.entryPoint,
+    stale ? 'stale' : (run.outcome || 'ok'),
+    run.processedThreads === undefined ? '' : run.processedThreads,
+    run.primaryCount === undefined ? '' : run.primaryCount,
+    stale ? `Last run is older than ${family.staleHours}h. ${run.notes || ''}`.trim() : (run.notes || ''),
+    stale ? 'Review trigger schedule / recent activity if this should have run more recently.' : buildRecentRunSummaryAction_(run)
+  ];
+}
+
+function buildRecentRunSummaryAction_(run) {
+  const outcome = String(run && run.outcome || '').trim().toLowerCase();
+  if (!outcome) return 'Review raw RunLog row if this result feels unclear.';
+  if (outcome.indexOf('failed') !== -1 || outcome.indexOf('error') !== -1) {
+    return 'Inspect RunLog notes and the related sheet/log before trusting this area.';
+  }
+  if (outcome.indexOf('warning') !== -1 || outcome.indexOf('skipped') !== -1 || outcome.indexOf('missing') !== -1 || outcome.indexOf('disabled') !== -1) {
+    return 'Inspect recent automation/control-surface state and decide whether intervention is needed.';
+  }
+  if (outcome.indexOf('no-imports') !== -1 || outcome.indexOf('no-approved') !== -1 || outcome.indexOf('empty') !== -1) {
+    return 'No action needed unless you expected work here.';
+  }
+  return 'Looks healthy; only dig deeper if another sheet suggests drift.';
+}
+
+function isRecentRunSummaryStale_(timestamp, staleHours) {
+  if (!(timestamp instanceof Date) || !Number.isFinite(staleHours)) return false;
+  return (new Date().getTime() - timestamp.getTime()) > staleHours * 60 * 60 * 1000;
+}
+
+function readLatestRunLogEntriesByEntryPoint_() {
+  const sheet = getOrCreateRunLogSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return {};
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+  const latestByEntryPoint = {};
+
+  values.forEach(row => {
+    const entryPoint = String(row[3] || '').trim();
+    const timestamp = row[0];
+    if (!entryPoint || !(timestamp instanceof Date)) return;
+    const current = latestByEntryPoint[entryPoint];
+    if (!current || current.timestamp.getTime() < timestamp.getTime()) {
+      latestByEntryPoint[entryPoint] = {
+        timestamp: timestamp,
+        runType: String(row[1] || '').trim(),
+        mode: String(row[2] || '').trim(),
+        entryPoint: entryPoint,
+        processedThreads: row[4],
+        primaryCount: row[5],
+        outcome: String(row[6] || '').trim(),
+        notes: String(row[7] || '').trim()
+      };
+    }
+  });
+
+  return latestByEntryPoint;
+}
+
+function pickLatestRunEntry_(entries) {
+  return (entries || []).filter(entry => entry && entry.timestamp instanceof Date)
+    .reduce((latest, entry) => {
+      if (!latest || latest.timestamp.getTime() < entry.timestamp.getTime()) return entry;
+      return latest;
+    }, null);
+}
+
+function hasAppliedLabel_(appliedLabels, labelName) {
+  if (!labelName) return false;
+  return String(appliedLabels || '').split(',').map(entry => entry.trim()).filter(Boolean).includes(labelName);
+}
+
+function hasAnyAppliedLabel_(appliedLabels, labelNames) {
+  return (labelNames || []).some(labelName => hasAppliedLabel_(appliedLabels, labelName));
+}
+
+function hasExactAppliedLabels_(appliedLabels, expectedLabels) {
+  const actual = String(appliedLabels || '').split(',').map(entry => entry.trim()).filter(Boolean);
+  const expected = (expectedLabels || []).filter(Boolean);
+  if (actual.length !== expected.length) return false;
+  return expected.every(labelName => actual.includes(labelName));
+}
+
+function styleControlSurfaceSheet_(sheet, widths) {
+  if (!sheet) return;
+  sheet.setFrozenRows(1);
+  sheet.getRange(1, 1, 1, sheet.getLastColumn() || widths.length).setFontWeight('bold').setBackground('#d9ead3');
+  (widths || []).forEach((width, index) => {
+    sheet.setColumnWidth(index + 1, width);
+  });
+}
+
+function setHeaderNotes_(sheet, notesByColumn) {
+  Object.keys(notesByColumn || {}).forEach(key => {
+    const column = Number(key);
+    if (!Number.isFinite(column) || column < 1) return;
+    sheet.getRange(1, column).setNote(notesByColumn[key]);
+  });
+}
+
+function setDropdownValidation_(sheet, startRow, column, rowCount, values) {
+  if (!sheet || !values || !values.length) return;
+  const validation = SpreadsheetApp.newDataValidation()
+    .requireValueInList(values, true)
+    .setAllowInvalid(true)
+    .build();
+  sheet.getRange(startRow, column, rowCount, 1).setDataValidation(validation);
+}
+
+function normalizeBlankCellRange_(sheet, startRow, column, defaultValue) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < startRow) return;
+  const range = sheet.getRange(startRow, column, lastRow - startRow + 1, 1);
+  const values = range.getDisplayValues();
+  let changed = false;
+
+  values.forEach(row => {
+    if (!String(row[0] || '').trim()) {
+      row[0] = defaultValue;
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    range.setValues(values);
+  }
+}
+
+function rebuildControlSurfaceStatusSheet_(sheet) {
+  const tuningSummary = summarizeTuningSuggestions_();
+  const aiSummary = summarizeAiRecommendations_();
+  const approvedRulesSummary = summarizeApprovedRules_();
+  const automationHealthSummary = summarizeAutomationHealthStatus_();
+  const workflowSummary = summarizeWorkflowHealthForStatus_();
+  const checkpointSummary = summarizeCheckpointRunStatus_();
+  const logRotationSummary = summarizeLogRotationStatusPhase10_();
+  const nextAction = buildControlSurfaceNextAction_(tuningSummary, aiSummary, workflowSummary, checkpointSummary);
+  const newsWorkflowLabel = CONFIG.newsWorkflowLabel ? CONFIG.newsWorkflowLabel : '(blank)';
+  const operatorStep1 = aiSummary.newCount
+    ? 'review AiRecommendations'
+    : tuningSummary.newCount
+      ? 'review TuningReviewQueue'
+      : 'check ControlSurfaceStatus';
+  const operatorStep1Action = aiSummary.newCount
+    ? 'Open AiRecommendations first, then mark rows approved/rejected/superseded when you agree or disagree.'
+    : tuningSummary.newCount
+      ? 'Open TuningReviewQueue, then update the referenced source rows in TuningSuggestions as approved, rejected, or superseded.'
+      : 'No fresh review work right now; use this sheet as the quick system overview.';
+  const importPending = tuningSummary.approved || aiSummary.approvedAutoApplyCount;
+  const operatorStep2 = importPending
+    ? 'run review/import loop'
+    : aiSummary.approvedManualCount
+      ? 'manual Phase 11 follow-through pending'
+      : 'no import work pending';
+  const operatorStep2Action = importPending
+    ? 'Run runPhase10ReviewLoopOptionA() to import approved tuning rows plus directly-applicable approved AiRecommendations, then refresh runtime.'
+    : aiSummary.approvedManualCount
+      ? 'One or more approved AiRecommendations still need manual follow-through (for example prefer-notification / prefer-to-respond guidance).'
+      : 'Import step is clear right now.';
+
+  const rows = [
+    ['Metric', 'Value', 'Meaning', 'Next action'],
+    ['last-updated', formatControlSurfaceTimestamp_(new Date()), 'When this dashboard was last rebuilt', nextAction],
+    ['operator-step-1', operatorStep1, 'First operator action in the current Sheets loop', operatorStep1Action],
+    ['operator-step-2', operatorStep2, 'Second operator action after review', operatorStep2Action],
+    ['operator-step-3', 'refresh + validate', 'Final operator action after changes', 'Run runPhase10ValidationCheckpoint() for the fast confidence pass, then use runPhase10ExtendedValidationCheckpoint() only when you want the heavier AI/tuning checks too.'],
+    ['workflow-review-default', 'Review/Ambiguous', 'Ambiguous mail should stay review-only and workflow-blank unless another rule classifies it more confidently', 'Use this as the baseline mental model for operator review'],
+    ['workflow-fyi-default', 'explicit only', 'FYI should be assigned intentionally for informational mail, not inferred from generic ambiguity', 'Use ApprovedRules fyi-sender or explicit model output when you really want FYI.'],
+    ['workflow-news-label', newsWorkflowLabel, 'Current workflow label applied to News/Digest items; blank keeps news separate from FYI/notification', CONFIG.newsWorkflowLabel ? 'Keep only if this is an intentional operator choice.' : 'Recommended default: leave blank unless you explicitly want FYI/notification on news.'],
+    ['workflow-audit-warnings', workflowSummary.warningCount, 'How many recent workflow-semantics warning buckets are currently active', workflowSummary.warningCount ? workflowSummary.nextAction : 'No current semantics drift warnings surfaced by WorkflowAudit.'],
+    ['workflow-legacy-review-plus-fyi', workflowSummary.legacyReviewFyiCount, 'Recent rows that still used the old Review + FYI combined shape', workflowSummary.legacyReviewFyiCount ? 'Inspect WorkflowAudit and the example row to find the remaining path.' : 'Healthy: no recent legacy review+FYI rows.'],
+    ['workflow-news-with-workflow', workflowSummary.newsWithWorkflowCount, 'Recent news rows that also carried a workflow label', workflowSummary.newsWithWorkflowCount && !CONFIG.newsWorkflowLabel ? 'Inspect WorkflowAudit unless this was an explicit operator choice.' : 'Healthy unless you intentionally configured newsWorkflowLabel.'],
+    ['workflow-archived-review', workflowSummary.archivedReviewCount, 'Recent Review/Ambiguous rows that were archived', workflowSummary.archivedReviewCount ? 'Confirm archived review rows were truly intentional.' : 'Healthy: no recent archived review rows.'],
+    ['phase10-last-checkpoint', checkpointSummary.value, 'Latest recorded Phase 10 checkpoint outcome from RunLog', checkpointSummary.nextAction],
+    ['log-rotation-last-status', logRotationSummary.status, 'Latest operational-log rotation outcome recorded in RunLog', logRotationSummary.nextAction],
+    ['log-rotation-retention-days', logRotationSummary.retentionDays, 'Current active-log retention window from Preferences', logRotationSummary.retentionHint],
+    ['automation-health-last-status', automationHealthSummary.status, 'Latest recorded automation-health outcome from AutomationHealthLog', automationHealthSummary.nextAction],
+    ['automation-health-last-alert-time', automationHealthSummary.timestamp, 'When the latest automation-health row was logged', ''],
+    ['automation-health-alert-email', automationHealthSummary.alertEmailStatus, 'Whether email escalation is enabled/configured in Preferences', automationHealthSummary.alertEmailNextAction],
+    ['tuning-total-rows', tuningSummary.totalRows, 'Total non-header rows currently in TuningSuggestions', ''],
+    ['tuning-new-actionable', tuningSummary.newCount, 'Real suggestions not yet reviewed', tuningSummary.newCount ? 'Review these in TuningSuggestions / TuningReviewQueue.' : ''],
+    ['tuning-no-suggestions-placeholders', tuningSummary.noSuggestionsOpen, 'Informational no-suggestions rows retained as queue anchors, not real review work', ''],
+    ['tuning-approved-pending-import', tuningSummary.approved, 'Suggestions marked approved and ready to import into ApprovedRules', tuningSummary.approved ? 'Run runPhase10ReviewLoopOptionA() to import and refresh runtime.' : ''],
+    ['tuning-rejected', tuningSummary.rejected, 'Suggestions explicitly rejected by operator review', ''],
+    ['tuning-imported', tuningSummary.imported, 'Suggestions already imported into ApprovedRules', ''],
+    ['tuning-superseded-or-reclassified', tuningSummary.superseded, 'Suggestions intentionally replaced by a better decision/path', ''],
+    ['ai-total-rows', aiSummary.totalRows, 'Total non-header rows currently in AiRecommendations', ''],
+    ['ai-new-actionable', aiSummary.newCount, 'AI recommendations not yet reviewed by the operator', aiSummary.newCount ? 'Review these in AiRecommendations.' : ''],
+    ['ai-approved-auto-apply', aiSummary.approvedAutoApplyCount, 'Approved AI recommendations that the review loop can apply directly into NewsSources or ApprovedRules', aiSummary.approvedAutoApplyCount ? 'Run runPhase10ReviewLoopOptionA() to apply these.' : ''],
+    ['ai-approved-manual-follow-through', aiSummary.approvedManualCount, 'Approved AI recommendations that still need manual judgment because no direct import path exists yet', aiSummary.approvedManualCount ? 'Handle these manually before closing them out.' : ''],
+    ['ai-applied', aiSummary.applied, 'AI recommendations already applied or explicitly closed with no runtime change', ''],
+    ['ai-rejected', aiSummary.rejected, 'AI recommendations explicitly rejected by the operator', ''],
+    ['ai-superseded-or-skipped', aiSummary.superseded + aiSummary.skipped, 'AI recommendations intentionally replaced, skipped, or otherwise closed without apply', ''],
+    ['approved-rules-total', approvedRulesSummary.totalRows, 'Total rows in ApprovedRules', ''],
+    ['approved-rules-active', approvedRulesSummary.activeRows, 'Rows currently enabled for runtime use', ''],
+    ['review-loop-state', nextAction, 'Simple operator-oriented status message', 'Use this as the default starting point for Option A workflow']
+  ];
+
+  sheet.clearContents();
+  sheet.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
+  sheet.getRange(2, 2, rows.length - 1, 1).setNumberFormat('@');
+  styleControlSurfaceSheet_(sheet, [220, 140, 360, 420]);
+  setHeaderNotes_(sheet, {
+    1: 'Status metric or queue label.',
+    2: 'Current value observed in the workbook.',
+    3: 'What the metric means operationally.',
+    4: 'Recommended next operator action.'
+  });
+
+  return {
+    tuningSummary: {
+      totalRows: tuningSummary.totalRows,
+      pending: tuningSummary.newCount + tuningSummary.approved,
+      approved: tuningSummary.approved,
+      imported: tuningSummary.imported,
+      rejected: tuningSummary.rejected,
+      superseded: tuningSummary.superseded,
+      newCount: tuningSummary.newCount,
+      noSuggestionsOpen: tuningSummary.noSuggestionsOpen
+    },
+    aiRecommendationsSummary: aiSummary,
+    approvedRulesSummary: approvedRulesSummary,
+    nextAction: nextAction
+  };
+}
+
+function summarizeTuningSuggestions_() {
+  const sheet = getOrCreateTuningSuggestionsSheet_();
+  const lastRow = sheet.getLastRow();
+  const summary = {
+    totalRows: Math.max(0, lastRow - 1),
+    newCount: 0,
+    noSuggestionsOpen: 0,
+    approved: 0,
+    rejected: 0,
+    imported: 0,
+    superseded: 0,
+    alreadyImported: 0,
+    skipped: 0
+  };
+
+  if (lastRow <= 1) return summary;
+
+  const values = sheet.getRange(2, 2, lastRow - 1, 9).getDisplayValues();
+  values.forEach(row => {
+    const category = String(row[0] || '').trim().toLowerCase();
+    const normalizedStatus = String(row[8] || '').trim().toLowerCase();
+    if (!normalizedStatus || normalizedStatus === 'new') {
+      if (category === 'no-suggestions') {
+        summary.noSuggestionsOpen += 1;
+        return;
+      }
+      summary.newCount += 1;
+      return;
+    }
+    if (normalizedStatus === 'approved') {
+      summary.approved += 1;
+      return;
+    }
+    if (normalizedStatus === 'rejected') {
+      summary.rejected += 1;
+      return;
+    }
+    if (normalizedStatus === 'imported') {
+      summary.imported += 1;
+      return;
+    }
+    if (normalizedStatus === 'already-imported') {
+      summary.alreadyImported += 1;
+      return;
+    }
+    if (normalizedStatus === 'skipped') {
+      summary.skipped += 1;
+      return;
+    }
+    if (normalizedStatus === 'superseded' || normalizedStatus === 'reclassified-shipping') {
+      summary.superseded += 1;
+    }
+  });
+
+  return summary;
+}
+
+function summarizeAiRecommendations_() {
+  const rows = readAiRecommendationsPhase11_();
+  const summary = {
+    totalRows: rows.length,
+    newCount: 0,
+    approved: 0,
+    approvedAutoApplyCount: 0,
+    approvedManualCount: 0,
+    applied: 0,
+    rejected: 0,
+    superseded: 0,
+    skipped: 0
+  };
+
+  rows.forEach(row => {
+    const status = String(row.status || '').trim().toLowerCase() || 'new';
+    if (status === 'new') {
+      summary.newCount += 1;
+      return;
+    }
+    if (status === 'approved') {
+      summary.approved += 1;
+      if (requiresManualPhase11FollowThrough_(row.proposedChange)) {
+        summary.approvedManualCount += 1;
+      } else {
+        summary.approvedAutoApplyCount += 1;
+      }
+      return;
+    }
+    if (status === 'applied' || status === 'imported' || status === 'already-imported' || status === 'done' || status === 'closed') {
+      summary.applied += 1;
+      return;
+    }
+    if (status === 'rejected') {
+      summary.rejected += 1;
+      return;
+    }
+    if (status === 'skipped') {
+      summary.skipped += 1;
+      return;
+    }
+    if (status === 'superseded') {
+      summary.superseded += 1;
+      return;
+    }
+  });
+
+  return summary;
+}
+
+function summarizeApprovedRules_() {
+  const rows = readApprovedRules_();
+  return {
+    totalRows: rows.length,
+    activeRows: rows.filter(row => isAffirmativeFlag_(row.approved)).length
+  };
+}
+
+function summarizeAutomationHealthStatus_() {
+  const prefMap = readPreferencesMap_();
+  const alertEnabled = /^(true|yes|1)$/i.test(String(prefMap.automationHealthAlertEnabled || '').trim());
+  const alertRecipient = String(prefMap.automationHealthAlertRecipient || '').trim();
+  const minSeverity = String(prefMap.automationHealthAlertMinSeverity || 'warning').trim().toLowerCase() || 'warning';
+  const latest = readLatestAutomationHealthRow_();
+
+  const alertEmailStatus = alertEnabled
+    ? (alertRecipient ? `enabled -> ${alertRecipient}` : 'enabled but no recipient configured')
+    : 'disabled';
+
+  return {
+    status: latest ? `${latest.severity || 'info'} / ${latest.status || 'unknown'}` : 'no-audit-data-yet',
+    timestamp: latest ? latest.timestamp : '',
+    nextAction: latest && latest.status !== 'healthy' ? 'Review AutomationHealthLog and recent RunLog rows.' : 'Healthy or no recent alerts logged.',
+    alertEmailStatus: `${alertEmailStatus}; min-severity=${minSeverity}`,
+    alertEmailNextAction: alertEnabled
+      ? (alertRecipient ? 'Email escalation is armed for qualifying alerts.' : 'Set automationHealthAlertRecipient to actually send alert emails.')
+      : 'Set automationHealthAlertEnabled=true only if you want email escalation.'
+  };
+}
+
+function summarizeLogRotationStatusPhase10_() {
+  const latest = readLatestRunLogEntriesByEntryPoint_().rotateOperationalLogsPhase10;
+  const retentionDays = Number(getPreferenceValue_('logRetentionDays', 7)) || 7;
+  const enabled = isAffirmativeFlag_(getPreferenceValue_('logRotationEnabled', true));
+
+  if (!enabled) {
+    return {
+      status: 'disabled',
+      retentionDays: retentionDays,
+      retentionHint: 'Set logRotationEnabled=true to keep active log sheets compact.',
+      nextAction: 'Log rotation is disabled; enable it if active log tabs start feeling heavy.'
+    };
+  }
+
+  if (!latest) {
+    return {
+      status: 'no-rotation-run-yet',
+      retentionDays: retentionDays,
+      retentionHint: `Active logs keep the last ${retentionDays} day(s) before archiving to *Archive sheets.`,
+      nextAction: 'Run rotateOperationalLogsPhase10() once or use the normal Phase 10 loop to seed the first archive pass.'
+    };
+  }
+
+  return {
+    status: latest.outcome || 'unknown',
+    retentionDays: retentionDays,
+    retentionHint: `Active logs keep the last ${retentionDays} day(s) before archiving to *Archive sheets.`,
+    nextAction: latest.primaryCount ? `Last rotation archived ${latest.primaryCount} row(s).` : 'No old rows needed archiving in the latest pass.'
+  };
+}
+
+function readLatestAutomationHealthRow_() {
+  const sheet = getOrCreateAutomationHealthLogSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return null;
+
+  const row = sheet.getRange(lastRow, 1, 1, 11).getDisplayValues()[0];
+  return {
+    timestamp: row[0] || '',
+    severity: row[1] || '',
+    functionName: row[2] || '',
+    scheduledLocal: row[3] || '',
+    status: row[4] || '',
+    notes: row[10] || ''
+  };
+}
+
+function buildControlSurfaceNextAction_(tuningSummary, aiSummary) {
+  if (arguments.length > 2) {
+    const workflowSummary = arguments[2] || {};
+    const checkpointSummary = arguments[3] || {};
+    if (workflowSummary.warningCount) {
+      return `WorkflowAudit is showing ${workflowSummary.warningCount} warning bucket(s); inspect semantics before treating the system as settled.`;
+    }
+    if (checkpointSummary && checkpointSummary.needsAttention) {
+      return checkpointSummary.nextAction;
+    }
+  }
+  if (aiSummary && aiSummary.approvedAutoApplyCount) {
+    return `There are ${aiSummary.approvedAutoApplyCount} approved AiRecommendations ready for direct apply.`;
+  }
+  if (tuningSummary.approved) {
+    return `There are ${tuningSummary.approved} approved tuning suggestions waiting for import.`;
+  }
+  if (aiSummary && aiSummary.approvedManualCount) {
+    return `There are ${aiSummary.approvedManualCount} approved AiRecommendations that still need manual follow-through.`;
+  }
+  if (aiSummary && aiSummary.newCount) {
+    return `There are ${aiSummary.newCount} new AiRecommendations waiting for review.`;
+  }
+  if (tuningSummary.newCount) {
+    return `There are ${tuningSummary.newCount} new tuning suggestions waiting for review.`;
+  }
+  if (tuningSummary.noSuggestionsOpen) {
+    return 'No actionable tuning suggestions right now.';
+  }
+  return 'No pending review/import work right now.';
+}
+
+function summarizeWorkflowHealthForStatus_() {
+  const snapshot = buildWorkflowAuditSnapshot_();
+  const warningCount = [
+    snapshot.legacyReviewFyi.count ? 1 : 0,
+    snapshot.newsWithWorkflow.count && !CONFIG.newsWorkflowLabel ? 1 : 0,
+    snapshot.archivedReview.count ? 1 : 0,
+    snapshot.rowsScanned ? 0 : 1
+  ].reduce((sum, value) => sum + value, 0);
+
+  return {
+    rowsScanned: snapshot.rowsScanned,
+    warningCount: warningCount,
+    legacyReviewFyiCount: snapshot.legacyReviewFyi.count,
+    newsWithWorkflowCount: snapshot.newsWithWorkflow.count,
+    archivedReviewCount: snapshot.archivedReview.count,
+    nextAction: !snapshot.rowsScanned
+      ? 'Run a dry-run or live processing pass, then rebuild WorkflowAudit.'
+      : 'Open WorkflowAudit for the representative row examples and confirm the remaining semantics drift is intentional.'
+  };
+}
+
+function summarizeCheckpointRunStatus_() {
+  const latestByEntryPoint = readLatestRunLogEntriesByEntryPoint_();
+  const latest = pickLatestRunEntry_([
+    latestByEntryPoint.runPhase10ValidationCheckpoint,
+    latestByEntryPoint.runPhase10ExtendedValidationCheckpoint
+  ]);
+  if (!latest) {
+    return {
+      value: 'no-checkpoint-yet',
+      nextAction: 'Run runPhase10ValidationCheckpoint() after meaningful control-surface changes.',
+      needsAttention: true
+    };
+  }
+
+  const outcome = String(latest.outcome || '').trim();
+  const notes = String(latest.notes || '').trim();
+  const value = `${formatControlSurfaceTimestamp_(latest.timestamp)} — ${outcome || 'unknown'}`;
+
+  if (/failed|error/i.test(outcome)) {
+    return {
+      value: value,
+      nextAction: notes ? `Latest checkpoint failed: ${truncateRunNote_(notes, 180)}` : 'Latest checkpoint failed; inspect ValidationStatus and RunLog.',
+      needsAttention: true
+    };
+  }
+
+  return {
+    value: value,
+    nextAction: notes ? `Latest checkpoint notes: ${truncateRunNote_(notes, 180)}` : 'Latest checkpoint looks healthy.',
+    needsAttention: false
+  };
+}
+
+function formatControlSurfaceTimestamp_(date) {
+  return Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
+}
+
+function readDigestSettingsMap_() {
+  const sheet = getOrCreateDigestSettingsSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return {};
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 5).getDisplayValues();
+  const result = {};
+
+  values.forEach(row => {
+    const digestType = (row[0] || '').trim();
+    const enabled = String(row[1] || '').trim().toLowerCase();
+    const lookbackQuery = (row[2] || '').trim();
+    const threadLimit = Number(row[3]);
+    const notes = (row[4] || '').trim();
+
+    if (!digestType) return;
+
+    result[digestType] = {
+      enabled: !enabled || enabled === 'yes' || enabled === 'true' || enabled === '1',
+      lookbackQuery: lookbackQuery || 'newer_than:1d',
+      threadLimit: Number.isFinite(threadLimit) && threadLimit > 0 ? threadLimit : null,
+      notes: notes
+    };
+  });
+
+  return result;
+}
+
+function getDigestSetting_(digestType) {
+  const settings = readDigestSettingsMap_();
+  return settings[digestType] || {
+    enabled: true,
+    lookbackQuery: 'newer_than:1d',
+    threadLimit: null,
+    notes: ''
+  };
+}
+
+function readNewsSourceConfig_() {
+  const sheet = getOrCreateNewsSourcesSheet_();
+  const lastRow = sheet.getLastRow();
+  const fallback = {
+    senders: (CONFIG.newsSenders || []).slice(),
+    excludedSenders: (CONFIG.newsExcludedSenders || []).slice()
+  };
+
+  if (lastRow <= 1) return fallback;
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 5).getDisplayValues();
+  const senders = [];
+  const excludedSenders = [];
+
+  values.forEach(row => {
+    const source = String(row[0] || '').trim().toLowerCase();
+    const type = String(row[1] || '').trim().toLowerCase();
+    const action = String(row[2] || '').trim().toLowerCase();
+    const enabled = String(row[3] || '').trim().toLowerCase();
+
+    if (!source || type !== 'sender') return;
+    if (enabled && enabled !== 'yes' && enabled !== 'true' && enabled !== '1') return;
+
+    if (action === 'exclude') {
+      excludedSenders.push(source);
+      return;
+    }
+
+    if (action === 'news') {
+      senders.push(source);
+    }
+  });
+
+  return {
+    senders: senders.length ? senders : fallback.senders,
+    excludedSenders: excludedSenders.length ? excludedSenders : fallback.excludedSenders
+  };
+}
+
+function refreshConfigFromPreferencesPhase10() {
+  return refreshConfigFromPreferencesPhase10_();
+}
+
+function refreshConfigFromPreferencesPhase10_(options) {
+  const settings = options || {};
+  CONFIG.dryRun = getPreferenceValue_('dryRun', CONFIG.dryRun);
+  CONFIG.enableAiForReview = getPreferenceValue_('enableAiForReview', CONFIG.enableAiForReview);
+  CONFIG.maxThreads = getPreferenceValue_('maxThreads', CONFIG.maxThreads);
+  CONFIG.digestThreadLimitPerSection = getPreferenceValue_('digestThreadLimitPerSection', CONFIG.digestThreadLimitPerSection);
+  CONFIG.newsDigestThreadLimit = getPreferenceValue_('newsDigestThreadLimit', CONFIG.newsDigestThreadLimit);
+  CONFIG.digestRecipient = getPreferenceValue_('digestRecipient', CONFIG.digestRecipient);
+  CONFIG.newsWorkflowLabel = getOptionalWorkflowPreferenceValue_('newsWorkflowLabel', CONFIG.newsWorkflowLabel);
+  CONFIG.automationHealthAlertEnabled = getPreferenceValue_('automationHealthAlertEnabled', CONFIG.automationHealthAlertEnabled);
+  CONFIG.automationHealthAlertRecipient = getPreferenceValue_('automationHealthAlertRecipient', CONFIG.automationHealthAlertRecipient);
+  CONFIG.automationHealthAlertMinSeverity = getPreferenceValue_('automationHealthAlertMinSeverity', CONFIG.automationHealthAlertMinSeverity);
+
+  const newsConfig = readNewsSourceConfig_();
+  CONFIG.newsSenders = newsConfig.senders;
+  CONFIG.newsExcludedSenders = newsConfig.excludedSenders;
+
+  const approvedRulesSummary = applyApprovedRulesToConfig_();
+
+  if (!settings.suppressLog) {
+    logRunSummary_({
+      runType: 'control-surface',
+      mode: 'internal',
+      entryPoint: 'refreshConfigFromPreferencesPhase10',
+      processedThreads: 0,
+      itemCount: 14 + approvedRulesSummary.appliedCount,
+      outcome: 'preferences-loaded',
+      notes: `Loaded preferences plus news sources (${CONFIG.newsSenders.length} includes, ${CONFIG.newsExcludedSenders.length} excludes); approved-rules-applied=${approvedRulesSummary.appliedCount}`
+    });
+  }
+
+  return {
+    dryRun: CONFIG.dryRun,
+    enableAiForReview: CONFIG.enableAiForReview,
+    maxThreads: CONFIG.maxThreads,
+    digestThreadLimitPerSection: CONFIG.digestThreadLimitPerSection,
+    newsDigestThreadLimit: CONFIG.newsDigestThreadLimit,
+    digestRecipient: CONFIG.digestRecipient,
+    newsWorkflowLabel: CONFIG.newsWorkflowLabel,
+    automationHealthAlertEnabled: CONFIG.automationHealthAlertEnabled,
+    automationHealthAlertRecipient: CONFIG.automationHealthAlertRecipient,
+    automationHealthAlertMinSeverity: CONFIG.automationHealthAlertMinSeverity,
+    newsSenders: CONFIG.newsSenders,
+    newsExcludedSenders: CONFIG.newsExcludedSenders,
+    approvedRulesApplied: approvedRulesSummary.appliedCount,
+    approvedRulesConfigured: approvedRulesSummary.approvedCount
+  };
+}
+
+function normalizePreferenceRowsPhase10_(sheet) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return;
+
+  const range = sheet.getRange(2, 1, lastRow - 1, 4);
+  const values = range.getDisplayValues();
+  let changed = false;
+
+  values.forEach(row => {
+    const key = String(row[0] || '').trim();
+    if (key === 'newsWorkflowLabel') {
+      row[2] = 'Optional workflow label for news items; leave blank to keep news separate from FYI/notification';
+      if (String(row[1] || '').trim() === '2: FYI') {
+        row[1] = '';
+      }
+      changed = true;
+      return;
+    }
+
+    if (key === 'automationHealthAlertEnabled') {
+      row[2] = 'If true, send email when automation-health audit detects qualifying alerts';
+      if (!String(row[1] || '').trim()) {
+        row[1] = 'false';
+      }
+      changed = true;
+      return;
+    }
+
+    if (key === 'automationHealthAlertRecipient') {
+      row[2] = 'Optional recipient for automation-health alert emails; leave blank to suppress sending';
+      changed = true;
+      return;
+    }
+
+    if (key === 'automationHealthAlertMinSeverity') {
+      row[2] = 'Minimum alert severity for email escalation: warning or error';
+      if (!String(row[1] || '').trim()) {
+        row[1] = 'warning';
+      }
+      changed = true;
+      return;
+    }
+
+    if (key === 'logRotationEnabled') {
+      row[2] = 'If true, archive old operational log rows out of the active workbook tabs during the Phase 10 loop';
+      if (!String(row[1] || '').trim()) {
+        row[1] = 'true';
+      }
+      changed = true;
+      return;
+    }
+
+    if (key === 'logRetentionDays') {
+      row[2] = 'How many days to keep in the active log tabs before rows move into *Archive sheets';
+      if (!String(row[1] || '').trim()) {
+        row[1] = '7';
+      }
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    range.setValues(values);
+  }
+
+  ensurePreferenceRowExists_(sheet, 'automationHealthAlertEnabled', 'false', 'If true, send email when automation-health audit detects qualifying alerts', 'yes');
+  ensurePreferenceRowExists_(sheet, 'automationHealthAlertRecipient', '', 'Optional recipient for automation-health alert emails; leave blank to suppress sending', 'yes');
+  ensurePreferenceRowExists_(sheet, 'automationHealthAlertMinSeverity', 'warning', 'Minimum alert severity for email escalation: warning or error', 'yes');
+  ensurePreferenceRowExists_(sheet, 'logRotationEnabled', 'true', 'If true, archive old operational log rows out of the active workbook tabs during the Phase 10 loop', 'yes');
+  ensurePreferenceRowExists_(sheet, 'logRetentionDays', '7', 'How many days to keep in the active log tabs before rows move into *Archive sheets', 'yes');
+}
+
+function ensurePreferenceRowExists_(sheet, key, value, description, enabled) {
+  if (!sheet || !key) return;
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    sheet.getRange(2, 1, 1, 4).setValues([[key, value, description, enabled || 'yes']]);
+    return;
+  }
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 4).getDisplayValues();
+  const existingIndex = values.findIndex(row => String(row[0] || '').trim() === key);
+  if (existingIndex >= 0) {
+    const rowNumber = existingIndex + 2;
+    sheet.getRange(rowNumber, 3).setValue(description);
+    if (!String(sheet.getRange(rowNumber, 4).getDisplayValue() || '').trim()) {
+      sheet.getRange(rowNumber, 4).setValue(enabled || 'yes');
+    }
+    return;
+  }
+
+  sheet.getRange(lastRow + 1, 1, 1, 4).setValues([[key, value, description, enabled || 'yes']]);
+}
