@@ -26,7 +26,7 @@ Implemented and in active use:
 - **Phase 8:** separate `News/Digest` lane with dedicated morning/evening news digests (shipped; remaining polish folded into Phase 10)
 - **Phase 9:** recommendation-first tuning suggestions via `TuningSuggestions` (shipped; remaining polish folded into Phase 10)
 - **Phase 10:** spreadsheet control surface with runtime-loaded preferences, approved-rule application, dashboard/validation helpers, targeted reclassification helpers, log rotation/archival, and the remaining live-operations polish (usable now; further polish is paused/on hold)
-- **Phase 11:** assisted AI expansion is now open, starting with review-first `AiRecommendations` output for operator-facing sender/routing suggestions
+- **Phase 11:** assisted AI expansion is live through a review-first operator loop, with `AiRecommendations` feeding direct sheet-backed imports where safe and leaving semantics guidance pending where manual judgment is still required
 - **Phase 12 (planned):** dedicated HTML operator UI after the Sheets workflow is proven
 
 Recent operational status:
@@ -34,8 +34,10 @@ Recent operational status:
 - live wrapper automation and time triggers are in place
 - approved sheet rules now affect runtime behavior
 - operator-friendly approved-rule aliases such as `shipping-sender`, `news-sender`, and `news-exclude-sender` are supported
-- the Phase 10 operator loop now centers on `ControlSurfaceStatus`, `ValidationStatus`, `RecentRunSummary`, `WorkflowAudit`, and `TuningReviewQueue`
+- the Phase 10/11 operator loop now centers on `ControlSurfaceStatus`, `ValidationStatus`, `RecentRunSummary`, `WorkflowAudit`, `TuningReviewQueue`, and `AiRecommendations`
 - new Phase 11 helpers `generateAiRecommendationsPhase11()`, `generateAiNewsSourceRecommendationsPhase11()`, and `generateAiWorkflowRecommendationsPhase11()` write AI-assisted review-first recommendations into `AiRecommendations`, including helper provenance and operator follow-through hints; duplicate still-open recommendations are refreshed in place so the sheet behaves more like a queue than an append-only log
+- approved Phase 11 recommendations with direct sheet mappings can now flow through `runPhase10ReviewLoopOptionA()`: direct news/rule changes are applied into `NewsSources` / `ApprovedRules`, while manual-only semantics guidance stays visibly pending in `AiRecommendations`
+- the Phase 11 operator-loop integration was deployed live on 2026-05-13 and validated with `syncApprovedAiRecommendationsPhase11()`, `rebuildControlSurfaceStatusPhase10()`, and `runPhase10ReviewLoopOptionA()`; the live status surface currently reports 47 new `AiRecommendations` waiting for review
 - targeted reclassification helpers now exist for catch-up relabeling when older mailbox state is blocking newer rule improvements
 - curated news handling was corrected recently so TLDR, Economist, Telecompaper, and Zeteo-style mail route to `News/Digest`, while Google Play / Play Store mail routes toward important service handling instead of news
 - the operator-approved Reuters decision is now encoded live: `dailybriefing@thomsonreuters.com` is an explicit `NewsSources` include and loads into runtime `newsSenders`

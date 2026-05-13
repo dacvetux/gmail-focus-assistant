@@ -16,7 +16,7 @@ Implemented and actively usable:
 - **Phase 8:** separate `News/Digest` lane with dedicated digests (shipped; residual polish now tracked under Phase 10)
 - **Phase 9:** recommendation-first tuning suggestions in `TuningSuggestions` (shipped; residual polish now tracked under Phase 10)
 - **Phase 10:** sheet-backed control surface with runtime-loaded preferences, approved rules, review/import workflow, validation checkpoint, status dashboard, and log rotation/archival (usable now; remaining polish is on hold)
-- **Phase 11:** first assisted-AI surfaces are now underway via `AiRecommendations`, `generateAiRecommendationsPhase11()`, `generateAiNewsSourceRecommendationsPhase11()`, and `generateAiWorkflowRecommendationsPhase11()`
+- **Phase 11:** assisted-AI review surfaces are live via `AiRecommendations`, `generateAiRecommendationsPhase11()`, `generateAiNewsSourceRecommendationsPhase11()`, and `generateAiWorkflowRecommendationsPhase11()`, with approved direct-mapping recommendations now flowing through the normal operator loop
 
 Operationally live now:
 - Apps Script API execution and `clasp run` are working again
@@ -65,12 +65,12 @@ Important tabs:
 
 Current loop:
 1. inspect `ControlSurfaceStatus` first for queue state, workflow-semantics warnings, and latest checkpoint status
-2. review actionable rows in `TuningReviewQueue`
-3. update the referenced source rows in `TuningSuggestions` as approved/rejected/superseded
-4. import approved suggestions into `ApprovedRules`
+2. review actionable rows in `AiRecommendations` and/or `TuningReviewQueue`
+3. update the referenced source rows in `AiRecommendations` / `TuningSuggestions` as approved/rejected/superseded
+4. run `runPhase10ReviewLoopOptionA()` to import approved tuning rows plus directly-applicable approved AI recommendations
 5. run `runPhase10ValidationCheckpoint()`
 6. optionally run `runPhase10ExtendedValidationCheckpoint()` when you want the heavier AI/tuning checks too
-7. inspect `ValidationStatus`, `RecentRunSummary`, `WorkflowAudit`, `TuningReviewQueue`, and `RunLog` only if `ControlSurfaceStatus` or the checkpoint suggests drift
+7. inspect `ValidationStatus`, `RecentRunSummary`, `WorkflowAudit`, `TuningReviewQueue`, `AiRecommendations`, and `RunLog` only if `ControlSurfaceStatus` or the checkpoint suggests drift
 8. use the `*Archive` sheets only when you need older log history beyond the active retention window
 
 ## Recent important changes
@@ -97,6 +97,8 @@ Current loop:
 - operational log rotation now archives older `DecisionLog`, `RunLog`, `DigestLog`, `AutomationHealthLog`, `DraftLog`, and `FollowUpLog` rows into matching `*Archive` sheets so the active tabs stay focused on recent activity
 - Phase 11 has now started with `generateAiRecommendationsPhase11()`, `generateAiNewsSourceRecommendationsPhase11()`, and `generateAiWorkflowRecommendationsPhase11()`, splitting general sender/routing recommendations, news-source-specific recommendations, and workflow-semantics recommendations into separate review-first passes in `AiRecommendations`
 - repeated runs of the same Phase 11 helper now refresh matching still-open `AiRecommendations` rows in place and log inserted vs refreshed counts, so the sheet behaves more like a queue than an append-only history
+- approved Phase 11 recommendations with direct mappings can now be applied through the normal sheet review loop: `runPhase10ReviewLoopOptionA()` imports direct news/rule changes and leaves manual-only semantics guidance visibly pending
+- the current live dashboard confirms the new loop is wired in: `ControlSurfaceStatus` now reports `AiRecommendations` queue counts and currently surfaces 47 new recommendations waiting for review
 - operator-approved live routing now includes Reuters `dailybriefing@thomsonreuters.com` as an explicit `NewsSources` include and Linkin Park `noreply@linkinpark.com` as an approved commercial sender
 - a focused post-approval cleanup pass was run live: Linkin Park recent mail reclassified successfully as commercial, while Reuters sender-history inspection confirms the explicit-news rule is the right long-term fix even though older preserved threads still need a broader catch-up pass if historical labels matter
 
@@ -117,6 +119,6 @@ Current loop:
 
 ## Next 3 practical milestones
 
-1. validate `generateAiRecommendationsPhase11()` output and tune it against real operator judgment
-2. expand the first AI recommendation loop into explicit news-source and workflow-semantics suggestions
+1. review the current 47-row `AiRecommendations` queue and approve/reject the best direct-mapping candidates
+2. tune recommendation quality against real operator judgment, especially around workflow-semantics suggestions that still intentionally require manual follow-through
 3. decide whether to run a broader historical Reuters catch-up pass later, since sender-history validation still shows older `news-blank` preserved threads after the explicit-news approval

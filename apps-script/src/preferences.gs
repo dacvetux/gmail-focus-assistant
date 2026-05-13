@@ -61,25 +61,28 @@ function upgradeControlSurfacePhase10OptionA() {
 
 function runPhase10ReviewLoopOptionA() {
   const syncSummary = syncApprovedRulesFromTuningSuggestionsPhase10();
+  const aiSyncSummary = syncApprovedAiRecommendationsPhase11();
   const refreshSummary = refreshConfigFromPreferencesPhase10_({ suppressLog: true });
   const logRotationSummary = rotateOperationalLogsPhase10();
   const tuningReviewQueueSummary = rebuildTuningReviewQueueSheet_(getOrCreateTuningReviewQueueSheet_());
   const statusSummary = rebuildControlSurfaceStatusPhase10();
+  const importedCount = syncSummary.importedCount + aiSyncSummary.appliedCount;
 
   logRunSummary_({
     runType: 'control-surface',
     mode: 'internal',
     entryPoint: 'runPhase10ReviewLoopOptionA',
-    processedThreads: statusSummary.tuningSummary.totalRows,
-    itemCount: syncSummary.importedCount,
-    outcome: syncSummary.importedCount ? 'review-loop-applied' : 'review-loop-no-imports',
-    notes: `approved-pending=${statusSummary.tuningSummary.approved}; imported=${syncSummary.importedCount}; approved-rules-configured=${refreshSummary.approvedRulesConfigured}; archived-log-rows=${logRotationSummary.archivedRows}`
+    processedThreads: statusSummary.tuningSummary.totalRows + statusSummary.aiRecommendationsSummary.totalRows,
+    itemCount: importedCount,
+    outcome: importedCount ? 'review-loop-applied' : 'review-loop-no-imports',
+    notes: `tuning-approved-pending=${statusSummary.tuningSummary.approved}; tuning-imported=${syncSummary.importedCount}; ai-approved-pending=${statusSummary.aiRecommendationsSummary.approved}; ai-applied=${aiSyncSummary.appliedCount}; ai-manual-pending=${aiSyncSummary.manualPendingCount}; approved-rules-configured=${refreshSummary.approvedRulesConfigured}; archived-log-rows=${logRotationSummary.archivedRows}`
   });
 
   const recentRunSummary = rebuildRecentRunSummarySheet_(getOrCreateRecentRunSummarySheet_());
 
   return {
     syncSummary: syncSummary,
+    aiSyncSummary: aiSyncSummary,
     refreshSummary: refreshSummary,
     logRotationSummary: logRotationSummary,
     tuningReviewQueueSummary: tuningReviewQueueSummary,
@@ -806,10 +809,10 @@ function rebuildControlSurfaceStatusPhase10() {
     runType: 'control-surface',
     mode: 'internal',
     entryPoint: 'rebuildControlSurfaceStatusPhase10',
-    processedThreads: summary.tuningSummary.totalRows,
-    itemCount: summary.tuningSummary.pending,
+    processedThreads: summary.tuningSummary.totalRows + summary.aiRecommendationsSummary.totalRows,
+    itemCount: summary.tuningSummary.pending + summary.aiRecommendationsSummary.approvedAutoApplyCount + summary.aiRecommendationsSummary.approvedManualCount,
     outcome: 'status-refreshed',
-    notes: `pending=${summary.tuningSummary.pending}; approved=${summary.tuningSummary.approved}; approved-rules=${summary.approvedRulesSummary.totalRows}`
+    notes: `tuning-pending=${summary.tuningSummary.pending}; ai-new=${summary.aiRecommendationsSummary.newCount}; ai-approved-auto=${summary.aiRecommendationsSummary.approvedAutoApplyCount}; ai-approved-manual=${summary.aiRecommendationsSummary.approvedManualCount}; approved-rules=${summary.approvedRulesSummary.totalRows}`
   });
 
   return summary;
@@ -1828,6 +1831,192 @@ function setTuningSuggestionStatusPhase10(rowNumber, status, note) {
   };
 }
 
+function syncApprovedAiRecommendationsPhase11() {
+  const rows = readAiRecommendationsPhase11_();
+  const approvedRows = rows.filter(row => row.status === 'approved');
+  let appliedCount = 0;
+  let manualPendingCount = 0;
+  let skippedCount = 0;
+
+  approvedRows.forEach(row => {
+    if (requiresManualPhase11FollowThrough_(row.proposedChange)) {
+      manualPendingCount += 1;
+      appendAiRecommendationNote_(row.rowNumber, 'manual follow-through still required; no direct sheet import path yet');
+      return;
+    }
+
+    const result = applyAiRecommendationPhase11_(row);
+    if (result.outcome === 'applied') {
+      setAiRecommendationStatusPhase11(row.rowNumber, 'applied', result.note);
+      appliedCount += 1;
+      return;
+    }
+
+    if (result.outcome === 'skipped') {
+      setAiRecommendationStatusPhase11(row.rowNumber, 'skipped', result.note);
+      skippedCount += 1;
+      return;
+    }
+
+    manualPendingCount += 1;
+    appendAiRecommendationNote_(row.rowNumber, result.note || 'manual follow-through still required');
+  });
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'syncApprovedAiRecommendationsPhase11',
+    processedThreads: approvedRows.length,
+    itemCount: appliedCount,
+    outcome: appliedCount ? 'ai-recommendations-applied' : (approvedRows.length ? 'ai-recommendations-manual-pending' : 'no-approved-ai-recommendations'),
+    notes: `approved=${approvedRows.length}; applied=${appliedCount}; manual-pending=${manualPendingCount}; skipped=${skippedCount}`
+  });
+
+  return {
+    approvedCount: approvedRows.length,
+    appliedCount: appliedCount,
+    manualPendingCount: manualPendingCount,
+    skippedCount: skippedCount
+  };
+}
+
+function readAiRecommendationsPhase11_() {
+  const sheet = getOrCreateAiRecommendationsSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return [];
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 15).getDisplayValues();
+  return values.map((row, index) => ({
+    rowNumber: index + 2,
+    phase: String(row[1] || '').trim(),
+    sourceHelper: String(row[2] || '').trim(),
+    candidateType: String(row[3] || '').trim(),
+    sender: String(row[4] || '').trim().toLowerCase(),
+    proposedChange: String(row[5] || '').trim(),
+    confidence: String(row[6] || '').trim(),
+    evidenceCount: row[7],
+    currentState: String(row[8] || '').trim(),
+    exampleSubject: String(row[9] || '').trim(),
+    recommendedWorkflow: String(row[10] || '').trim(),
+    operatorAction: String(row[11] || '').trim(),
+    reasoning: String(row[12] || '').trim(),
+    status: String(row[13] || '').trim().toLowerCase(),
+    notes: String(row[14] || '').trim()
+  }));
+}
+
+function requiresManualPhase11FollowThrough_(proposedChange) {
+  const normalized = String(proposedChange || '').trim();
+  return normalized === 'prefer-notification' || normalized === 'prefer-to-respond';
+}
+
+function applyAiRecommendationPhase11_(row) {
+  const proposedChange = String(row && row.proposedChange || '').trim();
+  const sender = String(row && row.sender || '').trim().toLowerCase();
+  const importNote = buildAiRecommendationImportNote_(row);
+
+  if (!sender) {
+    return { outcome: 'skipped', note: 'missing sender; could not apply recommendation' };
+  }
+
+  if (proposedChange === 'newsSenders') {
+    const result = upsertNewsSourcePhase10(sender, 'news', 'yes', importNote);
+    return { outcome: 'applied', note: `applied via NewsSources row ${result.rowNumber}` };
+  }
+
+  if (proposedChange === 'newsExcludedSenders') {
+    const result = upsertNewsSourcePhase10(sender, 'exclude', 'yes', importNote);
+    return { outcome: 'applied', note: `applied via NewsSources row ${result.rowNumber}` };
+  }
+
+  if (proposedChange === 'forceCommercialSenders') {
+    const result = upsertApprovedRulePhase10('commercial-sender', sender, 'add', 'yes', importNote);
+    return { outcome: 'applied', note: `applied via ApprovedRules row ${result.rowNumber}` };
+  }
+
+  if (proposedChange === 'forceImportantSenders') {
+    const result = upsertApprovedRulePhase10('important-sender', sender, 'add', 'yes', importNote);
+    return { outcome: 'applied', note: `applied via ApprovedRules row ${result.rowNumber}` };
+  }
+
+  if (proposedChange === 'forceShippingSenders') {
+    const result = upsertApprovedRulePhase10('shipping-sender', sender, 'add', 'yes', importNote);
+    return { outcome: 'applied', note: `applied via ApprovedRules row ${result.rowNumber}` };
+  }
+
+  if (proposedChange === 'forceFyiSenders') {
+    const result = upsertApprovedRulePhase10('fyi-sender', sender, 'add', 'yes', importNote);
+    return { outcome: 'applied', note: `applied via ApprovedRules row ${result.rowNumber}` };
+  }
+
+  if (proposedChange === 'historical-reclassification-only' || proposedChange === 'keep-review' || proposedChange === 'none') {
+    return { outcome: 'applied', note: 'operator accepted no runtime config change' };
+  }
+
+  return { outcome: 'manual-pending', note: `unsupported direct apply path for proposedChange=${proposedChange}` };
+}
+
+function buildAiRecommendationImportNote_(row) {
+  const parts = [
+    'imported from AiRecommendations',
+    row && row.sourceHelper ? `helper=${row.sourceHelper}` : '',
+    row && row.candidateType ? `candidate=${row.candidateType}` : '',
+    row && row.confidence ? `confidence=${row.confidence}` : ''
+  ].filter(Boolean);
+  return parts.join('; ');
+}
+
+function setAiRecommendationStatusPhase11(rowNumber, status, note) {
+  const sheet = getOrCreateAiRecommendationsSheet_();
+  const numericRow = Number(rowNumber);
+  if (!Number.isFinite(numericRow) || numericRow < 2) {
+    throw new Error(`Invalid AiRecommendations row: ${rowNumber}`);
+  }
+
+  const normalizedStatus = String(status || '').trim().toLowerCase();
+  if (!normalizedStatus) {
+    throw new Error('Status is required');
+  }
+
+  sheet.getRange(numericRow, 14).setValue(normalizedStatus);
+  if (note !== undefined && note !== null && String(note).trim()) {
+    appendAiRecommendationNote_(numericRow, note);
+  }
+
+  const sender = String(sheet.getRange(numericRow, 5).getDisplayValue() || '').trim().toLowerCase();
+  const proposedChange = String(sheet.getRange(numericRow, 6).getDisplayValue() || '').trim();
+
+  logRunSummary_({
+    runType: 'control-surface',
+    mode: 'internal',
+    entryPoint: 'setAiRecommendationStatusPhase11',
+    processedThreads: 1,
+    itemCount: 1,
+    outcome: `ai-recommendation-status-${normalizedStatus}`,
+    notes: `row=${numericRow}; sender=${sender}; proposedChange=${proposedChange}`
+  });
+
+  return {
+    rowNumber: numericRow,
+    status: normalizedStatus,
+    sender: sender,
+    proposedChange: proposedChange
+  };
+}
+
+function appendAiRecommendationNote_(rowNumber, note) {
+  if (note === undefined || note === null || !String(note).trim()) return;
+  const normalizedNote = String(note).trim();
+  const sheet = getOrCreateAiRecommendationsSheet_();
+  const noteCell = sheet.getRange(Number(rowNumber), 15);
+  const existing = String(noteCell.getDisplayValue() || '').trim();
+  if (existing.toLowerCase().indexOf(normalizedNote.toLowerCase()) !== -1) {
+    return;
+  }
+  const appended = existing ? `${existing}; ${normalizedNote}` : normalizedNote;
+  noteCell.setValue(appended);
+}
+
 function rebuildRecentRunSummarySheet_(sheet) {
   ensureRecentRunSummaryHeader_(sheet);
   const latestByEntryPoint = readLatestRunLogEntriesByEntryPoint_();
@@ -2038,19 +2227,41 @@ function normalizeBlankCellRange_(sheet, startRow, column, defaultValue) {
 
 function rebuildControlSurfaceStatusSheet_(sheet) {
   const tuningSummary = summarizeTuningSuggestions_();
+  const aiSummary = summarizeAiRecommendations_();
   const approvedRulesSummary = summarizeApprovedRules_();
   const automationHealthSummary = summarizeAutomationHealthStatus_();
   const workflowSummary = summarizeWorkflowHealthForStatus_();
   const checkpointSummary = summarizeCheckpointRunStatus_();
   const logRotationSummary = summarizeLogRotationStatusPhase10_();
-  const nextAction = buildControlSurfaceNextAction_(tuningSummary, workflowSummary, checkpointSummary);
+  const nextAction = buildControlSurfaceNextAction_(tuningSummary, aiSummary, workflowSummary, checkpointSummary);
   const newsWorkflowLabel = CONFIG.newsWorkflowLabel ? CONFIG.newsWorkflowLabel : '(blank)';
+  const operatorStep1 = aiSummary.newCount
+    ? 'review AiRecommendations'
+    : tuningSummary.newCount
+      ? 'review TuningReviewQueue'
+      : 'check ControlSurfaceStatus';
+  const operatorStep1Action = aiSummary.newCount
+    ? 'Open AiRecommendations first, then mark rows approved/rejected/superseded when you agree or disagree.'
+    : tuningSummary.newCount
+      ? 'Open TuningReviewQueue, then update the referenced source rows in TuningSuggestions as approved, rejected, or superseded.'
+      : 'No fresh review work right now; use this sheet as the quick system overview.';
+  const importPending = tuningSummary.approved || aiSummary.approvedAutoApplyCount;
+  const operatorStep2 = importPending
+    ? 'run review/import loop'
+    : aiSummary.approvedManualCount
+      ? 'manual Phase 11 follow-through pending'
+      : 'no import work pending';
+  const operatorStep2Action = importPending
+    ? 'Run runPhase10ReviewLoopOptionA() to import approved tuning rows plus directly-applicable approved AiRecommendations, then refresh runtime.'
+    : aiSummary.approvedManualCount
+      ? 'One or more approved AiRecommendations still need manual follow-through (for example prefer-notification / prefer-to-respond guidance).'
+      : 'Import step is clear right now.';
 
   const rows = [
     ['Metric', 'Value', 'Meaning', 'Next action'],
     ['last-updated', formatControlSurfaceTimestamp_(new Date()), 'When this dashboard was last rebuilt', nextAction],
-    ['operator-step-1', tuningSummary.newCount ? 'review TuningReviewQueue' : 'check ControlSurfaceStatus', 'First operator action in the Phase 10 loop', tuningSummary.newCount ? 'Open TuningReviewQueue, then update the referenced source rows in TuningSuggestions as approved, rejected, or superseded.' : 'No fresh review work right now; use this sheet as the quick system overview.'],
-    ['operator-step-2', tuningSummary.approved ? 'run review/import loop' : 'no import work pending', 'Second operator action after review', tuningSummary.approved ? 'Run runPhase10ReviewLoopOptionA() to import approved suggestions and refresh runtime.' : 'Import step is clear right now.'],
+    ['operator-step-1', operatorStep1, 'First operator action in the current Sheets loop', operatorStep1Action],
+    ['operator-step-2', operatorStep2, 'Second operator action after review', operatorStep2Action],
     ['operator-step-3', 'refresh + validate', 'Final operator action after changes', 'Run runPhase10ValidationCheckpoint() for the fast confidence pass, then use runPhase10ExtendedValidationCheckpoint() only when you want the heavier AI/tuning checks too.'],
     ['workflow-review-default', 'Review/Ambiguous', 'Ambiguous mail should stay review-only and workflow-blank unless another rule classifies it more confidently', 'Use this as the baseline mental model for operator review'],
     ['workflow-fyi-default', 'explicit only', 'FYI should be assigned intentionally for informational mail, not inferred from generic ambiguity', 'Use ApprovedRules fyi-sender or explicit model output when you really want FYI.'],
@@ -2066,12 +2277,19 @@ function rebuildControlSurfaceStatusSheet_(sheet) {
     ['automation-health-last-alert-time', automationHealthSummary.timestamp, 'When the latest automation-health row was logged', ''],
     ['automation-health-alert-email', automationHealthSummary.alertEmailStatus, 'Whether email escalation is enabled/configured in Preferences', automationHealthSummary.alertEmailNextAction],
     ['tuning-total-rows', tuningSummary.totalRows, 'Total non-header rows currently in TuningSuggestions', ''],
-    ['tuning-new-actionable', tuningSummary.newCount, 'Real suggestions not yet reviewed', tuningSummary.newCount ? 'Review these first in TuningSuggestions.' : ''],
+    ['tuning-new-actionable', tuningSummary.newCount, 'Real suggestions not yet reviewed', tuningSummary.newCount ? 'Review these in TuningSuggestions / TuningReviewQueue.' : ''],
     ['tuning-no-suggestions-placeholders', tuningSummary.noSuggestionsOpen, 'Informational no-suggestions rows retained as queue anchors, not real review work', ''],
     ['tuning-approved-pending-import', tuningSummary.approved, 'Suggestions marked approved and ready to import into ApprovedRules', tuningSummary.approved ? 'Run runPhase10ReviewLoopOptionA() to import and refresh runtime.' : ''],
     ['tuning-rejected', tuningSummary.rejected, 'Suggestions explicitly rejected by operator review', ''],
     ['tuning-imported', tuningSummary.imported, 'Suggestions already imported into ApprovedRules', ''],
     ['tuning-superseded-or-reclassified', tuningSummary.superseded, 'Suggestions intentionally replaced by a better decision/path', ''],
+    ['ai-total-rows', aiSummary.totalRows, 'Total non-header rows currently in AiRecommendations', ''],
+    ['ai-new-actionable', aiSummary.newCount, 'AI recommendations not yet reviewed by the operator', aiSummary.newCount ? 'Review these in AiRecommendations.' : ''],
+    ['ai-approved-auto-apply', aiSummary.approvedAutoApplyCount, 'Approved AI recommendations that the review loop can apply directly into NewsSources or ApprovedRules', aiSummary.approvedAutoApplyCount ? 'Run runPhase10ReviewLoopOptionA() to apply these.' : ''],
+    ['ai-approved-manual-follow-through', aiSummary.approvedManualCount, 'Approved AI recommendations that still need manual judgment because no direct import path exists yet', aiSummary.approvedManualCount ? 'Handle these manually before closing them out.' : ''],
+    ['ai-applied', aiSummary.applied, 'AI recommendations already applied or explicitly closed with no runtime change', ''],
+    ['ai-rejected', aiSummary.rejected, 'AI recommendations explicitly rejected by the operator', ''],
+    ['ai-superseded-or-skipped', aiSummary.superseded + aiSummary.skipped, 'AI recommendations intentionally replaced, skipped, or otherwise closed without apply', ''],
     ['approved-rules-total', approvedRulesSummary.totalRows, 'Total rows in ApprovedRules', ''],
     ['approved-rules-active', approvedRulesSummary.activeRows, 'Rows currently enabled for runtime use', ''],
     ['review-loop-state', nextAction, 'Simple operator-oriented status message', 'Use this as the default starting point for Option A workflow']
@@ -2099,6 +2317,7 @@ function rebuildControlSurfaceStatusSheet_(sheet) {
       newCount: tuningSummary.newCount,
       noSuggestionsOpen: tuningSummary.noSuggestionsOpen
     },
+    aiRecommendationsSummary: aiSummary,
     approvedRulesSummary: approvedRulesSummary,
     nextAction: nextAction
   };
@@ -2155,6 +2374,56 @@ function summarizeTuningSuggestions_() {
     }
     if (normalizedStatus === 'superseded' || normalizedStatus === 'reclassified-shipping') {
       summary.superseded += 1;
+    }
+  });
+
+  return summary;
+}
+
+function summarizeAiRecommendations_() {
+  const rows = readAiRecommendationsPhase11_();
+  const summary = {
+    totalRows: rows.length,
+    newCount: 0,
+    approved: 0,
+    approvedAutoApplyCount: 0,
+    approvedManualCount: 0,
+    applied: 0,
+    rejected: 0,
+    superseded: 0,
+    skipped: 0
+  };
+
+  rows.forEach(row => {
+    const status = String(row.status || '').trim().toLowerCase() || 'new';
+    if (status === 'new') {
+      summary.newCount += 1;
+      return;
+    }
+    if (status === 'approved') {
+      summary.approved += 1;
+      if (requiresManualPhase11FollowThrough_(row.proposedChange)) {
+        summary.approvedManualCount += 1;
+      } else {
+        summary.approvedAutoApplyCount += 1;
+      }
+      return;
+    }
+    if (status === 'applied' || status === 'imported' || status === 'already-imported' || status === 'done' || status === 'closed') {
+      summary.applied += 1;
+      return;
+    }
+    if (status === 'rejected') {
+      summary.rejected += 1;
+      return;
+    }
+    if (status === 'skipped') {
+      summary.skipped += 1;
+      return;
+    }
+    if (status === 'superseded') {
+      summary.superseded += 1;
+      return;
     }
   });
 
@@ -2238,10 +2507,10 @@ function readLatestAutomationHealthRow_() {
   };
 }
 
-function buildControlSurfaceNextAction_(tuningSummary) {
-  if (arguments.length > 1) {
-    const workflowSummary = arguments[1] || {};
-    const checkpointSummary = arguments[2] || {};
+function buildControlSurfaceNextAction_(tuningSummary, aiSummary) {
+  if (arguments.length > 2) {
+    const workflowSummary = arguments[2] || {};
+    const checkpointSummary = arguments[3] || {};
     if (workflowSummary.warningCount) {
       return `WorkflowAudit is showing ${workflowSummary.warningCount} warning bucket(s); inspect semantics before treating the system as settled.`;
     }
@@ -2249,11 +2518,20 @@ function buildControlSurfaceNextAction_(tuningSummary) {
       return checkpointSummary.nextAction;
     }
   }
+  if (aiSummary && aiSummary.approvedAutoApplyCount) {
+    return `There are ${aiSummary.approvedAutoApplyCount} approved AiRecommendations ready for direct apply.`;
+  }
   if (tuningSummary.approved) {
-    return `There are ${tuningSummary.approved} approved suggestions waiting for import.`;
+    return `There are ${tuningSummary.approved} approved tuning suggestions waiting for import.`;
+  }
+  if (aiSummary && aiSummary.approvedManualCount) {
+    return `There are ${aiSummary.approvedManualCount} approved AiRecommendations that still need manual follow-through.`;
+  }
+  if (aiSummary && aiSummary.newCount) {
+    return `There are ${aiSummary.newCount} new AiRecommendations waiting for review.`;
   }
   if (tuningSummary.newCount) {
-    return `There are ${tuningSummary.newCount} new suggestions waiting for review.`;
+    return `There are ${tuningSummary.newCount} new tuning suggestions waiting for review.`;
   }
   if (tuningSummary.noSuggestionsOpen) {
     return 'No actionable tuning suggestions right now.';

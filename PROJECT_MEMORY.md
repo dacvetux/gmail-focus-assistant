@@ -29,7 +29,7 @@ Core intent:
 - **Phase 8:** separate `News/Digest` lane and dedicated news digests are shipped
 - **Phase 9:** recommendation-first tuning suggestions are shipped
 - **Phase 10:** Sheets control surface is live with runtime-loaded preferences, approved rules, review/import workflow, validation helpers, workflow audit, status dashboards, and log rotation/archival
-- **Phase 11:** active roadmap phase; AI-assisted operator recommendations are live through `AiRecommendations`, including general, news-source, and workflow-semantics helper entrypoints
+- **Phase 11:** active roadmap phase; AI-assisted operator recommendations are live through `AiRecommendations`, including general, news-source, and workflow-semantics helper entrypoints, and approved direct-mapping rows now feed into the normal Phase 10 review/apply loop
 - **Phase 12:** planned later as a dedicated HTML UI after the Sheets workflow is proven
 
 ### Operational state
@@ -37,7 +37,7 @@ Core intent:
 - wrapper-based live automation and managed time triggers are in place
 - approved sheet rules affect runtime behavior
 - log-backed digest architecture is the accepted automation path
-- local repo currently contains an uncommitted `apps-script/src/main.gs` update that adds a nightly Phase 10 maintenance wrapper plus automatic status-surface refresh after wrapper runs
+- the latest deployed change is the 2026-05-13 Phase 11 operator-loop integration in `apps-script/src/preferences.gs`, plus matching README/current-state documentation updates
 
 ## Planned phases
 
@@ -179,13 +179,23 @@ Core intent:
 - aligned the Phase 11 workflow-semantics helper with that same rule so no-reply-like senders no longer produce `prefer-to-respond` recommendations; after deployment, examples like Google Drive share requests and Google Photos action-required notices shifted toward `prefer-notification`
 - pushed the updated Apps Script project live with `clasp push` and confirmed fresh dry-runs still execute successfully after the rule change
 
+### 2026-05-13
+- continued Phase 11 by wiring approved `AiRecommendations` into the existing Phase 10 operator loop inside `runPhase10ReviewLoopOptionA()`
+- added live import helpers for direct-mapping AI recommendations, including queue reads, row status updates, import-note generation, and duplicate note suppression
+- kept workflow-semantics recommendations (`prefer-notification`, `prefer-to-respond`) manual-only so they remain visibly pending instead of silently mutating runtime behavior
+- expanded `ControlSurfaceStatus` so the top-level dashboard now includes `AiRecommendations` counts and next-action guidance alongside tuning and approved-rule state
+- pushed the Phase 11 operator-loop integration live with `clasp push`
+- validated the live deploy with `syncApprovedAiRecommendationsPhase11()`, `rebuildControlSurfaceStatusPhase10()`, and `runPhase10ReviewLoopOptionA()`
+- confirmed the live status surface is coherent after deploy and currently reports 47 new `AiRecommendations` waiting for review
+- updated repo docs and workspace/project memory to reflect the deployed operator-loop milestone
+
 ## Immediate next steps
 
-1. validate the current **Phase 11** `AiRecommendations` output quality against real operator judgment and tune candidate selection/prompt quality where needed
+1. review and triage the current **Phase 11** `AiRecommendations` queue in the live sheet, especially the best direct-mapping news/rule candidates
 2. keep the dedicated Phase 11 news-source and workflow-semantics recommendation loops cleanly separated from the generic sender loop
-3. keep docs/testing aligned with the real runtime behavior while Phase 11 grows around the existing Phase 10 Sheets workflow
+3. tune recommendation quality against real operator judgment while keeping semantics changes review-first/manual-only
 4. restore direct local observability for production logs by re-enabling a reliable Gmail/Sheets inspection path from the local environment
-5. decide whether to commit, deploy, and then validate the pending nightly Phase 10 maintenance/status-refresh wrapper change
+5. decide when to run broader historical catch-up passes versus leaving older preserved mailbox state alone
 
 ## Recent decisions and lessons
 
