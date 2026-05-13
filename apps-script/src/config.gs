@@ -26,6 +26,7 @@ const CONFIG = {
   forceFyiSenders: [
     'hello@ollama.com'
   ],
+  forceNotificationSenders: [],
   newsSenders: [
     'newsletters@email.reuters.com',
     'reuters.com',

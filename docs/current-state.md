@@ -97,17 +97,17 @@ Current loop:
 - operational log rotation now archives older `DecisionLog`, `RunLog`, `DigestLog`, `AutomationHealthLog`, `DraftLog`, and `FollowUpLog` rows into matching `*Archive` sheets so the active tabs stay focused on recent activity
 - Phase 11 has now started with `generateAiRecommendationsPhase11()`, `generateAiNewsSourceRecommendationsPhase11()`, and `generateAiWorkflowRecommendationsPhase11()`, splitting general sender/routing recommendations, news-source-specific recommendations, and workflow-semantics recommendations into separate review-first passes in `AiRecommendations`
 - repeated runs of the same Phase 11 helper now refresh matching still-open `AiRecommendations` rows in place and log inserted vs refreshed counts, so the sheet behaves more like a queue than an append-only history
-- approved Phase 11 recommendations with direct mappings can now be applied through the normal sheet review loop: `runPhase10ReviewLoopOptionA()` imports direct news/rule changes and leaves manual-only semantics guidance visibly pending
-- the current live dashboard confirms the new loop is wired in: `ControlSurfaceStatus` now reports `AiRecommendations` queue counts and currently surfaces 47 new recommendations waiting for review
+- approved Phase 11 recommendations with direct mappings can now be applied through the normal sheet review loop: `runPhase10ReviewLoopOptionA()` imports direct news/rule changes, and sender-specific notification semantics now have a durable `notification-sender` approved-rule path for operator-confirmed follow-through
+- the current live dashboard confirms the new loop is wired in: `ControlSurfaceStatus` now reports `AiRecommendations` queue counts, and after live triage plus follow-through the queue is cleared (`new=0`, `approved-manual=0`) with 23 active approved rules
 - operator-approved live routing now includes Reuters `dailybriefing@thomsonreuters.com` as an explicit `NewsSources` include and Linkin Park `noreply@linkinpark.com` as an approved commercial sender
 - a focused post-approval cleanup pass was run live: Linkin Park recent mail reclassified successfully as commercial, while Reuters sender-history inspection confirms the explicit-news rule is the right long-term fix even though older preserved threads still need a broader catch-up pass if historical labels matter
 
 ## Current roadmap focus
 
 ### Now
-- validate the first `AiRecommendations` outputs in real use and tune candidate quality / prompt quality, especially keeping news-boundary cases in the dedicated news-source loop instead of the general one
-- extend AI-assisted review-first help into news-source and workflow-semantics recommendations
-- keep using the existing Sheets operator loop as the control point while Phase 11 grows around it
+- validate new `AiRecommendations` outputs in real use and tune candidate quality / prompt quality, especially keeping news-boundary cases in the dedicated news-source loop instead of the general one
+- keep using the existing Sheets operator loop as the control point while Phase 11 grows around it, now including durable notification-sender follow-through when needed
+- monitor whether more workflow-semantics recommendations deserve new direct-import paths versus staying review-first/manual
 - leave remaining Phase 10 polish on hold unless it blocks the Phase 11 operator loop
 
 ### Next
@@ -119,6 +119,6 @@ Current loop:
 
 ## Next 3 practical milestones
 
-1. review the current 47-row `AiRecommendations` queue and approve/reject the best direct-mapping candidates
-2. tune recommendation quality against real operator judgment, especially around workflow-semantics suggestions that still intentionally require manual follow-through
+1. watch the next live `AiRecommendations` batches and confirm the new notification/workflow judgments stay stable in real use
+2. tune recommendation quality against real operator judgment, especially around workflow-semantics suggestions that still do not have a direct import path
 3. decide whether to run a broader historical Reuters catch-up pass later, since sender-history validation still shows older `news-blank` preserved threads after the explicit-news approval

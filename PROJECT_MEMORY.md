@@ -182,20 +182,25 @@ Core intent:
 ### 2026-05-13
 - continued Phase 11 by wiring approved `AiRecommendations` into the existing Phase 10 operator loop inside `runPhase10ReviewLoopOptionA()`
 - added live import helpers for direct-mapping AI recommendations, including queue reads, row status updates, import-note generation, and duplicate note suppression
-- kept workflow-semantics recommendations (`prefer-notification`, `prefer-to-respond`) manual-only so they remain visibly pending instead of silently mutating runtime behavior
+- kept workflow-semantics recommendations (`prefer-notification`, `prefer-to-respond`) manual-only at first so they would stay visibly pending instead of silently mutating runtime behavior
 - expanded `ControlSurfaceStatus` so the top-level dashboard now includes `AiRecommendations` counts and next-action guidance alongside tuning and approved-rule state
 - pushed the Phase 11 operator-loop integration live with `clasp push`
 - validated the live deploy with `syncApprovedAiRecommendationsPhase11()`, `rebuildControlSurfaceStatusPhase10()`, and `runPhase10ReviewLoopOptionA()`
-- confirmed the live status surface is coherent after deploy and currently reports 47 new `AiRecommendations` waiting for review
+- confirmed the live status surface is coherent after deploy and initially reported 47 new `AiRecommendations` waiting for review
 - updated repo docs and workspace/project memory to reflect the deployed operator-loop milestone
+- triaged the live 47-row `AiRecommendations` queue into 15 approved / 14 rejected / 18 superseded rows using a conservative sender-by-sender pass grounded in live sheet evidence
+- the Phase 11 operator loop then auto-applied 12 safe direct-mapping approvals and left exactly 3 workflow-semantics approvals needing explicit follow-through (`drive-shares-dm-noreply@google.com` → notification, `noreply@wetransfer.com` → notification + important, `noreply-photos@google.com` → notification)
+- added a new durable `notification-sender` approved-rule category / runtime config path so sender-specific notification semantics can now be encoded without forcing a structural label
+- completed live follow-through for those 3 remaining semantics judgments: Google Drive shares and Google Photos now use `notification-sender`, while WeTransfer now uses `important-sender` for the desired important + notification behavior
+- after that follow-through, the live control surface shows `AiRecommendations` cleared (`newCount=0`, `approvedManualCount=0`) and 23 active approved rules
+- notable triage outcomes: ARTE weekly newsletter was accepted as a news source; Reuters duplicates were superseded because Reuters was already live; Alibaba news/FYI suggestions were rejected as the better framing is commercial, not curated news/FYI; `news@mail.xing.com` stayed explicitly excluded
 
 ## Immediate next steps
 
-1. review and triage the current **Phase 11** `AiRecommendations` queue in the live sheet, especially the best direct-mapping news/rule candidates
-2. keep the dedicated Phase 11 news-source and workflow-semantics recommendation loops cleanly separated from the generic sender loop
-3. tune recommendation quality against real operator judgment while keeping semantics changes review-first/manual-only
-4. restore direct local observability for production logs by re-enabling a reliable Gmail/Sheets inspection path from the local environment
-5. decide when to run broader historical catch-up passes versus leaving older preserved mailbox state alone
+1. keep the dedicated Phase 11 news-source and workflow-semantics recommendation loops cleanly separated from the generic sender loop
+2. tune recommendation quality against real operator judgment while only adding new direct-import/runtime paths when repeated cases justify them
+3. restore direct local observability for production logs by re-enabling a reliable Gmail/Sheets inspection path from the local environment
+4. decide when to run broader historical catch-up passes versus leaving older preserved mailbox state alone
 
 ## Recent decisions and lessons
 

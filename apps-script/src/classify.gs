@@ -44,6 +44,10 @@ function classifyThread_(thread, options) {
     return finalizeDecision(buildDecision_('label', null, false, 'forced FYI sender override', CONFIG.labels.fyi));
   }
 
+  if (containsAny_(subjectHaystack, CONFIG.forceNotificationSenders || [])) {
+    return finalizeDecision(buildDecision_('label', null, false, 'forced notification sender override', CONFIG.labels.notification));
+  }
+
   if (matchesAny_(subjectHaystack, CONFIG.financePatterns)) {
     return finalizeDecision(buildDecision_('label', CONFIG.labels.importantFinance, false, 'finance pattern', CONFIG.labels.notification));
   }

@@ -469,7 +469,7 @@ function getOrCreateOperatorGuideSheet_() {
     ['NewsSources', 'Explicit allow/exclude list for news senders', 'One sender per row; Action=news or exclude', 'Type=sender; Action=news|exclude; Enabled=yes|no', 'Use exclude for digest traffic that looks newsletter-like but should stay out'],
     ['TuningSuggestions', 'Review queue for proposed sender/routing changes', 'Change Status from new to approved/rejected/superseded after review', 'Status=new|approved|rejected|imported|already-imported|skipped|superseded', 'Approved rows can be imported into ApprovedRules'],
     ['TuningReviewQueue', 'Compact operator queue built from actionable TuningSuggestions rows', 'Refresh via rebuildTuningReviewQueuePhase10() or runPhase10ReviewLoopOptionA()', 'Shows only new/approved rows plus next-action guidance and source row links', 'Use this when you want the work queue without the full historical suggestion sheet'],
-    ['ApprovedRules', 'Runtime rules already approved by the operator', 'One rule per row; keep Approved=yes for active rules', 'Category=shipping-sender/commercial-sender/important-sender/fyi-sender/news-sender/news-exclude-sender; Action=add|remove', 'fyi-sender adds workflow-only FYI routing for intentionally informational senders'],
+    ['ApprovedRules', 'Runtime rules already approved by the operator', 'One rule per row; keep Approved=yes for active rules', 'Category=shipping-sender/commercial-sender/important-sender/fyi-sender/notification-sender/news-sender/news-exclude-sender; Action=add|remove', 'fyi-sender and notification-sender add workflow-only routing without forcing a structural label'],
     ['ControlSurfaceStatus', 'Small operator dashboard for the current review/import state', 'Rebuild via rebuildControlSurfaceStatusPhase10() or runPhase10ReviewLoopOptionA()', 'Shows pending/new/approved/imported counts plus next-action guidance', 'Use this first before reviewing or importing'],
     ['ValidationStatus', 'Compact last-checkpoint view for the core dry-run validation loop', 'Refresh via runPhase10ValidationCheckpoint() for the fast default path or runPhase10ExtendedValidationCheckpoint() for the heavier AI/tuning path', 'Shows ok/error plus key result for the checks included in the most recent checkpoint run', 'Use the default checkpoint after normal changes and the extended checkpoint when you explicitly want deeper validation'],
     ['RecentRunSummary', 'Compact latest-run view for wrappers and Phase 10 helper actions', 'Refresh via rebuildRecentRunSummaryPhase10(), runPhase10ReviewLoopOptionA(), or runPhase10ValidationCheckpoint()', 'Shows latest local time, outcome, counts, and notes for key wrapper/helper entry points', 'Use this when you want a quick “did the last thing actually run?” answer without opening raw RunLog'],
@@ -596,6 +596,9 @@ function resolveApprovedRuleConfigField_(category) {
     case 'fyi-sender':
     case 'forceFyiSenders':
       return 'forceFyiSenders';
+    case 'notification-sender':
+    case 'forceNotificationSenders':
+      return 'forceNotificationSenders';
     case 'news-sender':
     case 'newsSenders':
       return 'newsSenders';
@@ -883,6 +886,7 @@ function configureApprovedRulesSheetUx_(sheet) {
     'commercial-sender',
     'important-sender',
     'fyi-sender',
+    'notification-sender',
     'news-sender',
     'news-exclude-sender'
   ]);
