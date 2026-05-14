@@ -103,6 +103,11 @@ Primary sheets:
 - `WorkflowAudit`
 - `OperatorGuide`
 
+Primary code paths:
+- `apps-script/src/control-surface-setup.gs`
+- `apps-script/src/control-surface-validation.gs`
+- `apps-script/src/control-surface-status.gs`
+
 Responsibilities:
 - show what needs review
 - separate raw recommendation history from compact actionable queues
@@ -113,7 +118,7 @@ Responsibilities:
 
 Primary code path:
 - `apps-script/src/ai.gs`
-- import/apply helpers in `apps-script/src/preferences.gs`
+- `apps-script/src/ai-recommendations.gs`
 
 Responsibilities:
 - generate review-first recommendations into `AiRecommendations`
@@ -163,7 +168,7 @@ Wrappers are the stable operational shell around the lower-level helpers.
 
 ## Main technical debt areas
 
-- `apps-script/src/preferences.gs` is still too monolithic and contains several distinct subsystems
+- `apps-script/src/control-surface-status.gs` is still too large and now mixes dashboard/status work with heavier analysis helpers
 - phase-based function naming remains useful historically but increases long-term cognitive load
 - some rule/import paths are still branch-heavy instead of table-driven
 - architecture documentation had lagged behind the real control-surface system and should continue to be kept in sync with the live workflow
