@@ -19,6 +19,9 @@ const {
   configRevisionSchema,
   decisionProposalSchema,
   labelsForDecision,
+  assertRuleSetValid,
+  normalizeEmailAddress,
+  selectApprovedRule,
   ruleResultSchema,
   threadSnapshotSchema,
   validateChoiceAssessment,
@@ -154,4 +157,23 @@ test("Apps Script bundle loads in an isolated JavaScript context without Node gl
   assert.equal(typeof sandbox.require, "undefined");
   assert.equal(vm.runInNewContext('FocunaDomain.canonicalJson({ z: 2, a: 1 })', sandbox), '{"a":1,"z":2}');
   assert.equal(sandbox.FocunaDomain.labelsForDecision("news", "none")[0], "News/Digest");
+});
+
+test("sender rules normalize safely, reject duplicates, and use deterministic specificity", () => {
+  const rule = (id, kind, value, category) => ({
+    id, match: { kind, value }, category, workflow: "notification",
+    approvedAt: "2026-01-01T00:00:00Z", approvedBy: "operator-test",
+  });
+  const broad = rule("broad", "sender-domain", "EXAMPLE.COM", "services");
+  const narrow = rule("narrow", "sender-domain", "mail.example.com", "shipping");
+  const exact = rule("exact", "exact-sender", "Orders@mail.example.com", "finance");
+  assert.equal(normalizeEmailAddress("Orders@MAIL.EXAMPLE.COM"), "Orders@mail.example.com");
+  assertRuleSetValid([broad, narrow, exact]);
+  assert.equal(selectApprovedRule("Orders@mail.example.com", [broad, narrow, exact]).rule.id, "exact");
+  assert.equal(selectApprovedRule("alerts@mail.example.com", [broad, narrow]).rule.id, "narrow");
+  assert.equal(selectApprovedRule("alerts@example.com", [broad, narrow]).rule.id, "broad");
+  assert.equal(selectApprovedRule("alerts@notexample.com", [broad]).rule, undefined);
+  assert.throws(() => assertRuleSetValid([broad, rule("duplicate", "sender-domain", "example.com", "news")]), { code: "CONFIG_CONFLICT" });
+  assert.throws(() => normalizeEmailAddress("bad@@example.com"), { code: "INVALID_RECORD" });
+  assert.throws(() => normalizeEmailAddress("name@exa mple.com"), { code: "INVALID_RECORD" });
 });

@@ -41,6 +41,13 @@ Preserve existing v1 names at the Gmail boundary, including `News/Digest`.
 Review defaults to no workflow; news defaults to no workflow. Commercial mail
 does not gain a response workflow. Unknown/invalid results fall back to visible review.
 
+Sender matching accepts parsed ASCII dot-atom mailbox addresses and DNS domains in
+IDNA A-label form. Domain rules match the domain itself and subdomains only at a
+label boundary; exact sender rules take precedence, then the longest matching domain
+suffix. Exact local-part case is preserved. Duplicate rule IDs or normalized
+selectors reject the config revision; broad and narrower domains are resolved by
+the documented specificity order.
+
 ## JEV tasks and output adaptation
 
 1. **Ambiguous-thread assessment:** choice distribution over supported structural

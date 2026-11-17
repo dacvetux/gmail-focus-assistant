@@ -68,6 +68,9 @@ config conflict rules, signature/key management, and durable approval history re
 - Port rules by intent from classify.gs/config.gs, preserving manual labels and
   structural/workflow separation. Replace substring sender matching with parsed,
   boundary-aware address matching and explicit rule precedence/conflict detection.
+- Implemented foundation: strict parsed-address normalization, normalized duplicate
+  selector rejection, exact-sender precedence, and most-specific domain suffix
+  selection. Full v1 rule parity and conflict-preview reporting remain outstanding.
 - Implement normalized thread snapshots, minimal meaningful-message context,
   bounded pagination/cursors, account identity, and change fingerprints.
 - Import an exported copy of Preferences, DigestSettings, NewsSources and

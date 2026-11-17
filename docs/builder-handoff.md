@@ -17,6 +17,9 @@ invariants. `npm test` runs the schema/policy checks and builds/loads the shared
 domain as an Apps Script-compatible `.gs` bundle without connecting to Google or
 TypeSafe. Runtime services, signatures/key management, durable approval history,
 and integration verification remain future work.
+The sender-rule foundation preserves exact local-part case, normalizes DNS domains
+to lowercase IDNA A-label form, rejects duplicate selectors, prefers exact senders,
+and otherwise selects the most-specific matching domain suffix.
 
 ## Proposed layout to create in V2-P1
 
