@@ -1,4 +1,5 @@
 import { DomainError } from "./errors";
+import { AssessmentJob, AssessmentResult } from "./contracts";
 
 /** Maximum absolute error allowed when a provider's choice distribution sums to 1. */
 export const CHOICE_DISTRIBUTION_TOLERANCE = 0.01;
@@ -8,6 +9,28 @@ export interface ChoiceAssessmentInput {
   choice: string;
   confidence: number;
   probabilities: Record<string, number>;
+}
+
+/** Bind an accepted provider result to its exact immutable assessment input. */
+export function assertAssessmentResultMatchesJob(
+  job: Pick<AssessmentJob, "jobId" | "snapshotFingerprint" | "configRevision" | "createdAt" | "deadlineAt">,
+  result: Pick<AssessmentResult, "jobId" | "snapshotFingerprint" | "configRevision" | "completedAt">,
+): void {
+  if (result.jobId !== job.jobId) invalid("Assessment result job ID does not match the submitted job");
+  if (result.snapshotFingerprint !== job.snapshotFingerprint || result.configRevision !== job.configRevision) {
+    throw new DomainError("STALE_SNAPSHOT", "Assessment result is bound to a different snapshot or config revision");
+  }
+
+  const createdAt = Date.parse(job.createdAt);
+  const deadlineAt = Date.parse(job.deadlineAt);
+  const completedAt = Date.parse(result.completedAt);
+  if (![createdAt, deadlineAt, completedAt].every(Number.isFinite) || deadlineAt < createdAt) {
+    invalid("Assessment job/result timestamps are invalid");
+  }
+  if (completedAt < createdAt) invalid("Assessment result predates its job");
+  if (completedAt > deadlineAt) {
+    throw new DomainError("ASSESSMENT_INVALID", "Assessment result completed after the job deadline");
+  }
 }
 
 /** Validate semantic constraints that JSON Schema cannot express (notably sums). */

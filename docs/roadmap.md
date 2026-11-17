@@ -44,6 +44,8 @@ the real adapter, not rules/core development using a mock. No production changes
 - Validate JEV choice alternatives, finite probability/confidence bounds, and
   normalized distributions (implemented: absolute sum error <= 0.01); this semantic
   check supplements boundary JSON Schema validation.
+- Bind provider results to the exact job, snapshot, config revision, and deadline
+  (implemented by the offline domain validator).
 - Establish package/lockfile, lint/typecheck, schema/fixture checks, automated unit
   checks, and a GitHub Actions workflow that uses no production credentials.
 - Define operator identity, approval scopes, append-only audit, access controls,

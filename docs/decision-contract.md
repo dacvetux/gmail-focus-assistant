@@ -68,6 +68,9 @@ and cannot introduce actions, facts, or evidence IDs outside the request.
 
 - Check schema, input hashes, job status, deadline, model metadata availability,
   allowed categories, finite probabilities, evidence membership, and content limits.
+- Bind each result's job ID, snapshot fingerprint, and config revision to its job;
+  reject mismatches and results completed before job creation or after its deadline
+  (implemented by `assertAssessmentResultMatchesJob`).
 - Preserve/manual constraints always override both rule and AI results.
 - Model/rule disagreement enters review. Missing evidence or a weak/close choice
   distribution leads to abstention. Thresholds are versioned policy parameters

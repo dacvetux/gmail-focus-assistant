@@ -10,6 +10,7 @@ const {
   approvalSchema,
   assessmentJobSchema,
   assessmentResultSchema,
+  assertAssessmentResultMatchesJob,
   configRevisionSchema,
   decisionProposalSchema,
   labelsForDecision,
@@ -101,4 +102,14 @@ test("choice assessments enforce alternatives, bounds, and normalized distributi
   assert.throws(() => validateChoiceAssessment({ ...valid, probabilities: { shipping: 0.8, review: 0.2, finance: 0 } }, ["shipping", "review"]), { code: "ASSESSMENT_INVALID" });
   assert.throws(() => validateChoiceAssessment({ ...valid, choice: "finance" }, ["shipping", "review"]), { code: "ASSESSMENT_INVALID" });
   assert.throws(() => validateChoiceAssessment({ ...valid, confidence: Number.NaN }, ["shipping", "review"]), { code: "ASSESSMENT_INVALID" });
+});
+
+test("assessment results are bound to job inputs and deadlines", () => {
+  const job = { jobId: "job-1", snapshotFingerprint: "sha256:s1", configRevision: "cfg-1", createdAt: "2026-01-01T00:00:00Z", deadlineAt: "2026-01-01T00:01:00Z" };
+  const result = { jobId: "job-1", snapshotFingerprint: "sha256:s1", configRevision: "cfg-1", completedAt: "2026-01-01T00:00:30Z" };
+  assert.doesNotThrow(() => assertAssessmentResultMatchesJob(job, result));
+  assert.throws(() => assertAssessmentResultMatchesJob(job, { ...result, snapshotFingerprint: "sha256:changed" }), { code: "STALE_SNAPSHOT" });
+  assert.throws(() => assertAssessmentResultMatchesJob(job, { ...result, configRevision: "cfg-2" }), { code: "STALE_SNAPSHOT" });
+  assert.throws(() => assertAssessmentResultMatchesJob(job, { ...result, completedAt: "2026-01-01T00:02:00Z" }), { code: "ASSESSMENT_INVALID" });
+  assert.throws(() => assertAssessmentResultMatchesJob(job, { ...result, jobId: "job-other" }), { code: "ASSESSMENT_INVALID" });
 });
