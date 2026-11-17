@@ -41,7 +41,7 @@ const {
   threadSnapshotSchema,
   validateChoiceAssessment,
 } = require("../dist/domain/src");
-const { FixtureAssessmentProvider } = require("../dist/decisions/src");
+const { FixtureAssessmentProvider, TypeSafeSystemOneClient, TYPESAFE_SYSTEMONE_ENDPOINT } = require("../dist/decisions/src");
 
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 addFormats(ajv);
@@ -419,10 +419,13 @@ test("fixture assessment provider is deterministic and binds result to job and q
   assert.equal(ajv.compile(assessmentJobSchema)(job), true);
   const questionSet = {
     schemaVersion: "focuna.v2", version: "classify-v1", task: "classification",
-    questions: [{ id: "structural-category", alternatives: ["shipping", "services", "finance", "review"] }],
+    questions: [{
+      id: "structural-category", instructions: "Choose the best structural mail category.",
+      criteria: { shipping: "Delivery or parcel matters", services: "Account or service matters", finance: "Financial matters", review: "Unclear or ambiguous" },
+    }],
   };
   assert.equal(ajv.compile(choiceQuestionSetSchema)(questionSet), true);
-  assert.equal(ajv.compile(choiceQuestionSetSchema)({ ...questionSet, questions: [{ id: "q", alternatives: ["same", "same"] }] }), false);
+  assert.equal(ajv.compile(choiceQuestionSetSchema)({ ...questionSet, questions: [{ id: "q", instructions: "Pick", criteria: { only: "one" } }] }), false);
   const result = {
     schemaVersion: "focuna.v2", jobId: job.jobId, snapshotFingerprint: job.snapshotFingerprint,
     configRevision: job.configRevision, provider: "fixture", model: "synthetic-v1",
@@ -436,5 +439,63 @@ test("fixture assessment provider is deterministic and binds result to job and q
   assert.throws(() => provider.assess({ ...job, jobId: "missing-fixture" }, snapshot, questionSet), { code: "ASSESSMENT_INVALID" });
   const bad = { ...result, answers: { "structural-category": { ...result.answers["structural-category"], probabilities: { shipping: 0.9 } } } };
   assert.throws(() => new FixtureAssessmentProvider([bad], hostSha256).assess(job, snapshot, questionSet), { code: "ASSESSMENT_INVALID" });
-  assert.throws(() => assertAssessmentResultForQuestionSet(job, result, { ...questionSet, questions: [...questionSet.questions, { id: "extra", alternatives: ["yes", "no"] }] }), { code: "ASSESSMENT_INVALID" });
+  assert.throws(() => assertAssessmentResultForQuestionSet(job, result, { ...questionSet, questions: [...questionSet.questions, { id: "extra", instructions: "Pick yes/no", criteria: { yes: "Yes", no: "No" } }] }), { code: "ASSESSMENT_INVALID" });
+});
+
+test("TypeSafe adapter maps choice calls through fake transport without retry or raw snapshot serialization", async () => {
+  const snapshot = withSnapshotFingerprint({
+    schemaVersion: "focuna.v2", accountRef: "acct-typesafe-test", threadRef: "thread-typesafe-test",
+    capturedAt: "2026-01-01T00:00:00Z", senderAddress: "parcel@example.test", subject: "Private synthetic subject",
+    labels: [], preservedLabels: [], evidence: [{ id: "m1", direction: "inbound", sentAt: "2026-01-01T00:00:00Z", text: "Private synthetic body." }],
+  });
+  const qset = {
+    schemaVersion: "focuna.v2", version: "qset-1", task: "classification",
+    questions: [{ id: "category", instructions: "Choose the best category.", criteria: { shipping: "Delivery", review: "Unclear" } }],
+  };
+  const job = {
+    schemaVersion: "focuna.v2", jobId: "jev-job-1", accountRef: snapshot.accountRef,
+    snapshotFingerprint: snapshot.snapshotFingerprint, configRevision: "cfg-1",
+    provider: "typesafe-systemone", model: "jev-latest", idempotencyKey: `sha256:${"d".repeat(64)}`,
+    task: "classification", questionSetVersion: qset.version,
+    createdAt: "2026-01-01T00:00:00Z", deadlineAt: "2026-01-01T00:05:00Z",
+  };
+  let callCount = 0;
+  let capturedRequest;
+  const client = new TypeSafeSystemOneClient("synthetic-only-api-key", async request => {
+    callCount += 1;
+    capturedRequest = request;
+    return {
+      status: 200,
+      body: {
+        model: "jev-1.14.0",
+        answers: { category: { type: "choice", choice: "shipping", confidence: 0.9, probabilities: { shipping: 0.9, review: 0.1 } } },
+        usage: { input_tokens: 40, output_tokens: 8 },
+      },
+    };
+  }, 100, hostSha256, () => "2026-01-01T00:01:00Z");
+  const result = await client.assess(job, snapshot, qset, "Minimized synthetic parcel notice");
+  assert.equal(callCount, 1);
+  assert.equal(capturedRequest.url, TYPESAFE_SYSTEMONE_ENDPOINT);
+  assert.equal(capturedRequest.headers.Authorization, "Bearer synthetic-only-api-key");
+  assert.equal(capturedRequest.body.state, "Minimized synthetic parcel notice");
+  assert.equal(JSON.stringify(capturedRequest.body).includes("Private synthetic body"), false);
+  assert.equal(result.model, "jev-1.14.0");
+  assert.deepEqual(result.usage, { inputTokens: 40, outputTokens: 8 });
+
+  await assert.rejects(() => client.assess(job, snapshot, qset, "x".repeat(101)), { code: "ASSESSMENT_INVALID" });
+  assert.equal(callCount, 1);
+  const rateLimited = new TypeSafeSystemOneClient("key", async () => {
+    callCount += 1;
+    return { status: 429, body: { detail: "synthetic" } };
+  }, 100, hostSha256, () => "2026-01-01T00:01:00Z");
+  await assert.rejects(() => rateLimited.assess(job, snapshot, qset, "synthetic"), { code: "PROVIDER_RATE_LIMITED" });
+  assert.equal(callCount, 2);
+  const schemaDrift = new TypeSafeSystemOneClient("key", async () => ({
+    status: 200,
+    body: {
+      model: "jev-latest", answers: { category: { type: "choice", choice: "shipping", confidence: 0.9, probabilities: { shipping: 0.9, review: 0.1 } } },
+      extra: "unexpected",
+    },
+  }), 100, hostSha256, () => "2026-01-01T00:01:00Z");
+  await assert.rejects(() => schemaDrift.assess(job, snapshot, qset, "synthetic"), { code: "ASSESSMENT_INVALID" });
 });

@@ -13,11 +13,13 @@ schedule or production readiness is implied.
 
 - Confirm what JEV refers to, its provider/model, supported tasks, authentication,
   SDK/API or supported OpenClaw access, deployment constraints, usage limits, cost,
-  data location, retention, and deletion behavior. Record evidence in decisions.md.
+  data location, retention, and deletion behavior. TypeSafe System One identity,
+  bearer endpoint, model listing and one synthetic choice call are verified and
+  recorded in decisions.md; cost/privacy facts remain unresolved.
 - D.C. confirmed API access/key availability and accepted that use incurs charges;
   the protected `TYPESAFE_API_KEY` gateway secret is restricted to `api.typesafe.ai`.
-  Confirm that this is the JEV credential/service, then document rate limits, pricing
-  and an explicit operating budget. Never reveal or copy its value into source.
+  TypeSafe is confirmed as the JEV API service; rate limits, pricing and an explicit
+  operating budget remain open. Never reveal or copy its value into source.
 - Confirm whether `decision_evaluate` actually routes to JEV and whether it can be
   called outside an agent session. Do not equate similarly named interfaces.
 - Inventory existing Apps Script code version, Gmail labels, trigger ownership,
@@ -112,6 +114,9 @@ decisions without Gmail changes. No JEV dependency, drafts, send, or archive act
 - Implemented offline/mock foundation: versioned choice question-set schema,
   result-to-job/question validation, and deterministic fixture provider. This is not
   the live JEV adapter, queue, or a budget-approved provider run.
+- Implemented TypeSafe System One choice adapter against the verified public
+  contract; fake-transport tests cover request/response mapping, state-size guard,
+  usage parsing, and no automatic retries. This adapter has not made a live call.
 - Implemented idempotency-key derivation bound to account, snapshot, config digest,
   task, question set, provider, and model; durable unique-key queue semantics remain.
 - Use question-based structural assessment followed by dependent workflow

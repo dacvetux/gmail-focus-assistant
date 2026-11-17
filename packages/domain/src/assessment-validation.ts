@@ -36,22 +36,32 @@ export function assertAssessmentResultForQuestionSet(
   questionSet: ChoiceQuestionSet,
 ): void {
   assertAssessmentResultMatchesJob(job, result);
-  if (job.questionSetVersion !== questionSet.version || job.task !== questionSet.task) {
+  assertQuestionSetMatchesJob(job, questionSet);
+  const questionIds = questionSet.questions.map(question => question.id);
+  const answers = Object.keys(result.answers);
+  if (answers.length !== questionIds.length || questionIds.some(id => !Object.prototype.hasOwnProperty.call(result.answers, id))) {
+    invalid("Assessment answers must exactly match the question-set IDs");
+  }
+  for (const question of questionSet.questions) {
+    validateChoiceAssessment(result.answers[question.id], Object.keys(question.criteria));
+  }
+}
+
+/** Validate question/task bindings before making a provider request. */
+export function assertQuestionSetMatchesJob(job: AssessmentJob, questionSet: ChoiceQuestionSet): void {
+  if (questionSet.schemaVersion !== "focuna.v2" || job.questionSetVersion !== questionSet.version || job.task !== questionSet.task) {
     invalid("Assessment job does not match the question-set version or task");
   }
   const questionIds = questionSet.questions.map(question => question.id);
   if (questionIds.length === 0 || new Set(questionIds).size !== questionIds.length || questionIds.some(id => !id)) {
     invalid("Question set must have unique non-empty question IDs");
   }
-  const answers = Object.keys(result.answers);
-  if (answers.length !== questionIds.length || questionIds.some(id => !Object.prototype.hasOwnProperty.call(result.answers, id))) {
-    invalid("Assessment answers must exactly match the question-set IDs");
-  }
   for (const question of questionSet.questions) {
-    if (question.alternatives.length < 2 || new Set(question.alternatives).size !== question.alternatives.length) {
+    const alternatives = Object.keys(question.criteria);
+    if (!question.instructions || question.instructions.length > 2000 || alternatives.length < 2 ||
+      alternatives.some(id => !id || !question.criteria[id]) || new Set(alternatives).size !== alternatives.length) {
       invalid(`Question ${question.id} must define at least two unique alternatives`);
     }
-    validateChoiceAssessment(result.answers[question.id], question.alternatives);
   }
 }
 

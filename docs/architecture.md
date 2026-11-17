@@ -87,8 +87,10 @@ TLS and signed, request-bound responses protect result integrity. Specify exact
 canonicalization and rotation in V2-P1 before wiring a real network adapter.
 Keys live in Script Properties / worker secret storage, never Sheets or Git.
 
-JEV is the primary proposed AI assessor, not an authority. Its identity, access,
-model capabilities, hosting, retention, and costs are unresolved V2-P0 facts.
+JEV is the primary AI assessor, not an authority. TypeSafe System One identity,
+bearer API access, and a basic choice response were verified with synthetic state.
+Exact pricing/limits, budget, retention, and external processing permission remain
+unresolved V2-P0 facts.
 OpenClaw currently exposes a `decision_evaluate` tool with boolean probabilities,
 choice distributions, and rubric scores. This is a candidate integration surface,
 not proof that the provider is JEV or accessible from a standalone worker.

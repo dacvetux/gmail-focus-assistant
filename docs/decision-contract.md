@@ -98,6 +98,16 @@ set before the evaluator acts on the snapshot.
 
 ## JEV tasks and output adaptation
 
+The verified TypeSafe System One choice adapter targets
+`POST https://api.typesafe.ai/v1/systemone` with bearer auth and the `model`,
+`state`, and named `choice` questions (`instructions` and `criteria`) shape from its
+public OpenAPI. The adapter receives the API key at runtime, accepts only caller-
+prepared state under an explicit character limit, validates the response against the
+job/question set, maps token usage, and makes no automatic retries. Its tests use a
+fake transport; no real email-derived state is authorized or sent by this contract.
+Unknown envelope, answer, or usage fields are rejected so provider schema drift
+fails closed rather than being silently ignored.
+
 1. **Ambiguous-thread assessment:** choice distribution over supported structural
    alternatives; workflow assessment is a dependent second call using the accepted
    structural result explicitly. Questions about response intent may use boolean

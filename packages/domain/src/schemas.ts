@@ -101,10 +101,11 @@ export const choiceQuestionSetSchema = {
       type: "array", minItems: 1,
       items: {
         type: "object", additionalProperties: false,
-        required: ["id", "alternatives"],
+        required: ["id", "instructions", "criteria"],
         properties: {
           id: { type: "string", minLength: 1 },
-          alternatives: { type: "array", minItems: 2, uniqueItems: true, items: { type: "string", minLength: 1 } },
+          instructions: { type: "string", minLength: 1, maxLength: 2000 },
+          criteria: { type: "object", minProperties: 2, additionalProperties: { type: "string", minLength: 1 } },
         },
       },
     },

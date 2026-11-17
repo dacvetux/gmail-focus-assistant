@@ -18,18 +18,19 @@ The available OpenClaw `decision_evaluate` interface supports supplied-state boo
 choice and score questions and states that results do not authorize actions.
 Its selected provider and standalone accessibility have not been verified here.
 
-P0 must resolve: JEV's exact provider/service identity, API documentation, endpoint
-and authentication contract, supported question types, limits, usage accounting,
-retention and external data-processing permission. D.C. confirmed API access/key
-exists and explicitly acknowledged usage charges. A protected credential named
-`TYPESAFE_API_KEY` is present in the OpenClaw Secret Store and restricted to host
-`api.typesafe.ai`; its value was not read or disclosed. This is available as a
-gateway-managed secret, not injected into the native local shell. The name/host
-suggests a possible mapping but does not prove that it is JEV's credential or API.
-Verify that mapping and the provider contract in P0 before sending real email or
-building the network adapter. Do not build against an invented URL. If JEV cannot
-be reached as intended, document an alternative deployment ADR and retain the mock
-boundary without pretending success.
+P0 has confirmed the provider/API contract: TypeSafe System One, bearer auth,
+`POST https://api.typesafe.ai/v1/systemone`, choice questions and model aliases via
+`GET /v1/models`. One earlier billable request used synthetic state only and
+returned a valid choice distribution. D.C. confirmed charges are expected/accepted,
+but exact pricing/rate limits and an operating budget remain open. Retention and
+external processing permission for email data are also unresolved. The protected
+`TYPESAFE_API_KEY` remains gateway-managed and was not read or copied into source.
+
+The TypeScript adapter is implemented against this contract and tested only with a
+fake transport; no request from this adapter has been sent. Before passing real
+email-derived state, require a policy-approved minimization limit, retention/data
+processing decision, and budget/cost gate. The adapter accepts caller-prepared,
+bounded state, makes one request, and does not retry automatically.
 
 ## ADR-003 — Keep Google writes local; offload decision work
 
@@ -54,7 +55,7 @@ for parity. No new interface may bypass approval or action contracts.
 
 | Unresolved item | Resolve by | Effect if unavailable |
 | --- | --- | --- |
-| JEV provider/API and OpenClaw relationship | P0 | Real adapter blocked; mock/core can proceed |
+| OpenClaw `decision_evaluate` mapping to standalone TypeSafe API | P0 | Keep the verified standalone adapter; do not assume tool/API equivalence |
 | Approved worker hosting, reachable authenticated ingress, durable volume | P0 | Revise ADR-003; no hidden alternate deployment |
 | Actual deployed v1 version and feature ownership | P0 | Migration/cutover cannot proceed |
 | Data minimization, retention and external processing policy | P0 | No real email submitted to JEV |
@@ -79,6 +80,8 @@ Update this file with dated evidence and decisions as facts become available.
 - D.C. confirmed API charges are expected/accepted. Exact price/rate limits and
   an operational budget remain open P0 facts. The smoke request was a billable
   provider call; no private mailbox content was sent.
+- The repository's TypeSafe adapter was later added and tested with a fake
+  transport only; it has made no network calls and does not read the Secret Store.
 - `clasp deployments` succeeded after reauthentication and showed five deployment
   records, including one `@HEAD`. `clasp clone` read 15 live project files. All 14
   `.gs` source files match the Git-archived source byte-for-byte after clasp's
@@ -87,5 +90,6 @@ Update this file with dated evidence and decisions as facts become available.
   manifest and `CONFIG` specify `Europe/Ljubljana`. Both are similar in the current
   region, but the mismatch must be reconciled deliberately before v2 window logic;
   this check did not inspect triggers or actual digest output.
-- OAuth for Gmail and Sheets read-only scopes was initiated but is still pending.
-  No Gmail messages, spreadsheet data, or runtime settings were read.
+- Google blocked clasp's shared OAuth client for Gmail/Sheets sensitive scopes.
+  No Gmail messages, spreadsheet data, or runtime settings were read; live
+  inventory remains deferred until an approved access path exists.

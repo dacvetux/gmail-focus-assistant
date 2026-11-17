@@ -102,7 +102,8 @@ export interface AssessmentJob {
 
 export interface ChoiceQuestionDefinition {
   id: string;
-  alternatives: string[];
+  instructions: string;
+  criteria: Record<string, string>;
 }
 
 export interface ChoiceQuestionSet {
