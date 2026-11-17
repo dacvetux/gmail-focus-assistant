@@ -19,19 +19,19 @@ It does not add autonomous sending, deletion, or autonomous rule learning.
 ```mermaid
 flowchart TD
   G[Gmail] --> S[Apps Script snapshot collector]
-  C[Versioned Sheets configuration] --> R[Pure rules engine]
+  C[(SQL operational store)] --> R[Pure rules engine]
   S --> R
   R -->|uncertain or conflicting| Q[Assessment job queue]
   Q --> W[Decision worker and JEV adapter]
   W --> V[Contract and evidence validation]
   R --> P[Deterministic policy gate]
   V --> P
-  P --> H[Sheets operator review]
+  P --> H[Apps Script HTML management UI]
   H -->|version-bound approval| P
   P --> A[Action plan and journal]
   A --> E[Apps Script Gmail executor]
   E --> G
-  E --> L[Decision and action ledger]
+  E --> L[(SQL decision and action ledger)]
   L --> D[Digests, follow-ups, metrics]
   H -->|explicit approved rule revision| C
 ```
@@ -53,11 +53,13 @@ rules at import instead of silently choosing spreadsheet order.
 
 ### 2. Google adapter and operator control
 
-Retain Apps Script as the only Gmail writer, scheduler, and Sheets connector.
-Retain Sheets as the initial operator UI and authoritative store for configuration
-revisions, approvals, recommendation state, action journal, and run history.
-Read a configuration revision once per run; no mid-run mutable global config.
-Changes in editable cells are drafts until validated and published as a revision.
+Retain Apps Script as the only Gmail reader/writer and scheduler. Provide an Apps
+Script HTML Service management page. Its server-side handlers call the authenticated
+worker API; browser code never has database or provider credentials. The worker API
+owns SQL persistence for configuration revisions, approvals, recommendation state,
+action journal, assessment jobs/results, and run history. Read one immutable config
+revision per run; no mid-run mutable global config. UI edits are drafts until
+validated and published as a revision.
 
 Snapshot each thread using latest inbound/outbound meaningful-message context,
 message IDs/timestamps, existing labels, and bounded excerpts. Treat message bodies,
@@ -67,15 +69,15 @@ follow links for decisioning. Snapshot fingerprint changes invalidate stale prop
 ### 3. JEV decision worker
 
 Preferred topology: small TypeScript/Node worker with a JEV provider adapter,
-durable SQLite job storage on a persistent volume, and one active instance.
-The worker receives minimized snapshots, rule evidence, and policy definitions;
-it has no Gmail/Sheets write credentials. SQLite is for assessment jobs/results,
-not authoritative approvals or runtime configuration. Use a transactional job
-lease and unique job keys; introduce a shared database before scaling replicas.
+authenticated API, and durable SQL storage. Start with SQLite on a verified durable
+volume and one active instance; keep a repository boundary for possible PostgreSQL
+migration. The worker receives minimized snapshots, rule evidence, and policy
+definitions; it has no Gmail credentials. Use transactional job leases and unique
+job keys; do not scale replicas against separate SQLite files.
 
-Apps Script submits jobs and polls results in later bounded runs rather than
-holding its execution open for model calls. The worker exposes authenticated
-HTTPS submit/status endpoints. Apps Script cannot reach a localhost or private
+Apps Script submits jobs, reads/writes operational records through the worker API,
+and polls results in later bounded runs rather than holding its execution open for
+model calls. The worker exposes authenticated HTTPS endpoints. Apps Script cannot reach a localhost or private
 Tailscale endpoint directly: V2-P0 must confirm an approved reachable ingress.
 If that topology cannot be provided, revise the ADR before implementation;
 do not expose an unauthenticated bridge or assume an agent-session tool is an API.
@@ -140,5 +142,6 @@ documented retention; operational metadata and full email content are not equiva
 Per-day shared budget reservations, bounded retries with jitter, request limits,
 job deadlines, provider circuit breaker, and rule-only fallback are required.
 An AI outage leaves mail visible in review; it must not block deterministic sorting.
-Move beyond Sheets or build an HTML UI only when measured capacity/operator needs
-justify it; keep the same domain and approval contracts.
+Keep the same domain and approval contracts across Apps Script and worker releases.
+SQLite remains a single-worker choice until measured availability or concurrency
+needs justify a PostgreSQL migration.

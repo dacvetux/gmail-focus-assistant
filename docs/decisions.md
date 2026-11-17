@@ -2,7 +2,7 @@
 
 ## ADR-001 — Preserve outcomes, replace decision plumbing
 
-Accepted planning direction: retain Gmail labels, rules-first behavior, Sheets-first
+Accepted planning direction: retain Gmail labels, rules-first behavior, operator
 review, digests, conservative follow-ups and draft-only help. Replace global mutable
 config, phase-numbered orchestration, direct provider coupling and direct model-to-
 action flow with typed/versioned records and distinct policy/execution boundaries.
@@ -35,21 +35,46 @@ bounded state, makes one request, and does not retry automatically.
 ## ADR-003 — Keep Google writes local; offload decision work
 
 Proposed implementation baseline: TypeScript pure domain; Apps Script V8 for Gmail/
-Sheets/scheduling; Node worker for async JEV calls and durable SQLite assessment
-jobs. Google owns operational approvals/action history; worker owns computation jobs.
-No Gmail write credentials in the worker. Single worker until shared persistence
-and concurrency semantics are intentionally designed.
+UI/scheduling; Node worker for authenticated requests, JEV calls and durable SQL
+storage. No Gmail write credentials in the worker. Single worker until shared
+persistence and concurrency semantics are intentionally designed.
 
 Tradeoff: an extra service and authenticated HTTPS ingress versus Apps Script time
 limits and coupling to a provider. P0 must validate deployment owner, persistent
 storage, approved ingress, budget and operational fit. This topology is conditional,
 not evidence of an available server. No cloud infrastructure is provisioned here.
 
-## ADR-004 — Delay UI replacement and broad autonomy
+## ADR-005 — SQL-backed operational store and Apps Script HTML management UI
 
-Accepted planning direction: stabilize the existing operator model in Sheets first.
-HTML UI and narrow AI auto-label policies are optional P8 work, not prerequisites
-for parity. No new interface may bypass approval or action contracts.
+Accepted direction (2026-11-17, D.C.): use a relational SQL database as v2's
+authoritative store for versioned configuration, recommendations, approvals, audit
+events, assessment jobs/results, and action journals. Apps Script must not connect
+to the database directly or hold database credentials; it calls an authenticated
+worker API. The worker owns persistence and JEV calls, while Apps Script remains the
+only Gmail reader/writer. Start with SQLite for a single-worker deployment and keep
+the repository/migration boundary portable so a move to managed PostgreSQL can be
+made if measured availability/concurrency needs justify it. This selects a logical
+storage design, not a hosting provider or provisioned service.
+
+Use an Apps Script HTML Service management page as the operator interface, backed
+by server-side handlers that call the worker API. It must use the same version-bound
+approval and policy gates as any other client; UI actions are never authority by
+themselves. Keep credentials out of browser code. Resolve web-app execution
+identity/access policy, worker authentication, hosting, backups, retention and
+database migration operations before deploying any of these components. No
+database, UI, or Google project has been provisioned or changed by this decision.
+
+Tradeoff: normalized/queryable records and a focused operator UI, at the cost of
+building an API and operating persistent storage. SQLite is appropriate only while
+there is one worker and a verified durable volume/backup path; do not run replicas
+against independent SQLite files. Sheets is no longer the v2 system of record.
+
+## ADR-004 — Delay broad autonomy
+
+Accepted planning direction: keep model-origin actions review-first. Narrow AI
+auto-label policies remain optional and are not prerequisites for parity. No
+operator interface may bypass approval or action contracts. ADR-005 supersedes the
+earlier Sheets-first and delayed-HTML UI direction for v2.
 
 ## Builder decision register
 
@@ -57,6 +82,8 @@ for parity. No new interface may bypass approval or action contracts.
 | --- | --- | --- |
 | OpenClaw `decision_evaluate` mapping to standalone TypeSafe API | P0 | Keep the verified standalone adapter; do not assume tool/API equivalence |
 | Approved worker hosting, reachable authenticated ingress, durable volume | P0 | Revise ADR-003; no hidden alternate deployment |
+| SQLite hosting, durable-volume guarantee, backup/restore and worker API identity | Before SQL runtime deployment | Keep schema offline; do not deploy stateful services |
+| Apps Script HTML web-app execution identity and allowlisted operators | Before UI deployment | Keep UI local/unpublished; no owner-privileged web endpoint |
 | Actual deployed v1 version and feature ownership | P0 | Migration/cutover cannot proceed |
 | Data minimization, retention and external processing policy | P0 | No real email submitted to JEV |
 | Measurable quality targets/sample coverage/cost budget | P0 | No shadow-to-live promotion |

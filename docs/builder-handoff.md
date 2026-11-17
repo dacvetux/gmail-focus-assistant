@@ -26,8 +26,8 @@ and otherwise selects the most-specific matching domain suffix.
 ```text
 packages/domain/       schemas, snapshots, rules, label mapping, policy, action plans
 packages/decisions/    JEV capability adapter, question sets, validation, mock provider
-apps/google/          Apps Script collector, Sheets repos, scheduler, Gmail executor
-apps/decision-worker/ authenticated API, durable assessment jobs, provider execution
+apps/google/          Apps Script collector, HTML Service UI, scheduler, Gmail executor
+apps/decision-worker/ authenticated API, SQL repositories, jobs and provider execution
 fixtures/             synthetic/anonymized inputs and expected policy outcomes
 tests/                contract, rules, policy, recovery and adapter verification
 scripts/              build, bundle, fixture verification, documentation checks
@@ -35,7 +35,8 @@ docs/                 current plan, ADRs, operational runbooks and actual eviden
 archive/v1/           immutable behavioral reference, never an import/deploy target
 ```
 
-These paths are planned, not present implementation. Avoid empty scaffolds that
+These paths are planned, not present implementation except for the initial SQLite
+migration under `apps/decision-worker/migrations/`. Avoid empty scaffolds that
 suggest runtime availability. Build only the modules needed for the current phase.
 
 ## Legacy behavior mapping

@@ -13,9 +13,11 @@
 
 ## Not implemented
 
-Google adapters/executors, JEV adapter integration, durable persistence, approval
-workflow, operator UI, digests, drafts, follow-ups, and deployment pipelines remain
-future work. Initial offline schemas, tooling and checks are described below. JEV API
+Google adapters/executors, JEV adapter integration, runtime SQL repositories/API,
+approval workflow, HTML management UI, digests, drafts, follow-ups, and deployment
+pipelines remain future work. An initial SQLite schema migration is now defined and
+tested in-memory; no database or worker has been deployed. Initial offline schemas,
+tooling and checks are described below. JEV API
 authentication/reachability has been smoke-checked with synthetic state; decision
 quality, retention, pricing and budget are not yet verified. No production migration
 has occurred.
@@ -66,6 +68,15 @@ while pattern-dependent categories, exclusions, and substring targets are surfac
 for review rather than activated.
 OAuth-independent P0 evidence is documented; live Gmail/Sheets inventory is
 explicitly deferred.
+
+Architecture decision ADR-005 (2026-11-17): SQL is the planned authoritative store
+for v2 operational records, owned by the decision worker; Apps Script must use its
+authenticated API and must not hold database credentials. Start with single-worker
+SQLite on verified durable storage, preserving a migration boundary to PostgreSQL.
+The operator UI will use Apps Script HTML Service and existing approval gates.
+SQLite hosting/backups, worker API authentication, and Apps Script web-app execution
+identity/access policy remain unresolved. SQL DDL is tested offline only; no live
+data or infrastructure was touched.
 
 ## External state
 

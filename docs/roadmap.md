@@ -132,16 +132,25 @@ decisions without Gmail changes. No JEV dependency, drafts, send, or archive act
 as unmet; replay, outage, injection and budget checks pass. Provider confidence is
 not reported as empirical accuracy. Real-provider evaluation uses approved data only.
 
-## V2-P4 — Review-first operator loop and learning
+## V2-P4 — Review-first operator loop, SQL persistence, and HTML management UI
 
-- Add Sheets-backed recommendation and approval records with stable IDs,
+- Implement worker-owned SQLite repositories and migrations for config revisions,
+  recommendations, approvals/audit, assessment jobs/results, and action journals.
+  Keep Apps Script out of direct database connections; it uses the authenticated
+  worker API. SQLite requires a single worker and verified durable-volume/backup
+  hosting before deployment; PostgreSQL migration is a measured future option.
+- Add an Apps Script HTML Service management page backed by server handlers and the
+  worker API. It must use existing identity, approval, and action policy gates; the
+  UI itself grants no authority. Resolve web-app execution identity before exposing
+  it to users.
+- Add SQL-backed recommendation and approval records with stable IDs,
   snapshot/config binding, provenance, evidence links, expiry and correction capture.
 - Implement `new -> approved | rejected | corrected | superseded | expired`;
   an approved recommendation becomes applied only after verified follow-through.
 - Introduce dedicated news-source, routing, and workflow suggestion tasks using
   repeated evidence; preview rule coverage/conflicts before revision publication.
 - Add one clear operator view: what changed, why, expected effect, approve/reject,
-  and what remains manual. Avoid a separate HTML UI at this stage.
+  and what remains manual. Do not create a parallel decision engine in the UI.
 
 **Exit:** approved/rejected/stale/duplicate flows are demonstrated in staging;
 no unreviewed suggestion changes configuration or Gmail. Approval audit identifies
@@ -189,16 +198,14 @@ canaries meet their separate acceptance gates before legacy service retirement.
   controlled soak, writer ownership, rollback window and archive-only retirement.
 - Use time-bounded reconciliation jobs for historical labels only when explicitly
   requested; no automatic whole-mailbox repair during version migration.
-- Measure Sheets/Apps Script quota and latency under representative volume;
-  migrate persistence only with measured need and a new ADR.
+- Measure worker SQL/Apps Script quota and latency under representative volume;
+  migrate SQLite to PostgreSQL only with measured need and a new ADR.
 
 **Exit:** backup restore and rollback rehearsed, operational owner assigned, agreed
 soak window/quality targets satisfied, and live service inventory matches reality.
 
 ## V2-P8 — Optional expansion, not required for goal parity
 
-- Build HTML operator UI only when Sheets workflows and identity/approval contracts
-  are stable; consume existing services instead of creating another decision engine.
 - Consider narrowly scoped AI label automation only after operator-labeled evidence,
   calibration, explicit policy approval, monitoring and immediate rollback exist.
 - Consider richer digest summaries, multilingual preference tuning and follow-up
