@@ -88,8 +88,12 @@ export interface AssessmentResult {
 export interface AssessmentJob {
   schemaVersion: typeof CONTRACT_VERSION;
   jobId: string;
+  accountRef: string;
   snapshotFingerprint: string;
   configRevision: string;
+  provider: string;
+  model: string;
+  idempotencyKey: string;
   task: "classification" | "workflow" | "rule-suggestion";
   questionSetVersion: string;
   createdAt: string;

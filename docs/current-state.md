@@ -49,8 +49,9 @@ Thread snapshots now use SHA-256 fingerprints over canonical content and validat
 preserved-label membership and unique evidence IDs before rule evaluation.
 V2-P3 mock-only groundwork now includes versioned choice question sets, exact
 question/alternative result validation, and a deterministic fixture provider that
-fails closed when a matching fixture is absent. It uses synthetic snapshots only;
-no JEV requests are made.
+fails closed when a matching fixture is absent. Assessment idempotency keys now bind
+account, snapshot, config digest, task, question-set, provider, and model. It uses
+synthetic snapshots only; no JEV requests are made and no durable queue exists.
 Config imports now have a pure diff preview: exact duplicate revisions are
 idempotent, successor revisions must name the current parent, reused revision IDs
 with changed content conflict, and rule additions/removals/modifications are listed

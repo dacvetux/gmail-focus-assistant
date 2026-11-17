@@ -18,6 +18,7 @@ const {
   choiceQuestionSetSchema,
   assertAssessmentResultMatchesJob,
   assertAssessmentResultForQuestionSet,
+  computeAssessmentIdempotencyKey,
   assertApprovalForExecution,
   assertApprovalAuditChain,
   appendApprovalAuditEvent,
@@ -130,6 +131,26 @@ test("config revision preview handles duplicate, successor, and stale imports", 
   const reusedContent = { ...firstContent, rules: [rule("r1", "changed.example.test")] };
   const reusedId = { ...reusedContent, digest: computeConfigRevisionDigest(reusedContent, sha256) };
   assert.throws(() => previewConfigRevision(current, reusedId, sha256), { code: "CONFIG_CONFLICT" });
+});
+
+test("assessment idempotency keys are stable and isolate inputs/provider/model", () => {
+  const snapshot = withSnapshotFingerprint({
+    schemaVersion: "focuna.v2", accountRef: "acct-a", threadRef: "thread-a",
+    capturedAt: "2026-01-01T00:00:00Z", senderAddress: "a@example.test", subject: "Synthetic",
+    labels: [], preservedLabels: [], evidence: [],
+  });
+  const configContent = {
+    schemaVersion: "focuna.v2", revision: "cfg-idempotency", parentRevision: null,
+    publishedAt: "2026-01-01T00:00:00Z", publishedBy: "operator-test", rules: [],
+  };
+  const config = { ...configContent, digest: computeConfigRevisionDigest(configContent, hostSha256) };
+  const key = computeAssessmentIdempotencyKey(snapshot, config, "classification", "questions-v1", "typesafe-jev", "jev-latest", hostSha256);
+  assert.equal(key, computeAssessmentIdempotencyKey(snapshot, config, "classification", "questions-v1", "typesafe-jev", "jev-latest", hostSha256));
+  assert.match(key, /^sha256:[a-f0-9]{64}$/);
+  assert.notEqual(key, computeAssessmentIdempotencyKey(snapshot, config, "workflow", "questions-v1", "typesafe-jev", "jev-latest", hostSha256));
+  assert.notEqual(key, computeAssessmentIdempotencyKey(snapshot, config, "classification", "questions-v1", "typesafe-jev", "jev-preview", hostSha256));
+  const otherAccount = withSnapshotFingerprint({ ...snapshot, accountRef: "acct-b" });
+  assert.notEqual(key, computeAssessmentIdempotencyKey(otherAccount, config, "classification", "questions-v1", "typesafe-jev", "jev-latest", hostSha256));
 });
 
 test("canonical JSON is key-order independent and rejects ambiguous values", () => {
@@ -390,10 +411,12 @@ test("fixture assessment provider is deterministic and binds result to job and q
     labels: [], preservedLabels: [], evidence: [{ id: "fixture-msg", direction: "inbound", sentAt: "2026-01-01T00:00:00Z", text: "Synthetic parcel is delayed." }],
   });
   const job = {
-    schemaVersion: "focuna.v2", jobId: "fixture-job-1", snapshotFingerprint: snapshot.snapshotFingerprint,
-    configRevision: "cfg-fixture", task: "classification", questionSetVersion: "classify-v1",
+    schemaVersion: "focuna.v2", jobId: "fixture-job-1", accountRef: snapshot.accountRef, snapshotFingerprint: snapshot.snapshotFingerprint,
+    configRevision: "cfg-fixture", provider: "typesafe-jev", model: "jev-latest", idempotencyKey: `sha256:${"c".repeat(64)}`,
+    task: "classification", questionSetVersion: "classify-v1",
     createdAt: "2026-01-01T00:00:00Z", deadlineAt: "2026-01-01T00:01:00Z",
   };
+  assert.equal(ajv.compile(assessmentJobSchema)(job), true);
   const questionSet = {
     schemaVersion: "focuna.v2", version: "classify-v1", task: "classification",
     questions: [{ id: "structural-category", alternatives: ["shipping", "services", "finance", "review"] }],

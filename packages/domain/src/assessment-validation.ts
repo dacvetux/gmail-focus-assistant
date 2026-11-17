@@ -1,9 +1,34 @@
 import { DomainError } from "./errors";
-import { Approval, AssessmentJob, AssessmentResult, ChoiceQuestionSet, DecisionProposal } from "./contracts";
+import { Approval, AssessmentJob, AssessmentResult, ChoiceQuestionSet, ConfigRevision, DecisionProposal, ThreadSnapshot } from "./contracts";
 import { canonicalSha256 } from "./canonical-json";
+import { assertConfigRevisionDigest, assertThreadSnapshotIntegrity } from "./revision-validation";
 
 /** Maximum absolute error allowed when a provider's choice distribution sums to 1. */
 export const CHOICE_DISTRIBUTION_TOLERANCE = 0.01;
+
+/** Stable idempotency key; the key itself contains no account or message content. */
+export function computeAssessmentIdempotencyKey(
+  snapshot: ThreadSnapshot,
+  config: ConfigRevision,
+  task: AssessmentJob["task"],
+  questionSetVersion: string,
+  provider: string,
+  model: string,
+  sha256Hex: (canonicalText: string) => string,
+): string {
+  assertThreadSnapshotIntegrity(snapshot, sha256Hex);
+  assertConfigRevisionDigest(config, sha256Hex);
+  if (!questionSetVersion || !provider || !model) invalid("Assessment idempotency requires question-set, provider, and model versions");
+  return `sha256:${canonicalSha256({
+    accountRef: snapshot.accountRef,
+    snapshotFingerprint: snapshot.snapshotFingerprint,
+    configDigest: config.digest,
+    task,
+    questionSetVersion,
+    provider,
+    model,
+  }, sha256Hex)}`;
+}
 
 export function assertAssessmentResultForQuestionSet(
   job: AssessmentJob,

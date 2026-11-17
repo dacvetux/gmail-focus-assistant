@@ -112,6 +112,8 @@ decisions without Gmail changes. No JEV dependency, drafts, send, or archive act
 - Implemented offline/mock foundation: versioned choice question-set schema,
   result-to-job/question validation, and deterministic fixture provider. This is not
   the live JEV adapter, queue, or a budget-approved provider run.
+- Implemented idempotency-key derivation bound to account, snapshot, config digest,
+  task, question set, provider, and model; durable unique-key queue semantics remain.
 - Use question-based structural assessment followed by dependent workflow
   assessment where supported. Keep distributions and rubric semantics intact.
 - Add schema/evidence validation, abstention, input boundaries, shared daily budget

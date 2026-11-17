@@ -51,9 +51,11 @@ adapter. `appendApprovalAuditEvent` validates the chain, treats an exact duplica
 approval ID/content as idempotent, rejects conflicting reuse, and checks that the
 append is observable. No concrete repository is implemented yet.
 
-Idempotency key for assessment: account + thread snapshot fingerprint + config,
-rules, task, and question-set versions. Plan key also binds approved proposal and
-policy revision. Canonical JSON sorts object keys and rejects ambiguous values;
+Assessment idempotency keys hash the account reference, verified snapshot
+fingerprint, config digest, task, question-set version, provider, and model. The key
+contains no raw account or message content. Durable queues must enforce a unique
+constraint on this key and return the existing job for duplicates. Plan key also
+binds approved proposal and policy revision. Canonical JSON sorts object keys and rejects ambiguous values;
 `canonicalSha256` passes that exact text to a host SHA-256 adapter. The adapter must
 UTF-8 encode it and return 64 lowercase hexadecimal characters. An Apps Script
 `Utilities.computeDigest` adapter is implemented; a worker adapter and signature/key
