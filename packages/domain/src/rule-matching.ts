@@ -1,5 +1,6 @@
 import { ApprovedRule } from "./contracts";
 import { DomainError } from "./errors";
+import { labelsForDecision } from "./labels";
 
 export interface RuleSelection {
   rule?: ApprovedRule;
@@ -33,6 +34,7 @@ export function assertRuleSetValid(rules: readonly ApprovedRule[]): void {
   for (const rule of rules) {
     if (!rule.id || ids.has(rule.id)) throw new DomainError("CONFIG_CONFLICT", `Duplicate or empty rule ID: ${rule.id}`);
     ids.add(rule.id);
+    labelsForDecision(rule.category, rule.workflow);
     const selector = `${rule.match.kind}:${normalizeRuleMatch(rule.match)}`;
     if (selectors.has(selector)) throw new DomainError("CONFIG_CONFLICT", `Duplicate normalized rule selector: ${selector}`);
     selectors.add(selector);

@@ -78,6 +78,9 @@ config conflict rules, signature/key management, and durable approval history re
 - Implemented foundation: strict parsed-address normalization, normalized duplicate
   selector rejection, exact-sender precedence, and most-specific domain suffix
   selection. Full v1 rule parity and conflict-preview reporting remain outstanding.
+- Implemented conservative evaluator slice: verified config digest, preserved-label
+  abstention, approved sender-rule application, visible-review fallback, and no-reply
+  response downgrade. Legacy pattern rule coverage remains to be ported.
 - Implement normalized thread snapshots, minimal meaningful-message context,
   bounded pagination/cursors, account identity, and change fingerprints.
 - Import an exported copy of Preferences, DigestSettings, NewsSources and

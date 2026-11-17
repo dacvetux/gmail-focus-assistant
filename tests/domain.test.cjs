@@ -21,6 +21,7 @@ const {
   assertConfigRevisionDigest,
   computeConfigRevisionDigest,
   createApprovalAuditEventFromApproval,
+  evaluateThreadRules,
   configRevisionSchema,
   decisionProposalSchema,
   labelsForDecision,
@@ -203,4 +204,37 @@ test("approval audit events form a verifiable ordered hash chain", () => {
   assert.throws(() => assertApprovalAuditChain([second, first], sha256), { code: "POLICY_REJECTED" });
   assert.throws(() => assertApprovalAuditChain([{ ...first, approval: { ...first.approval, outcome: "rejected" } }], sha256), { code: "POLICY_REJECTED" });
   assert.throws(() => assertApprovalAuditChain([first, { ...second, previousDigest: "0".repeat(64) }], sha256), { code: "POLICY_REJECTED" });
+});
+
+test("rules-first evaluation preserves manual state, abstains safely, and guards no-reply", () => {
+  const sha256 = text => createHash("sha256").update(text, "utf8").digest("hex");
+  const makeRule = (id, sender, category, workflow) => ({
+    id, match: { kind: "exact-sender", value: sender }, category, workflow,
+    approvedAt: "2026-01-01T00:00:00Z", approvedBy: "operator-test",
+  });
+  const content = {
+    schemaVersion: "focuna.v2", revision: "cfg-engine-1", publishedAt: "2026-01-01T00:00:00Z", publishedBy: "operator-test",
+    rules: [
+      makeRule("reply-rule", "person@example.test", "services", "to-respond"),
+      makeRule("no-reply-rule", "no-reply@example.test", "services", "to-respond"),
+    ],
+  };
+  const config = { ...content, digest: computeConfigRevisionDigest(content, sha256) };
+  const snapshot = {
+    schemaVersion: "focuna.v2", accountRef: "acct-test", threadRef: "thread-1",
+    snapshotFingerprint: "sha256:test", capturedAt: "2026-01-01T00:00:00Z",
+    senderAddress: "person@example.test", subject: "Question", labels: [], preservedLabels: [],
+    evidence: [{ id: "msg-in", direction: "inbound", sentAt: "2026-01-01T00:00:00Z", text: "Can you help?" }],
+  };
+  assert.deepEqual(evaluateThreadRules(snapshot, config, sha256), {
+    category: "services", workflow: "to-respond", matchedRuleIds: ["reply-rule"], evidenceIds: ["msg-in"],
+    abstained: false, conflict: false, reasonCode: "approved-sender-rule",
+  });
+  assert.equal(evaluateThreadRules({ ...snapshot, preservedLabels: ["2: FYI"] }, config, sha256).reasonCode, "preserve-label");
+  assert.equal(evaluateThreadRules({ ...snapshot, senderAddress: "unknown@example.test" }, config, sha256).category, "review");
+  const noReply = evaluateThreadRules({ ...snapshot, senderAddress: "no-reply@example.test" }, config, sha256);
+  assert.equal(noReply.workflow, "notification");
+  assert.equal(noReply.reasonCode, "no-reply-downgrade");
+  assert.throws(() => evaluateThreadRules(snapshot, { ...config, revision: "mutated" }, sha256), { code: "CONFIG_CONFLICT" });
+  assert.throws(() => assertRuleSetValid([makeRule("invalid", "shop@example.test", "commercial-ad", "fyi")]), { code: "POLICY_REJECTED" });
 });

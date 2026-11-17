@@ -70,6 +70,12 @@ suffix. Exact local-part case is preserved. Duplicate rule IDs or normalized
 selectors reject the config revision; broad and narrower domains are resolved by
 the documented specificity order.
 
+`evaluateThreadRules` consumes only a schema-checked, digest-verified config
+revision. It abstains when preserved labels are present, returns visible review for
+unmatched senders, and prevents no-reply-like senders from receiving `to-respond`.
+This is the initial sender-rule subset, not a port of the full legacy pattern
+classifier; until parity is demonstrated, unknown mail stays in review.
+
 ## JEV tasks and output adaptation
 
 1. **Ambiguous-thread assessment:** choice distribution over supported structural

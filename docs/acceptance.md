@@ -5,6 +5,11 @@ Use synthetic fixtures by default and separately authorized staging integrations
 P0 must fix sample coverage, measurable targets and observation windows before
 provider comparison. Do not select thresholds after seeing favorable results.
 
+Offline evidence currently covers sender normalization/precedence, config digest
+verification, preserved-label abstention, unknown-sender review, no-reply downgrade,
+and contract-level approval/version gates. It does not establish full v1 rule parity
+or live Google behavior.
+
 ## Required behavior matrix
 
 | Capability | Required evidence / phase |

@@ -37,7 +37,10 @@ domain now builds and smoke-loads as a Google V8-compatible `.gs` bundle. Produc
 runtime digest adapters, signatures, and key management are still to be supplied.
 Sender normalization, duplicate-selector rejection, and exact/specific-domain rule
 precedence are implemented with synthetic coverage; full v1 rules parity remains
-future work.
+future work. A first deterministic evaluator now verifies config digests, blocks
+threads with preserved labels, uses approved sender rules, defaults unmatched mail
+to visible review, and downgrades no-reply `to-respond` to notification. Pattern-rule
+coverage and source-by-source parity have not yet been ported.
 OAuth-independent P0 evidence is documented; live Gmail/Sheets inventory is
 explicitly deferred.
 
