@@ -26,7 +26,11 @@ Every `ConfigRevision` includes a lowercase SHA-256 digest over the canonical JS
 of the complete revision content excluding only the `digest` field. The publisher
 must validate the record and its rules before accepting that digest. A digest
 mismatch rejects publication; changing any rule or publication metadata requires a
-new revision and digest.
+new revision and digest. Each revision also names its parent revision (null only for
+the initial revision). `previewConfigRevision` is a read-only import preview: exact
+duplicates are idempotent, candidate successors must name the current revision,
+revision IDs cannot be reused for changed content, and the preview lists added,
+removed, and modified rule IDs. It does not publish or persist the candidate.
 
 An `ApprovalAuditEvent` records one immutable approval decision, sequence number,
 previous event digest, and digest of the event content. A valid chain begins at

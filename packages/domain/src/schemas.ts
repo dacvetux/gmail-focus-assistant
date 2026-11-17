@@ -35,10 +35,11 @@ export const configRevisionSchema = {
   $id: "focuna://schemas/config-revision-v2.json",
   type: "object",
   additionalProperties: false,
-  required: ["schemaVersion", "revision", "digest", "rules", "publishedAt", "publishedBy"],
+  required: ["schemaVersion", "revision", "parentRevision", "digest", "rules", "publishedAt", "publishedBy"],
   properties: {
     schemaVersion: { const: "focuna.v2" },
     revision: { type: "string", minLength: 1 },
+    parentRevision: { anyOf: [{ type: "null" }, { type: "string", minLength: 1 }] },
     digest: { type: "string", pattern: "^[a-f0-9]{64}$" },
     publishedAt: { type: "string", format: "date-time" },
     publishedBy: { type: "string", minLength: 1 },

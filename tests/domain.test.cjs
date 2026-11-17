@@ -25,6 +25,7 @@ const {
   createApprovalAuditEventFromApproval,
   evaluateThreadRules,
   guardThreadDecision,
+  previewConfigRevision,
   configRevisionSchema,
   decisionProposalSchema,
   labelsForDecision,
@@ -74,6 +75,7 @@ test("config schema only accepts explicit supported policy values", () => {
   const content = {
     schemaVersion: "focuna.v2",
     revision: "cfg-1",
+    parentRevision: null,
     publishedAt: "2026-01-01T00:00:00.000Z",
     publishedBy: "operator-test",
     rules: [{
@@ -91,6 +93,38 @@ test("config schema only accepts explicit supported policy values", () => {
   assert.doesNotThrow(() => assertConfigRevisionDigest(config, sha256));
   assert.equal(validate({ ...config, rules: [{ ...config.rules[0], category: "delete" }] }), false);
   assert.throws(() => assertConfigRevisionDigest({ ...config, publishedBy: "changed" }, sha256), { code: "CONFIG_CONFLICT" });
+});
+
+test("config revision preview handles duplicate, successor, and stale imports", () => {
+  const sha256 = text => createHash("sha256").update(text, "utf8").digest("hex");
+  const rule = (id, value, workflow = "notification") => ({
+    id, match: { kind: "sender-domain", value }, category: "shipping", workflow,
+    approvedAt: "2026-01-01T00:00:00Z", approvedBy: "operator-test",
+  });
+  const firstContent = {
+    schemaVersion: "focuna.v2", revision: "cfg-1", parentRevision: null,
+    publishedAt: "2026-01-01T00:00:00Z", publishedBy: "operator-test", rules: [rule("r1", "ship.example.test")],
+  };
+  const current = { ...firstContent, digest: computeConfigRevisionDigest(firstContent, sha256) };
+  assert.equal(previewConfigRevision(null, current, sha256).status, "initial");
+  assert.equal(previewConfigRevision(current, current, sha256).status, "duplicate");
+
+  const nextContent = {
+    ...firstContent, revision: "cfg-2", parentRevision: "cfg-1", publishedAt: "2026-01-02T00:00:00Z",
+    rules: [rule("r1", "ship.example.test", "fyi"), rule("r2", "parcel.example.test")],
+  };
+  const next = { ...nextContent, digest: computeConfigRevisionDigest(nextContent, sha256) };
+  assert.deepEqual(previewConfigRevision(current, next, sha256), {
+    status: "advance", currentRevision: "cfg-1", candidateRevision: "cfg-2",
+    addedRuleIds: ["r2"], removedRuleIds: [], modifiedRuleIds: ["r1"],
+  });
+
+  const staleContent = { ...nextContent, revision: "cfg-3", parentRevision: "cfg-old" };
+  const stale = { ...staleContent, digest: computeConfigRevisionDigest(staleContent, sha256) };
+  assert.throws(() => previewConfigRevision(current, stale, sha256), { code: "STALE_SNAPSHOT" });
+  const reusedContent = { ...firstContent, rules: [rule("r1", "changed.example.test")] };
+  const reusedId = { ...reusedContent, digest: computeConfigRevisionDigest(reusedContent, sha256) };
+  assert.throws(() => previewConfigRevision(current, reusedId, sha256), { code: "CONFIG_CONFLICT" });
 });
 
 test("canonical JSON is key-order independent and rejects ambiguous values", () => {
@@ -228,7 +262,7 @@ test("rules-first evaluation preserves manual state, abstains safely, and guards
     approvedAt: "2026-01-01T00:00:00Z", approvedBy: "operator-test",
   });
   const content = {
-    schemaVersion: "focuna.v2", revision: "cfg-engine-1", publishedAt: "2026-01-01T00:00:00Z", publishedBy: "operator-test",
+    schemaVersion: "focuna.v2", revision: "cfg-engine-1", parentRevision: null, publishedAt: "2026-01-01T00:00:00Z", publishedBy: "operator-test",
     rules: [
       makeRule("reply-rule", "person@example.test", "services", "to-respond"),
       makeRule("no-reply-rule", "no-reply@example.test", "services", "to-respond"),

@@ -67,8 +67,9 @@ the real adapter, not rules/core development using a mock. No production changes
 
 **Exit:** offline fixture checks reject invalid schemas, stale revisions, coercion
 traps, unknown operations and bad signatures. Domain bundle builds for both targets.
-Schema/policy checks and the dual-target domain bundle are implemented; stale
-config conflict rules, signature/key management, and durable approval history remain.
+Schema/policy checks, config digest/parent checks, stale-import rejection, and the
+dual-target domain bundle are implemented; signature/key management and durable
+approval history remain.
 
 ## V2-P2 — Deterministic parity and read-only Google adapter
 
@@ -89,6 +90,9 @@ config conflict rules, signature/key management, and durable approval history re
   bounded pagination/cursors, account identity, and change fingerprints.
 - Import an exported copy of Preferences, DigestSettings, NewsSources and
   ApprovedRules into staging only; validate and produce an immutable revision.
+- Implemented offline foundation: immutable parent-linked config revision preview
+  with idempotent duplicate handling and added/removed/modified rule summaries.
+  Importing actual Google exports and staged publication remain pending.
 - Implement explainable rule results, preview diffs, and read-only decision logs.
 - Report intended differences from v1 rather than reproducing known mistakes.
 

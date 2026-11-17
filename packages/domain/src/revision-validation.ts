@@ -1,9 +1,55 @@
 import { Approval, ApprovalAuditEvent, ConfigRevision, ThreadSnapshot } from "./contracts";
-import { canonicalSha256 } from "./canonical-json";
+import { canonicalJson, canonicalSha256 } from "./canonical-json";
 import { DomainError } from "./errors";
+import { assertRuleSetValid } from "./rule-matching";
 
 type ConfigRevisionContent = Omit<ConfigRevision, "digest">;
 type ThreadSnapshotContent = Omit<ThreadSnapshot, "snapshotFingerprint">;
+
+export interface ConfigRevisionPreview {
+  status: "initial" | "duplicate" | "advance";
+  currentRevision: string | null;
+  candidateRevision: string;
+  addedRuleIds: string[];
+  removedRuleIds: string[];
+  modifiedRuleIds: string[];
+}
+
+/** Dry-run an immutable config import; this function never publishes or persists. */
+export function previewConfigRevision(
+  current: ConfigRevision | null,
+  candidate: ConfigRevision,
+  sha256Hex: (canonicalText: string) => string,
+): ConfigRevisionPreview {
+  assertConfigRevisionDigest(candidate, sha256Hex);
+  assertRuleSetValid(candidate.rules);
+  if (!current) {
+    if (candidate.parentRevision !== null) throw new DomainError("STALE_SNAPSHOT", "Initial config revision must not name a parent");
+    return {
+      status: "initial", currentRevision: null, candidateRevision: candidate.revision,
+      addedRuleIds: candidate.rules.map(rule => rule.id).sort(), removedRuleIds: [], modifiedRuleIds: [],
+    };
+  }
+
+  assertConfigRevisionDigest(current, sha256Hex);
+  assertRuleSetValid(current.rules);
+  if (candidate.revision === current.revision) {
+    if (candidate.digest === current.digest) {
+      return { status: "duplicate", currentRevision: current.revision, candidateRevision: candidate.revision, addedRuleIds: [], removedRuleIds: [], modifiedRuleIds: [] };
+    }
+    throw new DomainError("CONFIG_CONFLICT", "A config revision ID cannot be reused with different content");
+  }
+  if (candidate.parentRevision !== current.revision) {
+    throw new DomainError("STALE_SNAPSHOT", "Candidate config was based on a different current revision");
+  }
+
+  const before = new Map(current.rules.map(rule => [rule.id, canonicalJson(rule)]));
+  const after = new Map(candidate.rules.map(rule => [rule.id, canonicalJson(rule)]));
+  const addedRuleIds = [...after.keys()].filter(id => !before.has(id)).sort();
+  const removedRuleIds = [...before.keys()].filter(id => !after.has(id)).sort();
+  const modifiedRuleIds = [...after.keys()].filter(id => before.has(id) && before.get(id) !== after.get(id)).sort();
+  return { status: "advance", currentRevision: current.revision, candidateRevision: candidate.revision, addedRuleIds, removedRuleIds, modifiedRuleIds };
+}
 
 export function computeThreadSnapshotFingerprint(
   snapshot: ThreadSnapshotContent,

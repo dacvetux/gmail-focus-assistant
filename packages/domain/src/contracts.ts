@@ -59,6 +59,7 @@ export interface ApprovedRule {
 export interface ConfigRevision {
   schemaVersion: typeof CONTRACT_VERSION;
   revision: string;
+  parentRevision: string | null;
   digest: string;
   rules: ApprovedRule[];
   publishedAt: string;

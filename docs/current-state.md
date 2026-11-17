@@ -45,6 +45,10 @@ are now shared as a pure policy function for future JEV candidates, so model res
 cannot bypass preservation, no-reply, or structural/workflow consistency checks.
 Thread snapshots now use SHA-256 fingerprints over canonical content and validate
 preserved-label membership and unique evidence IDs before rule evaluation.
+Config imports now have a pure diff preview: exact duplicate revisions are
+idempotent, successor revisions must name the current parent, reused revision IDs
+with changed content conflict, and rule additions/removals/modifications are listed
+without publication.
 OAuth-independent P0 evidence is documented; live Gmail/Sheets inventory is
 explicitly deferred.
 
