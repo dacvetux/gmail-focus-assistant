@@ -53,8 +53,10 @@ fails closed when a matching fixture is absent. Assessment idempotency keys now 
 account, snapshot, config digest, task, question-set, provider, and model. It uses
 synthetic snapshots only; no JEV requests are made and no durable queue exists.
 The TypeSafe System One adapter is also prepared and fake-transport tested; it has
-not made live calls. Real email processing still requires approved data-minimization/
-retention policy and a concrete usage budget.
+not made live calls. It rejects invalid, future-dated, and expired jobs before
+transport, preventing stale work from reaching the potentially billable provider.
+Real email processing still requires approved data-minimization/retention policy
+and a concrete usage budget.
 Config imports now have a pure diff preview: exact duplicate revisions are
 idempotent, successor revisions must name the current parent, reused revision IDs
 with changed content conflict, and rule additions/removals/modifications are listed

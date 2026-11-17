@@ -16,6 +16,7 @@ const {
   assessmentJobSchema,
   assessmentResultSchema,
   choiceQuestionSetSchema,
+  assertAssessmentJobRunnable,
   assertAssessmentResultMatchesJob,
   assertAssessmentResultForQuestionSet,
   computeAssessmentIdempotencyKey,
@@ -216,6 +217,14 @@ test("assessment results are bound to job inputs and deadlines", () => {
   assert.throws(() => assertAssessmentResultMatchesJob(job, { ...result, configRevision: "cfg-2" }), { code: "STALE_SNAPSHOT" });
   assert.throws(() => assertAssessmentResultMatchesJob(job, { ...result, completedAt: "2026-01-01T00:02:00Z" }), { code: "ASSESSMENT_INVALID" });
   assert.throws(() => assertAssessmentResultMatchesJob(job, { ...result, jobId: "job-other" }), { code: "ASSESSMENT_INVALID" });
+});
+
+test("assessment jobs are rejected before provider work when invalid, future, or expired", () => {
+  const job = { createdAt: "2026-01-01T00:00:00Z", deadlineAt: "2026-01-01T00:01:00Z" };
+  assert.doesNotThrow(() => assertAssessmentJobRunnable(job, "2026-01-01T00:00:30Z"));
+  assert.throws(() => assertAssessmentJobRunnable(job, "2026-01-01T00:01:00Z"), { code: "ASSESSMENT_INVALID" });
+  assert.throws(() => assertAssessmentJobRunnable(job, "2025-12-31T23:59:59Z"), { code: "ASSESSMENT_INVALID" });
+  assert.throws(() => assertAssessmentJobRunnable({ ...job, deadlineAt: "invalid" }, "2026-01-01T00:00:30Z"), { code: "ASSESSMENT_INVALID" });
 });
 
 test("execution approval is bound to exact proposal digest and current revisions", () => {
@@ -484,6 +493,9 @@ test("TypeSafe adapter maps choice calls through fake transport without retry or
 
   await assert.rejects(() => client.assess(job, snapshot, qset, "x".repeat(101)), { code: "ASSESSMENT_INVALID" });
   assert.equal(callCount, 1);
+  await assert.rejects(() => client.assess({ ...job, deadlineAt: "2026-01-01T00:00:30Z" }, snapshot, qset, "synthetic"), { code: "ASSESSMENT_INVALID" });
+  await assert.rejects(() => client.assess({ ...job, createdAt: "2026-01-01T00:02:00Z" }, snapshot, qset, "synthetic"), { code: "ASSESSMENT_INVALID" });
+  assert.equal(callCount, 1, "expired or future jobs must not reach paid transport");
   const rateLimited = new TypeSafeSystemOneClient("key", async () => {
     callCount += 1;
     return { status: 429, body: { detail: "synthetic" } };

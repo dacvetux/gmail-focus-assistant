@@ -94,6 +94,23 @@ export function assertAssessmentResultMatchesJob(
   }
 }
 
+/** Reject malformed, future, or expired jobs before they can trigger paid provider work. */
+export function assertAssessmentJobRunnable(
+  job: Pick<AssessmentJob, "createdAt" | "deadlineAt">,
+  nowIso: string,
+): void {
+  const createdAt = Date.parse(job.createdAt);
+  const deadlineAt = Date.parse(job.deadlineAt);
+  const now = Date.parse(nowIso);
+  if (![createdAt, deadlineAt, now].every(Number.isFinite) || deadlineAt < createdAt) {
+    invalid("Assessment job timestamps are invalid");
+  }
+  if (now < createdAt) invalid("Assessment job cannot run before its creation time");
+  if (now >= deadlineAt) {
+    throw new DomainError("ASSESSMENT_INVALID", "Assessment job deadline has expired");
+  }
+}
+
 /** Ensure an approval authorizes only its exact, still-current proposal. */
 export function assertApprovalForExecution(
   approval: Pick<Approval, "proposalId" | "proposalDigest" | "actorType" | "scope" | "outcome" | "occurredAt">,

@@ -116,7 +116,9 @@ decisions without Gmail changes. No JEV dependency, drafts, send, or archive act
   the live JEV adapter, queue, or a budget-approved provider run.
 - Implemented TypeSafe System One choice adapter against the verified public
   contract; fake-transport tests cover request/response mapping, state-size guard,
-  usage parsing, and no automatic retries. This adapter has not made a live call.
+  usage parsing, and no automatic retries. It rejects malformed, future, or
+  expired jobs before transport so stale work cannot incur a provider request.
+  This adapter has not made a live call.
 - Implemented idempotency-key derivation bound to account, snapshot, config digest,
   task, question set, provider, and model; durable unique-key queue semantics remain.
 - Use question-based structural assessment followed by dependent workflow

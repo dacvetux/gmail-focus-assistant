@@ -1,5 +1,5 @@
 import { AssessmentJob, AssessmentResult, ChoiceQuestionSet, ThreadSnapshot } from "../../domain/src/contracts";
-import { assertAssessmentResultForQuestionSet, assertQuestionSetMatchesJob } from "../../domain/src/assessment-validation";
+import { assertAssessmentJobRunnable, assertAssessmentResultForQuestionSet, assertQuestionSetMatchesJob } from "../../domain/src/assessment-validation";
 import { DomainError } from "../../domain/src/errors";
 import { assertThreadSnapshotIntegrity } from "../../domain/src/revision-validation";
 
@@ -51,6 +51,9 @@ export class TypeSafeSystemOneClient {
       throw new DomainError("STALE_SNAPSHOT", "Assessment job does not match the supplied account snapshot");
     }
     assertQuestionSetMatchesJob(job, questionSet);
+    // Check before transport: even a request whose result would later be discarded
+    // can incur provider usage charges.
+    assertAssessmentJobRunnable(job, this.nowIso());
     if (!minimizedState || minimizedState.length > this.maxStateChars) {
       throw new DomainError("ASSESSMENT_INVALID", "Prepared state is empty or exceeds the configured character limit");
     }
