@@ -18,6 +18,11 @@ Do not mark the GitHub repository itself archived; it remains the active v2 proj
    identifiers/status/provenance in a legacy-ID mapping, not mutable row numbers.
 4. Validate counts and conflicts; map legacy suggestions into v2 statuses. Do not
    auto-approve unknown or historical recommendations during import.
+   The offline `previewLegacyApprovedRules` helper is conservative: only directly
+   expressible FYI, notification, shipping, and news sender rules are proposed;
+   candidates require fresh v2 approval. Commercial/important categories that rely
+   on subject patterns, news exclusions, and substring selectors are unresolved for
+   operator review. The preview does not publish changes.
 5. Maintain Gmail label names initially. Map structural/workflow values explicitly;
    preserve manual labels and the distinction between blank workflow, FYI and review.
 6. Record operational owner, feature ownership, acceptance targets, soak duration,

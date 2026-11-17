@@ -33,6 +33,7 @@ const {
   assertRuleSetValid,
   normalizeEmailAddress,
   selectApprovedRule,
+  previewLegacyApprovedRules,
   ruleResultSchema,
   threadSnapshotSchema,
   validateChoiceAssessment,
@@ -334,4 +335,29 @@ test("shared thread policy guards model-style decisions the same as rule decisio
   assert.deepEqual(guardThreadDecision(snapshot, { category: "commercial-ad", workflow: "fyi" }), {
     category: "review", workflow: "none", abstained: true, reasonCode: "invalid-category-workflow",
   });
+});
+
+test("legacy ApprovedRules import is preview-only and refuses ambiguous categories/targets", () => {
+  const rows = [
+    { category: "fyi-sender", target: "person@example.test", action: "add", approved: "Yes" },
+    { category: "shipping-sender", target: "ship.example.test", approved: true },
+    { category: "notification-sender", target: "alerts@example.test", action: "remove", approved: "approved" },
+    { category: "commercial-sender", target: "shop.example.test", approved: true },
+    { category: "fyi-sender", target: "noreply@", approved: true },
+    { category: "news-exclude-sender", target: "digest@example.test", approved: true },
+    { category: "fyi-sender", target: "ignored@example.test", approved: "No" },
+  ];
+  const preview = previewLegacyApprovedRules(rows, hostSha256);
+  assert.equal(preview.additions.length, 2);
+  assert.equal(preview.additions[0].category, "none");
+  assert.equal(preview.additions[0].workflow, "fyi");
+  assert.equal(preview.additions[0].requiresReapproval, true);
+  assert.equal(preview.additions[1].category, "shipping");
+  assert.deepEqual(preview.removals, [{ sourceRow: 3, match: { kind: "exact-sender", value: "alerts@example.test" } }]);
+  assert.equal(preview.ignoredUnapproved, 1);
+  assert.deepEqual(preview.unresolved.map(row => row.reason), [
+    "category-requires-policy-review", "invalid-or-ambiguous-target", "category-requires-policy-review",
+  ]);
+  const reordered = previewLegacyApprovedRules([rows[1], rows[0]], hostSha256);
+  assert.equal(reordered.additions[1].candidateId, preview.additions[0].candidateId);
 });

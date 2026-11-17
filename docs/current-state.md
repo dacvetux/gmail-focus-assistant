@@ -49,7 +49,10 @@ preserved-label membership and unique evidence IDs before rule evaluation.
 Config imports now have a pure diff preview: exact duplicate revisions are
 idempotent, successor revisions must name the current parent, reused revision IDs
 with changed content conflict, and rule additions/removals/modifications are listed
-without publication.
+without publication. A legacy `ApprovedRules` preview translates only clear FYI,
+notification, shipping, and news sender meanings; all candidates require reapproval,
+while pattern-dependent categories, exclusions, and substring targets are surfaced
+for review rather than activated.
 OAuth-independent P0 evidence is documented; live Gmail/Sheets inventory is
 explicitly deferred.
 

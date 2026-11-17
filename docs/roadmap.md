@@ -96,6 +96,9 @@ approval history remain.
 - Implemented offline foundation: immutable parent-linked config revision preview
   with idempotent duplicate handling and added/removed/modified rule summaries.
   Importing actual Google exports and staged publication remain pending.
+- Implemented preview-only legacy `ApprovedRules` mapper for unambiguous sender
+  categories; ambiguous pattern-dependent/exclusion/substr targets require review,
+  and every imported candidate requires a new explicit approval.
 - Implement explainable rule results, preview diffs, and read-only decision logs.
 - Report intended differences from v1 rather than reproducing known mistakes.
 

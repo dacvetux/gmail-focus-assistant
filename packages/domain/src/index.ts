@@ -4,6 +4,7 @@ export * from "./approval-audit-store";
 export * from "./contracts";
 export * from "./errors";
 export * from "./labels";
+export * from "./legacy-rule-import";
 export * from "./rule-matching";
 export * from "./rule-engine";
 export * from "./revision-validation";
