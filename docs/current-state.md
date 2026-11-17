@@ -13,11 +13,12 @@
 
 ## Not implemented
 
-All v2 runtime components, JEV adapters, persistence schemas, fixtures, build tooling,
-automated checks, operator integration, and deployment pipelines remain future work.
-JEV API authentication/reachability has been smoke-checked with synthetic state;
-decision quality, retention, pricing and budget are not yet verified. No production
-migration has occurred.
+Google adapters/executors, JEV adapter integration, durable persistence, approval
+workflow, operator UI, digests, drafts, follow-ups, and deployment pipelines remain
+future work. Initial offline schemas, tooling and checks are described below. JEV API
+authentication/reachability has been smoke-checked with synthetic state; decision
+quality, retention, pricing and budget are not yet verified. No production migration
+has occurred.
 
 V2-P1 offline contract/tooling slice is underway: initial ThreadSnapshot and
 ConfigRevision schemas, core types, legacy label mapping, typed errors, canonical
