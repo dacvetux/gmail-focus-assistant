@@ -21,7 +21,9 @@ May 2026 documentation, not a current production inspection.
 
 ## Next work
 
-Start V2-P0 in the [roadmap](roadmap.md). Confirm JEV's identity and supported
-integration, then inventory the existing deployment read-only before writing an adapter.
+Start V2-P0 in the [roadmap](roadmap.md). API access/key availability and accepted
+usage charges are confirmed; a protected gateway secret for `api.typesafe.ai` exists.
+Confirm it is the JEV credential/service and inventory the existing deployment
+read-only before writing an adapter.
 Record evidence here as implementation proceeds; do not mark a whole phase complete
 because one file or UI exists.

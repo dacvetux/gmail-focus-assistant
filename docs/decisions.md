@@ -18,10 +18,18 @@ The available OpenClaw `decision_evaluate` interface supports supplied-state boo
 choice and score questions and states that results do not authorize actions.
 Its selected provider and standalone accessibility have not been verified here.
 
-P0 must resolve: JEV identity/version, documentation, supported access, hosting,
-auth, limits, usage accounting, retention and external data-processing permission.
-Do not build against an invented URL. If JEV cannot be reached as intended, document
-an alternative deployment ADR and retain the mock boundary without pretending success.
+P0 must resolve: JEV's exact provider/service identity, API documentation, endpoint
+and authentication contract, supported question types, limits, usage accounting,
+retention and external data-processing permission. D.C. confirmed API access/key
+exists and explicitly acknowledged usage charges. A protected credential named
+`TYPESAFE_API_KEY` is present in the OpenClaw Secret Store and restricted to host
+`api.typesafe.ai`; its value was not read or disclosed. This is available as a
+gateway-managed secret, not injected into the native local shell. The name/host
+suggests a possible mapping but does not prove that it is JEV's credential or API.
+Verify that mapping and the provider contract in P0 before sending real email or
+building the network adapter. Do not build against an invented URL. If JEV cannot
+be reached as intended, document an alternative deployment ADR and retain the mock
+boundary without pretending success.
 
 ## ADR-003 — Keep Google writes local; offload decision work
 

@@ -12,6 +12,10 @@ below is planned. Gates are sequential; no schedule or production readiness is i
 - Confirm what JEV refers to, its provider/model, supported tasks, authentication,
   SDK/API or supported OpenClaw access, deployment constraints, usage limits, cost,
   data location, retention, and deletion behavior. Record evidence in decisions.md.
+- D.C. confirmed API access/key availability and accepted that use incurs charges;
+  the protected `TYPESAFE_API_KEY` gateway secret is restricted to `api.typesafe.ai`.
+  Confirm that this is the JEV credential/service, then document rate limits, pricing
+  and an explicit operating budget. Never reveal or copy its value into source.
 - Confirm whether `decision_evaluate` actually routes to JEV and whether it can be
   called outside an agent session. Do not equate similarly named interfaces.
 - Inventory existing Apps Script code version, Gmail labels, trigger ownership,
@@ -22,7 +26,8 @@ below is planned. Gates are sequential; no schedule or production readiness is i
   news vs commercial, no-reply, manual labels, sender aliases, and reply direction.
 - Agree numerical rollout targets and sample coverage before comparing providers.
 
-**Exit:** JEV capability/transport matrix, deployment inventory, baseline behavior
+**Exit:** JEV capability/transport matrix, confirmed credential-to-provider mapping,
+cost limit/operating budget, deployment inventory, baseline behavior
 matrix, and concrete acceptance targets are recorded. Unavailable JEV access blocks
 the real adapter, not rules/core development using a mock. No production changes.
 
