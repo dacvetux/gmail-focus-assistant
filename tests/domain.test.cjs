@@ -13,6 +13,7 @@ const {
   assessmentJobSchema,
   assessmentResultSchema,
   assertAssessmentResultMatchesJob,
+  assertApprovalForExecution,
   configRevisionSchema,
   decisionProposalSchema,
   labelsForDecision,
@@ -125,4 +126,21 @@ test("assessment results are bound to job inputs and deadlines", () => {
   assert.throws(() => assertAssessmentResultMatchesJob(job, { ...result, configRevision: "cfg-2" }), { code: "STALE_SNAPSHOT" });
   assert.throws(() => assertAssessmentResultMatchesJob(job, { ...result, completedAt: "2026-01-01T00:02:00Z" }), { code: "ASSESSMENT_INVALID" });
   assert.throws(() => assertAssessmentResultMatchesJob(job, { ...result, jobId: "job-other" }), { code: "ASSESSMENT_INVALID" });
+});
+
+test("execution approval is bound to exact proposal digest and current revisions", () => {
+  const proposal = {
+    schemaVersion: "focuna.v2", proposalId: "proposal-1", jobId: "job-1",
+    snapshotFingerprint: "sha256:s1", configRevision: "cfg-1", category: "shipping",
+    workflow: "notification", evidenceIds: ["msg-1"], abstained: false,
+    expiresAt: "2026-01-01T01:00:00Z",
+  };
+  const sha256 = text => createHash("sha256").update(text, "utf8").digest("hex");
+  const approval = { proposalId: proposal.proposalId, proposalDigest: canonicalSha256(proposal, sha256), outcome: "approved", occurredAt: "2026-01-01T00:30:00Z" };
+  const current = { snapshotFingerprint: "sha256:s1", configRevision: "cfg-1", now: "2026-01-01T00:45:00Z" };
+  assert.doesNotThrow(() => assertApprovalForExecution(approval, proposal, current, sha256));
+  assert.throws(() => assertApprovalForExecution({ ...approval, outcome: "rejected" }, proposal, current, sha256), { code: "POLICY_REJECTED" });
+  assert.throws(() => assertApprovalForExecution({ ...approval, proposalDigest: "0".repeat(64) }, proposal, current, sha256), { code: "POLICY_REJECTED" });
+  assert.throws(() => assertApprovalForExecution(approval, proposal, { ...current, configRevision: "cfg-2" }, sha256), { code: "STALE_SNAPSHOT" });
+  assert.throws(() => assertApprovalForExecution(approval, proposal, { ...current, now: "2026-01-01T01:00:01Z" }, sha256), { code: "STALE_SNAPSHOT" });
 });

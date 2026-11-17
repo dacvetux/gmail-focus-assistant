@@ -46,6 +46,9 @@ the real adapter, not rules/core development using a mock. No production changes
   check supplements boundary JSON Schema validation.
 - Bind provider results to the exact job, snapshot, config revision, and deadline
   (implemented by the offline domain validator).
+- Gate execution on approval outcome, exact proposal digest, current snapshot/config,
+  and non-expired timestamps (implemented as a pure domain invariant; durable approval
+  storage and append-only history remain outstanding).
 - Canonical JSON and a strict host-supplied SHA-256 adapter seam are implemented;
   the host must hash the exact canonical text as UTF-8. Runtime adapters, signatures,
   and key management remain outstanding.

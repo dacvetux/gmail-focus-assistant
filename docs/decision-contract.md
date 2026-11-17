@@ -74,6 +74,9 @@ and cannot introduce actions, facts, or evidence IDs outside the request.
 - Bind each result's job ID, snapshot fingerprint, and config revision to its job;
   reject mismatches and results completed before job creation or after its deadline
   (implemented by `assertAssessmentResultMatchesJob`).
+- Before execution, require an `approved` outcome whose digest matches the exact
+  proposal and whose snapshot/config revisions are still current; reject future,
+  malformed, or expired approval timestamps (`assertApprovalForExecution`).
 - Preserve/manual constraints always override both rule and AI results.
 - Model/rule disagreement enters review. Missing evidence or a weak/close choice
   distribution leads to abstention. Thresholds are versioned policy parameters

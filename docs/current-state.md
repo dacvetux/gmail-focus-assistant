@@ -25,7 +25,9 @@ initial records, core types, legacy label mapping, typed errors, canonical JSON,
 semantic JEV choice-distribution validation, and offline test/CI setup have been
 added. Assessment results are also bound to the originating job, snapshot, config
 revision and deadline. Remaining work includes signature adapters, approval
-invariants, complete tooling verification, and cross-runtime bundle checks.
+workflow persistence and event history, complete tooling verification, and
+cross-runtime bundle checks. The offline execution gate now binds an approved
+record to the exact proposal digest and current snapshot/config revisions.
 Canonical JSON and the SHA-256 adapter seam now reject ambiguous input values;
 production-runtime digest adapters are still to be supplied. OAuth-independent P0
 evidence is documented; live Gmail/Sheets inventory is explicitly deferred.

@@ -1,5 +1,6 @@
 import { DomainError } from "./errors";
-import { AssessmentJob, AssessmentResult } from "./contracts";
+import { Approval, AssessmentJob, AssessmentResult, DecisionProposal } from "./contracts";
+import { canonicalSha256 } from "./canonical-json";
 
 /** Maximum absolute error allowed when a provider's choice distribution sums to 1. */
 export const CHOICE_DISTRIBUTION_TOLERANCE = 0.01;
@@ -31,6 +32,33 @@ export function assertAssessmentResultMatchesJob(
   if (completedAt > deadlineAt) {
     throw new DomainError("ASSESSMENT_INVALID", "Assessment result completed after the job deadline");
   }
+}
+
+/** Ensure an approval authorizes only its exact, still-current proposal. */
+export function assertApprovalForExecution(
+  approval: Pick<Approval, "proposalId" | "proposalDigest" | "outcome" | "occurredAt">,
+  proposal: DecisionProposal,
+  current: { snapshotFingerprint: string; configRevision: string; now: string },
+  sha256Hex: (canonicalText: string) => string,
+): void {
+  if (approval.proposalId !== proposal.proposalId) invalid("Approval proposal ID does not match the proposal");
+  if (approval.outcome !== "approved") {
+    throw new DomainError("POLICY_REJECTED", "Only an approved proposal can authorize execution");
+  }
+  if (approval.proposalDigest !== canonicalSha256(proposal, sha256Hex)) {
+    throw new DomainError("POLICY_REJECTED", "Approval digest does not match the exact proposal");
+  }
+  if (proposal.snapshotFingerprint !== current.snapshotFingerprint || proposal.configRevision !== current.configRevision) {
+    throw new DomainError("STALE_SNAPSHOT", "Proposal snapshot or config revision is no longer current");
+  }
+
+  const approvedAt = Date.parse(approval.occurredAt);
+  const expiresAt = Date.parse(proposal.expiresAt);
+  const now = Date.parse(current.now);
+  if (![approvedAt, expiresAt, now].every(Number.isFinite) || approvedAt > expiresAt || approvedAt > now) {
+    invalid("Approval/proposal timestamps are invalid or approval occurred after expiry");
+  }
+  if (now >= expiresAt) throw new DomainError("STALE_SNAPSHOT", "Approved proposal has expired");
 }
 
 /** Validate semantic constraints that JSON Schema cannot express (notably sums). */
