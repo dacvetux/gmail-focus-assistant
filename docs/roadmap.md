@@ -1,83 +1,156 @@
-# Roadmap
+# New roadmap — Focuna v2
 
-## Completed foundation
-- establish repository structure
-- document architecture and phased plan
-- implement safe phase 1 rules-first inbox classification
-- implement phase 2 priority labeling
-- implement phase 3 daily briefing
-- implement phase 4 selective AI review for ambiguous mail only
-- implement phase 5 draft-only assistance in a narrow, validated form
-- implement phase 6 follow-up tracking in a visibility-first form
-- start phase 7 operational reporting and conservative tuning
+This replaces the legacy phase roadmap, preserved under `archive/v1/docs/`.
+Phase numbers below are **V2-P0 through V2-P8**, not continuations of v1 Phases 1–12.
+Only repository/documentation preparation is complete. Every runtime deliverable
+below is planned. Gates are sequential; no schedule or production readiness is implied.
 
-## Current active phase: Phase 11 - Assisted AI expansion
+## V2-P0 — Discovery and baseline
 
-Phase 10 is still open for later polish, but it is intentionally on hold for now while the next review-first AI layer starts.
+**Changes:** preserve v1 (prepared), establish actual integration/deployment facts.
 
-Phases 8 and 9 are now treated as shipped base capabilities rather than separately open workstreams:
-- **Phase 8:** separate `News/Digest` lane is implemented and operational
-- **Phase 9:** recommendation-first tuning suggestions are implemented and operational
+- Confirm what JEV refers to, its provider/model, supported tasks, authentication,
+  SDK/API or supported OpenClaw access, deployment constraints, usage limits, cost,
+  data location, retention, and deletion behavior. Record evidence in decisions.md.
+- Confirm whether `decision_evaluate` actually routes to JEV and whether it can be
+  called outside an agent session. Do not equate similarly named interfaces.
+- Inventory existing Apps Script code version, Gmail labels, trigger ownership,
+  workbook schemas, config/rules, logs, digest recipients/windows, and live settings
+  read-only. Compare actual deployment with archived source; report drift.
+- Define minimized data allowed to leave Google, retention, and worker ingress.
+- Capture synthetic/anonymized examples for existing edge cases: FYI vs review,
+  news vs commercial, no-reply, manual labels, sender aliases, and reply direction.
+- Agree numerical rollout targets and sample coverage before comparing providers.
 
-Any remaining Phase 8 / 9 refinement now rolls into **Phase 10 Option A** so there is one active operator-facing phase instead of three partially-open ones.
+**Exit:** JEV capability/transport matrix, deployment inventory, baseline behavior
+matrix, and concrete acceptance targets are recorded. Unavailable JEV access blocks
+the real adapter, not rules/core development using a mock. No production changes.
 
-The main active roadmap focus is now **Phase 11**: widening AI into operator-facing recommendation loops without allowing silent runtime mutation.
+## V2-P1 — Contracts, domain foundation, and build tooling
 
-### Current status update
-- sheet-backed preferences, digest settings, and news-source controls are live
-- approved sender rules now load from `ApprovedRules` into runtime config
-- tuning suggestions can be promoted into approved rules via a sheet-based review loop
-- `ApprovedRules` supports operator-friendly category aliases plus `add` / `remove` actions
-- `ControlSurfaceStatus`, `ValidationStatus`, `RecentRunSummary`, `WorkflowAudit`, `TuningReviewQueue`, `OperatorGuide`, and `AutomationHealthLog` are live
-- `AiRecommendations` is now the first Phase 11 surface; `generateAiRecommendationsPhase11()` writes general AI-assisted operator recommendations there, `generateAiNewsSourceRecommendationsPhase11()` handles curated-news include/exclude review separately, and `generateAiWorkflowRecommendationsPhase11()` handles review/FYI/notification semantics separately
-- `AiRecommendations` should increasingly behave like a real operator queue, not just a dump table; helper provenance and follow-through hints now travel with each row, and duplicate still-open recommendations are now refreshed in place instead of being appended again
-- active operational logs can now be rotated into `*Archive` sheets via Phase 10 log-maintenance helpers so the main workbook tabs stay usable over time
-- automation-health auditing is live
-- ambiguous mail no longer auto-gets `2: FYI`; review and FYI semantics are being cleaned up further
-- `ControlSurfaceStatus` now also surfaces workflow-semantics warnings and the latest Phase 10 checkpoint status directly, so first-pass triage usually no longer requires opening `WorkflowAudit` or raw `RunLog`
-- targeted query-based reclassification helpers now exist for catch-up repairs when improved rules need to be applied to older preserved mailbox threads
-- curated news-source handling has been corrected in live use for TLDR, Economist, Telecompaper, and Zeteo-family mail, while Google Play / Play Store mail now routes toward important service handling instead of news
+**Depends on:** P0 facts or explicit documented mock-only boundary.
 
-### What is next inside Phase 11
-- validate the first `AiRecommendations` outputs against real mailbox evidence and tune candidate selection / prompt quality
-- expand the dedicated AI-assisted `NewsSources` path so it can explicitly suggest `news` vs `exclude` rows for operator review without polluting the generic sender loop
-- continue expanding the dedicated workflow-semantics path so recurring ambiguous senders can surface review-first `FYI` / `notification` / `to-respond` recommendations with clearer operator follow-through
-- add AI help for workflow semantics, especially `Review/Ambiguous` vs `2: FYI` vs `3: notification`
-- keep all AI outputs recommendation-first: write suggestions, explanations, and clustering only; no silent config or mailbox mutation
-- resume remaining Phase 10 polish later only where the Phase 11 loop exposes real operator pain
+- Create the module layout in builder-handoff.md; use TypeScript for pure domain
+  code and build a Google V8-compatible bundle without Node runtime imports.
+- Implement schemas for all records in decision-contract.md, exact hashing/signing
+  canonicalization, stable label mappings, versioned config, typed error taxonomy.
+- Establish package/lockfile, lint/typecheck, schema/fixture checks, automated unit
+  checks, and a GitHub Actions workflow that uses no production credentials.
+- Define operator identity, approval scopes, append-only audit, access controls,
+  retention, configuration publication, and import-conflict rules.
 
-### Phase 10 status while Phase 11 is active
-- the Sheets operator workflow remains the live base and stays usable as-is
-- remaining Phase 10 polish is intentionally paused unless it blocks Phase 11 work
-- Phase 11 should build on the proven Sheets/runtime model rather than replacing it
+**Exit:** offline fixture checks reject invalid schemas, stale revisions, coercion
+traps, unknown operations and bad signatures. Domain bundle builds for both targets.
 
-### Phase 10 UX deployment path
-- **Option A (now):** improve the existing Google Sheets control surface and treat it as the primary operator UI while workflow semantics are still evolving
-- use this period to stabilize statuses, approval actions, validation rules, helper views, operator terminology, and log-maintenance behavior
-- **graduation rule:** only move on once the operator workflow feels finalized and about 90% clear/ready in real use
-- do not start a separate HTML UI inside Phase 10; first prove the workflow in Sheets
+## V2-P2 — Deterministic parity and read-only Google adapter
 
-## Active phase details: Phase 11 - Assisted AI expansion
-- widen AI into operator-facing recommendation loops after Phase 10 is stable enough
-- start with AI-assisted `TuningSuggestions`, `NewsSources` proposals, and workflow-semantics recommendations
-- prefer explanation, clustering, and suggestion quality over autonomy
-- keep human approval as the control point for anything that changes runtime behavior
-- do not let AI silently add rules, mutate preferences, or alter mailbox behavior in this phase
+- Port rules by intent from classify.gs/config.gs, preserving manual labels and
+  structural/workflow separation. Replace substring sender matching with parsed,
+  boundary-aware address matching and explicit rule precedence/conflict detection.
+- Implement normalized thread snapshots, minimal meaningful-message context,
+  bounded pagination/cursors, account identity, and change fingerprints.
+- Import an exported copy of Preferences, DigestSettings, NewsSources and
+  ApprovedRules into staging only; validate and produce an immutable revision.
+- Implement explainable rule results, preview diffs, and read-only decision logs.
+- Report intended differences from v1 rather than reproducing known mistakes.
 
-## Later
-- strengthen follow-up intelligence once real waiting-on-them mailbox state exists
-- add lightweight escalation/notification for automation-health warnings
-- add accepted-suggestion semi-automation only after suggestion quality is trustworthy
-- expand long-term analytics and preference-aware behavior
-- continue tightening tuning suggestion quality from live evidence
+**Exit:** baseline cases pass offline; an authorized read-only staging pass shows
+decisions without Gmail changes. No JEV dependency, drafts, send, or archive action.
 
-## Phase 12 - Dedicated HTML UI
-- after the Sheets workflow is proven, build a separate HTML UI phase on top of the stabilized Sheets-backed/runtime-backed model
-- prefer starting with Apps Script HTML, sidebar, or web app, but keep the implementation choice open until the operator workflow is genuinely settled
-- the HTML UI should crystallize a proven workflow, not invent one too early
+## V2-P3 — JEV adapter and shadow assessment
 
-## Non-goals for early versions
-- full autonomous inbox management
-- auto-send replies
-- opaque AI-first decisioning on all mail
-- immediate auto-mutation of rules without review
+- Implement the confirmed JEV adapter and durable single-worker job queue;
+  authenticated submit/poll transport; mock adapter; restart-safe idempotency.
+- Use question-based structural assessment followed by dependent workflow
+  assessment where supported. Keep distributions and rubric semantics intact.
+- Add schema/evidence validation, abstention, input boundaries, shared daily budget
+  reservation, bounded retries/backoff, deadlines, caching and circuit breaker.
+- Store both rule and JEV outputs for comparison. Add latency/cost/failure metrics.
+- Run shadow only: model output cannot alter Gmail, active rules, or live approvals.
+
+**Exit:** target sample coverage and predeclared quality targets met or documented
+as unmet; replay, outage, injection and budget checks pass. Provider confidence is
+not reported as empirical accuracy. Real-provider evaluation uses approved data only.
+
+## V2-P4 — Review-first operator loop and learning
+
+- Add Sheets-backed recommendation and approval records with stable IDs,
+  snapshot/config binding, provenance, evidence links, expiry and correction capture.
+- Implement `new -> approved | rejected | corrected | superseded | expired`;
+  an approved recommendation becomes applied only after verified follow-through.
+- Introduce dedicated news-source, routing, and workflow suggestion tasks using
+  repeated evidence; preview rule coverage/conflicts before revision publication.
+- Add one clear operator view: what changed, why, expected effect, approve/reject,
+  and what remains manual. Avoid a separate HTML UI at this stage.
+
+**Exit:** approved/rejected/stale/duplicate flows are demonstrated in staging;
+no unreviewed suggestion changes configuration or Gmail. Approval audit identifies
+the actor and exact proposal, not just a mutable row number.
+
+## V2-P5 — Controlled executor and classification cutover readiness
+
+- Implement central policy, allowlisted action plans, preflight state re-read,
+  intent journal, per-operation reconciliation, locking/leases, and kill switch.
+- Enable deterministic and specifically approved **label-only** actions in staging.
+  Validate managed-label ownership, no-reply guard, manual edits and new-message races.
+- Implement commercial archiving separately: require an approved rule plus archive
+  policy, preview impact, and record inverse operations. JEV alone cannot archive.
+- Exercise recovery from partial writes and failed logging, not only clean runs.
+- Prepare single-writer scheduling/cutover and runbook; do not execute production
+  cutover until explicit confirmation and the acceptance record are present.
+
+**Exit:** zero prohibited writes in verification, idempotent retry/recovery shown,
+stale plans rejected, pause/rollback rehearsed. Start with bounded label-only canary;
+archive enablement is a separate gate. V1 is not retired until remaining services
+are replaced or explicitly retained as read-only with ownership documented.
+
+## V2-P6 — Digests, follow-ups, and draft-only assistance
+
+- Port main/news morning/evening digests using event/window identity, successful
+  action history, current visibility, deterministic ranking and source links.
+- Preserve Europe/Ljubljana timezone and DST behavior; validate mailbox-vs-log
+  window differences and duplicate suppression across retries.
+- Implement explicit waiting-on-them state from meaningful message direction,
+  conservative stale/closed follow-ups, and operator correction.
+- Add narrow reply-draft eligibility and a separate text-generation adapter;
+  do not assume JEV is a text generator. Revalidate thread state before draft creation.
+- Ensure no duplicate drafts or digest deliveries; resolve ambiguous delivery
+  outcomes before retry. Digest sending is opt-in to configured recipients only.
+
+**Exit:** all original goal categories have evidence-backed parity, intentional
+differences are documented, no autonomous replies, and digest/follow-up/draft
+canaries meet their separate acceptance gates before legacy service retirement.
+
+## V2-P7 — Operational hardening and full migration
+
+- Add queue/backlog, provider/budget, correction-rate and automation-health views;
+  freshness checks, retention cleanup, archival, backup/restore and incident runbooks.
+- Complete live export mapping, staged imports, rehearsal, explicit cutover,
+  controlled soak, writer ownership, rollback window and archive-only retirement.
+- Use time-bounded reconciliation jobs for historical labels only when explicitly
+  requested; no automatic whole-mailbox repair during version migration.
+- Measure Sheets/Apps Script quota and latency under representative volume;
+  migrate persistence only with measured need and a new ADR.
+
+**Exit:** backup restore and rollback rehearsed, operational owner assigned, agreed
+soak window/quality targets satisfied, and live service inventory matches reality.
+
+## V2-P8 — Optional expansion, not required for goal parity
+
+- Build HTML operator UI only when Sheets workflows and identity/approval contracts
+  are stable; consume existing services instead of creating another decision engine.
+- Consider narrowly scoped AI label automation only after operator-labeled evidence,
+  calibration, explicit policy approval, monitoring and immediate rollback exist.
+- Consider richer digest summaries, multilingual preference tuning and follow-up
+  assistance with separate evaluations and data-access decisions.
+
+**Exit per feature:** a written ADR, acceptance criteria, scope-specific approval,
+and demonstrated benefit. No feature implicitly adds sending, deletion, or autonomous
+rule activation.
+
+## Dependency and delivery order
+
+`P0 -> P1 -> P2 -> P3 -> P4 -> P5 -> P6 -> P7`; P8 is optional.
+P2 can proceed mock-only if JEV access is unresolved. P3 cannot pass its real-provider
+gate using mocks. Deploy feature ownership separately during P5/P6; do not run two
+writers or two digest senders against the same mailbox/window.

@@ -1,174 +1,142 @@
-# Architecture
+# Focuna v2 architecture
 
-## Overview
+Status: target design, not running software. See [decisions](decisions.md) for
+assumptions and [roadmap](roadmap.md) for dependency order.
 
-Focuna is a rules-first Gmail automation system built on Google Apps Script with a Google Sheets operator control surface.
+## Goals and continuity
 
-The system is deliberately split into two modes:
-- **runtime automation** that reads Gmail, classifies threads, applies labels, drafts replies, and writes logs
-- **operator control** that reviews state in Sheets, approves changes, and refreshes runtime behavior without silent AI mutation
+Preserve v1 outcomes: rules-first explainable sorting, structural plus workflow
+labels, important-mail visibility, commercial archiving under controlled policy,
+separate news, morning/evening main/news digests, conservative follow-ups,
+draft-only reply assistance, operator-approved learning, and operational history.
 
-## Core design principles
+V2 adds a shared decision contract, JEV assessment, explicit policy gates,
+replayable evidence, idempotent actions, and measured rather than assumed AI quality.
+It does not add autonomous sending, deletion, or autonomous rule learning.
 
-- deterministic rules should handle obvious cases first
-- workflow labels and structural labels are different things
-- operator-approved sheet data may affect runtime behavior
-- AI broadens the system through review-first suggestions before direct automation
-- no autonomous sending
-- logs and control surfaces should make behavior explainable
+## Component model
 
-## Runtime layers
+```mermaid
+flowchart TD
+  G[Gmail] --> S[Apps Script snapshot collector]
+  C[Versioned Sheets configuration] --> R[Pure rules engine]
+  S --> R
+  R -->|uncertain or conflicting| Q[Assessment job queue]
+  Q --> W[Decision worker and JEV adapter]
+  W --> V[Contract and evidence validation]
+  R --> P[Deterministic policy gate]
+  V --> P
+  P --> H[Sheets operator review]
+  H -->|version-bound approval| P
+  P --> A[Action plan and journal]
+  A --> E[Apps Script Gmail executor]
+  E --> G
+  E --> L[Decision and action ledger]
+  L --> D[Digests, follow-ups, metrics]
+  H -->|explicit approved rule revision| C
+```
 
-### 1. Classification and routing
+### 1. Pure domain core
 
-Primary code paths:
-- `apps-script/src/classify.gs`
-- `apps-script/src/config.gs`
-- `apps-script/src/actions.gs`
-- `apps-script/src/main.gs`
+Recommended language: TypeScript, compiled for Apps Script V8 and the worker.
+Domain code must not import Gmail, Sheets, Node-only libraries, or network clients.
+Functions transform normalized snapshots plus immutable configuration revisions
+into rule results, assessments, policy decisions, and action plans.
 
-Responsibilities:
-- inspect inbox threads and recent message content
-- apply sender overrides, pattern rules, Gmail-category fallbacks, and preserve-label rules
-- choose structural labels such as important/commercial/news/review
-- choose workflow labels such as `to-respond`, `notification`, or `FYI`
-- apply/archive decisions and log outcomes
+Separate structural categories from workflow intent. Use stable internal enums,
+mapping to existing Gmail label names only at the executor boundary.
+Rule matching uses parsed sender addresses and exact/domain-boundary matching,
+not arbitrary substrings across sender and subject. Explicit precedence:
+manual/preserve constraints -> approved exact sender rules -> approved domain
+rules -> content heuristics -> ambiguous fallback. Reject conflicting approved
+rules at import instead of silently choosing spreadsheet order.
 
-The classifier remains rules-first. AI is not the default classifier for the inbox.
+### 2. Google adapter and operator control
 
-### 2. Digest and follow-up generation
+Retain Apps Script as the only Gmail writer, scheduler, and Sheets connector.
+Retain Sheets as the initial operator UI and authoritative store for configuration
+revisions, approvals, recommendation state, action journal, and run history.
+Read a configuration revision once per run; no mid-run mutable global config.
+Changes in editable cells are drafts until validated and published as a revision.
 
-Primary code paths:
-- `apps-script/src/digest.gs`
-- `apps-script/src/followup.gs`
-- `apps-script/src/drafts.gs`
+Snapshot each thread using latest inbound/outbound meaningful-message context,
+message IDs/timestamps, existing labels, and bounded excerpts. Treat message bodies,
+subjects, display names, and quoted text as untrusted. Do not fetch attachments or
+follow links for decisioning. Snapshot fingerprint changes invalidate stale proposals.
 
-Responsibilities:
-- build main and news digests
-- surface follow-up visibility conservatively
-- create draft-only reply assistance where enabled
-- use logs as the preferred operational truth for time-window reporting
+### 3. JEV decision worker
 
-### 3. Logging and operational history
+Preferred topology: small TypeScript/Node worker with a JEV provider adapter,
+durable SQLite job storage on a persistent volume, and one active instance.
+The worker receives minimized snapshots, rule evidence, and policy definitions;
+it has no Gmail/Sheets write credentials. SQLite is for assessment jobs/results,
+not authoritative approvals or runtime configuration. Use a transactional job
+lease and unique job keys; introduce a shared database before scaling replicas.
 
-Primary code paths:
-- `apps-script/src/actions.gs`
-- parts of `apps-script/src/preferences.gs`
+Apps Script submits jobs and polls results in later bounded runs rather than
+holding its execution open for model calls. The worker exposes authenticated
+HTTPS submit/status endpoints. Apps Script cannot reach a localhost or private
+Tailscale endpoint directly: V2-P0 must confirm an approved reachable ingress.
+If that topology cannot be provided, revise the ADR before implementation;
+do not expose an unauthenticated bridge or assume an agent-session tool is an API.
 
-Primary sheets/logs:
-- `DecisionLog`
-- `RunLog`
-- `DigestLog`
-- `FollowUpLog`
-- `DraftLog`
-- `AutomationHealthLog`
-- matching `*Archive` sheets
+Requests use a key ID, timestamp, nonce, body digest, and HMAC signature over a
+canonical method/path/timestamp/nonce/body-digest string; verify before job lookup.
+Reject expired/replayed submissions; retries use a fresh nonce and the same job key.
+TLS and signed, request-bound responses protect result integrity. Specify exact
+canonicalization and rotation in V2-P1 before wiring a real network adapter.
+Keys live in Script Properties / worker secret storage, never Sheets or Git.
 
-Responsibilities:
-- preserve auditable operational history
-- support tuning and validation
-- keep active sheets small via rotation/archival
+JEV is the primary proposed AI assessor, not an authority. Its identity, access,
+model capabilities, hosting, retention, and costs are unresolved V2-P0 facts.
+OpenClaw currently exposes a `decision_evaluate` tool with boolean probabilities,
+choice distributions, and rubric scores. This is a candidate integration surface,
+not proof that the provider is JEV or accessible from a standalone worker.
+See the [contract](decision-contract.md) for capability translation.
 
-## Operator control-surface layers
+### 4. Deterministic policy and execution
 
-### 4. Sheet-backed runtime configuration
+Initially JEV operates in shadow mode, then recommendation-only mode. Normal
+deterministic rules can later perform allowlisted label changes; model-origin
+changes require explicit thread-level approval until a separately approved policy
+revision enables measured, narrow label-only automation. JEV alone never authorizes
+archiving; archiving requires an approved commercial rule and explicit archive policy.
 
-Primary sheets:
-- `Preferences`
-- `DigestSettings`
-- `NewsSources`
-- `ApprovedRules`
+Executor accepts only validated, version-bound action plans. Re-read Gmail state,
+check approval/config/snapshot versions and preserve labels immediately before
+mutation. Only remove labels owned by Focuna. Never delete mail, send replies,
+or overwrite manual workflow state. No-reply sender handling is a shared policy
+guard applied to rule and JEV results alike.
 
-Primary code paths:
-- `apps-script/src/preferences.gs`
-- `apps-script/src/config.gs`
+Journal states: `planned -> applying -> applied | partial | failed | stale`.
+Write intent before mutation, then record observed before/after state for each
+operation. On interruption, reconcile Gmail state before retrying; never replay
+a whole plan blindly. A plan ID is not evidence that the write completed.
+Manual activity after an action prevents automatic rollback over that activity.
 
-Responsibilities:
-- expose editable runtime settings in Sheets
-- translate operator-approved rows into runtime config arrays
-- support explicit sender/routing overrides such as commercial, important, shipping, FYI, notification, and news inclusion/exclusion
-- refresh in-memory runtime config from sheet state
+### 5. Outcome services
 
-This is the key bridge between the operator workbook and live automation behavior.
+Digests consume successful decisions/actions plus bounded current-mailbox state,
+not every processing-log row. Stable event/window keys prevent duplicate entries
+and delivery. Use Europe/Ljubljana calendar windows including DST changes.
+Configured digest email is distinct from prohibited autonomous reply sending.
+Ambiguous delivery after a crash must be reconciled before resending.
 
-### 5. Review queues and operator dashboards
+Follow-ups use last meaningful inbound/outbound messages and explicit waiting
+state; never infer a commitment from quoted boilerplate. Reply drafting remains a
+separate generator capability (JEV support must be confirmed, otherwise a separate
+provider). Approval to classify is never approval to create or send a draft.
 
-Primary sheets:
-- `TuningSuggestions`
-- `TuningReviewQueue`
-- `AiRecommendations`
-- `ControlSurfaceStatus`
-- `ValidationStatus`
-- `RecentRunSummary`
-- `WorkflowAudit`
-- `OperatorGuide`
+### 6. Operations and evolution
 
-Primary code paths:
-- `apps-script/src/control-surface-setup.gs`
-- `apps-script/src/control-surface-validation.gs`
-- `apps-script/src/control-surface-status.gs`
+Logs correlate run, thread snapshot, config, rules, question-set, model/provider,
+assessment, approval, plan, and action IDs. Record error category, latency, usage
+when supplied, queue age, budget consumption, and operator correction outcomes.
+Redact credentials and raw model error bodies. Retain bounded excerpts only under
+documented retention; operational metadata and full email content are not equivalent.
 
-Responsibilities:
-- show what needs review
-- separate raw recommendation history from compact actionable queues
-- show current next action without requiring raw log inspection first
-- keep the default operator loop short: review -> approve/reject -> import -> validate
-
-### 6. AI-assisted recommendation layer
-
-Primary code path:
-- `apps-script/src/ai.gs`
-- `apps-script/src/ai-recommendations.gs`
-
-Responsibilities:
-- generate review-first recommendations into `AiRecommendations`
-- keep general sender/routing suggestions, news-source suggestions, and workflow-semantics suggestions distinguishable
-- refresh duplicate still-open recommendations in place so the queue stays usable
-- allow only explicitly supported direct-import paths to mutate runtime sheets
-
-Important constraint:
-- AI suggestions are not the same thing as runtime behavior
-- runtime behavior changes only after the operator approves a row and the system has a defined import path
-
-## Automation wrappers and scheduling
-
-Primary code path:
-- `apps-script/src/main.gs`
-
-Responsibilities:
-- install/list/delete managed triggers
-- run wrapper entrypoints for processing, digests, validation, and automation-health checks
-- serialize critical paths with locks
-- write operational summaries into `RunLog`
-
-Wrappers are the stable operational shell around the lower-level helpers.
-
-## Current control loop
-
-1. runtime automation processes Gmail and writes logs
-2. tuning/AI helpers generate review-first suggestions into sheet queues
-3. operator reviews rows in Sheets
-4. approved rows are imported into `NewsSources` / `ApprovedRules` when a direct path exists
-5. runtime config is refreshed from sheet state
-6. validation/status surfaces confirm the resulting system state
-
-## Architectural boundaries
-
-### Runtime behavior may be changed by:
-- config defaults in code
-- sheet-backed preferences
-- approved-rule/news-source imports
-- explicit operator-triggered helper actions
-
-### Runtime behavior may not be changed by:
-- AI output alone
-- unreviewed queue rows
-- draft helpers
-- implicit silent mutation outside the review loop
-
-## Main technical debt areas
-
-- `apps-script/src/control-surface-status.gs` is still too large and now mixes dashboard/status work with heavier analysis helpers
-- phase-based function naming remains useful historically but increases long-term cognitive load
-- some rule/import paths are still branch-heavy instead of table-driven
-- architecture documentation had lagged behind the real control-surface system and should continue to be kept in sync with the live workflow
+Per-day shared budget reservations, bounded retries with jitter, request limits,
+job deadlines, provider circuit breaker, and rule-only fallback are required.
+An AI outage leaves mail visible in review; it must not block deterministic sorting.
+Move beyond Sheets or build an HTML UI only when measured capacity/operator needs
+justify it; keep the same domain and approval contracts.

@@ -1,19 +1,9 @@
-# Contributing
+# Contributing to v2
 
-## Principles
-- keep the system explainable
-- prefer deterministic rules over broad AI use
-- avoid hidden automation
-- never add auto-send behavior casually
-- preserve user workflow labels and important mail visibility
+Start with the [builder handoff](docs/builder-handoff.md) and [roadmap](docs/roadmap.md).
+Keep changes phase-sized and explain user-visible behavior, verification evidence,
+decision/policy version changes, and rollback in every pull request.
 
-## Development style
-- make small, reviewable changes
-- document behavior changes in `PROJECT_MEMORY.md`
-- keep prompts and rules auditable
-- add examples when adjusting classification behavior
-
-## Pull request expectations
-- explain the user-facing effect
-- note any classification tradeoffs
-- include rollback considerations for risky changes
+Update `docs/current-state.md` when a phase gate is actually met. Capture architecture
+changes in `docs/decisions.md`; the legacy `PROJECT_MEMORY.md` is historical only.
+Use synthetic fixtures. Do not alter archived files or deploy from this preparation branch.
