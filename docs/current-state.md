@@ -20,12 +20,13 @@ authentication/reachability has been smoke-checked with synthetic state; decisio
 quality, retention, pricing and budget are not yet verified. No production migration
 has occurred.
 
-V2-P1 offline contract/tooling slice is underway: initial ThreadSnapshot and
-ConfigRevision schemas, core types, legacy label mapping, typed errors, canonical
-JSON, and offline test/CI setup have been added. Remaining record schemas,
-cryptographic adapters, complete tooling verification, and cross-runtime bundle
-checks are not yet done. OAuth-independent P0 evidence is documented; live
-Gmail/Sheets inventory is explicitly deferred.
+V2-P1 offline contract/tooling slice is underway: machine-readable schemas for all
+initial records, core types, legacy label mapping, typed errors, canonical JSON,
+semantic JEV choice-distribution validation, and offline test/CI setup have been
+added. Remaining work includes cryptographic digest/signature adapters, stale-input
+and approval invariants, complete tooling verification, and cross-runtime bundle
+checks. OAuth-independent P0 evidence is documented; live Gmail/Sheets inventory
+is explicitly deferred.
 
 ## External state
 
@@ -40,12 +41,11 @@ No Gmail or workbook data has been accessed; continue with synthetic fixtures.
 
 ## Next work
 
-Finish remaining V2-P0 evidence when an approved read-only Google access path is
-available; meanwhile proceed with mock/offline V2-P1 and V2-P2 work. API access/key availability and accepted
+Continue mock/offline V2-P1 and V2-P2 work. API access/key availability and accepted
 usage charges are confirmed; a protected gateway secret for `api.typesafe.ai` exists.
 Jev is identified as TypeSafe's System One model, and one synthetic API choice call
-succeeded. Finish P0 by confirming operating price/budget and performing the
-owner-consented read-only Gmail/Sheets inventory. Review the timezone discrepancy
-before designing digest-window parity.
+succeeded. P0 still lacks confirmed operating price/budget and live Gmail/Sheets
+inventory; those remain deferred until an approved read-only access path exists.
+Review the timezone discrepancy before designing digest-window parity.
 Record evidence here as implementation proceeds; do not mark a whole phase complete
 because one file or UI exists.

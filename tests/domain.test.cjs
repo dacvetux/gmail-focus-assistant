@@ -4,6 +4,7 @@ const Ajv2020 = require("ajv/dist/2020").default;
 const addFormats = require("ajv-formats").default;
 const {
   canonicalJson,
+  CHOICE_DISTRIBUTION_TOLERANCE,
   actionEventSchema,
   actionPlanSchema,
   approvalSchema,
@@ -14,6 +15,7 @@ const {
   labelsForDecision,
   ruleResultSchema,
   threadSnapshotSchema,
+  validateChoiceAssessment,
 } = require("../dist/domain/src");
 
 const ajv = new Ajv2020({ allErrors: true, strict: true });
@@ -88,4 +90,15 @@ test("action plans reject send and archive operations by schema", () => {
   assert.equal(validate({ ...common, operations: [{ kind: "add-label", label: "News/Digest" }] }), true);
   assert.equal(validate({ ...common, operations: [{ kind: "send-reply", body: "no" }] }), false);
   assert.equal(validate({ ...common, operations: [{ kind: "archive" }] }), false);
+});
+
+test("choice assessments enforce alternatives, bounds, and normalized distributions", () => {
+  const valid = { type: "choice", choice: "shipping", confidence: 0.9, probabilities: { shipping: 0.8, review: 0.2 } };
+  assert.doesNotThrow(() => validateChoiceAssessment(valid, ["shipping", "review"]));
+  assert.equal(CHOICE_DISTRIBUTION_TOLERANCE, 0.01);
+  assert.throws(() => validateChoiceAssessment({ ...valid, probabilities: { shipping: 0.8, review: 0.1 } }, ["shipping", "review"]), { code: "ASSESSMENT_INVALID" });
+  assert.throws(() => validateChoiceAssessment({ ...valid, probabilities: { shipping: 1.1, review: -0.1 } }, ["shipping", "review"]), { code: "ASSESSMENT_INVALID" });
+  assert.throws(() => validateChoiceAssessment({ ...valid, probabilities: { shipping: 0.8, review: 0.2, finance: 0 } }, ["shipping", "review"]), { code: "ASSESSMENT_INVALID" });
+  assert.throws(() => validateChoiceAssessment({ ...valid, choice: "finance" }, ["shipping", "review"]), { code: "ASSESSMENT_INVALID" });
+  assert.throws(() => validateChoiceAssessment({ ...valid, confidence: Number.NaN }, ["shipping", "review"]), { code: "ASSESSMENT_INVALID" });
 });

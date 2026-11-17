@@ -1,8 +1,10 @@
 # Decision and JEV integration contracts
 
-Status: implementation specification. Machine-readable schemas and fixtures are
-V2-P1 deliverables; none currently exist. Unknown fields and invalid enums must
-be rejected at all external boundaries, not coerced into plausible decisions.
+Status: implementation specification. Initial machine-readable schemas for all
+records exist under `packages/domain/src/schemas.ts`; host adapters must enforce
+them at external boundaries. The pure domain choice validator additionally checks
+alternative membership, finite [0,1] values, and normalization. Unknown fields and
+invalid enums must be rejected, not coerced into plausible decisions.
 
 ## Core records
 
@@ -49,9 +51,11 @@ does not gain a response workflow. Unknown/invalid results fall back to visible 
 
 For a choice result, retain every competing probability, not only the winner.
 Check alternative IDs, finite numbers in [0,1], and distribution normalization
-(tolerance fixed by the schema). For boolean retain probabilityTrue; for score
-retain the rubric version and fractional position. Preserve optional provider
-confidence separately: it is not a correctness probability or permission.
+(absolute sum error at most 0.01, implemented by the domain validator). The host
+must run JSON Schema validation before this semantic validator. For boolean,
+retain probabilityTrue; for score retain the rubric version and fractional
+position. Preserve optional provider confidence separately: it is not a correctness
+probability or permission.
 If the confirmed provider has a different interface, adapter translation and
 semantic equivalence require an ADR and contract fixtures before rollout.
 
