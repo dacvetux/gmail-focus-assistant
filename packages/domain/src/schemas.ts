@@ -84,6 +84,29 @@ export const assessmentJobSchema = {
   },
 } as const;
 
+export const choiceQuestionSetSchema = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  $id: "focuna://schemas/choice-question-set-v2.json",
+  type: "object", additionalProperties: false,
+  required: ["schemaVersion", "version", "task", "questions"],
+  properties: {
+    schemaVersion: { const: "focuna.v2" },
+    version: { type: "string", minLength: 1 },
+    task: { enum: ["classification", "workflow", "rule-suggestion"] },
+    questions: {
+      type: "array", minItems: 1,
+      items: {
+        type: "object", additionalProperties: false,
+        required: ["id", "alternatives"],
+        properties: {
+          id: { type: "string", minLength: 1 },
+          alternatives: { type: "array", minItems: 2, uniqueItems: true, items: { type: "string", minLength: 1 } },
+        },
+      },
+    },
+  },
+} as const;
+
 export const assessmentResultSchema = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
   $id: "focuna://schemas/assessment-result-v2.json",

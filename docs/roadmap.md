@@ -109,6 +109,9 @@ decisions without Gmail changes. No JEV dependency, drafts, send, or archive act
 
 - Implement the confirmed JEV adapter and durable single-worker job queue;
   authenticated submit/poll transport; mock adapter; restart-safe idempotency.
+- Implemented offline/mock foundation: versioned choice question-set schema,
+  result-to-job/question validation, and deterministic fixture provider. This is not
+  the live JEV adapter, queue, or a budget-approved provider run.
 - Use question-based structural assessment followed by dependent workflow
   assessment where supported. Keep distributions and rubric semantics intact.
 - Add schema/evidence validation, abstention, input boundaries, shared daily budget

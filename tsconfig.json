@@ -14,5 +14,5 @@
     "rootDir": "packages",
     "outDir": "dist"
   },
-  "include": ["packages/domain/src/**/*.ts"]
+  "include": ["packages/**/*.ts"]
 }

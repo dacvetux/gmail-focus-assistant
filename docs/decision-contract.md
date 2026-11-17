@@ -114,6 +114,10 @@ position. Preserve optional provider confidence separately: it is not a correctn
 probability or permission.
 If the confirmed provider has a different interface, adapter translation and
 semantic equivalence require an ADR and contract fixtures before rollout.
+The offline fixture provider implements the provider boundary for tests only. It
+requires exact job/snapshot/config/question-set bindings, exact question IDs and
+alternative sets, valid distributions, and a completion within the job deadline;
+missing fixtures fail closed rather than falling through to a network provider.
 
 Do not require the provider to fabricate a rationale or evidence it cannot return.
 An explanation may be a deterministic summary of questions, evidence references,

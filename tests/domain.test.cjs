@@ -15,7 +15,9 @@ const {
   approvalAuditEventSchema,
   assessmentJobSchema,
   assessmentResultSchema,
+  choiceQuestionSetSchema,
   assertAssessmentResultMatchesJob,
+  assertAssessmentResultForQuestionSet,
   assertApprovalForExecution,
   assertApprovalAuditChain,
   appendApprovalAuditEvent,
@@ -38,6 +40,7 @@ const {
   threadSnapshotSchema,
   validateChoiceAssessment,
 } = require("../dist/domain/src");
+const { FixtureAssessmentProvider } = require("../dist/decisions/src");
 
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 addFormats(ajv);
@@ -156,7 +159,7 @@ test("label mapping preserves review and commercial workflow invariants", () => 
 
 test("all v2 record schemas compile under JSON Schema 2020-12", () => {
   for (const schema of [assessmentJobSchema, assessmentResultSchema, ruleResultSchema,
-    decisionProposalSchema, approvalSchema, approvalAuditEventSchema, actionPlanSchema, actionEventSchema]) {
+    choiceQuestionSetSchema, decisionProposalSchema, approvalSchema, approvalAuditEventSchema, actionPlanSchema, actionEventSchema]) {
     assert.doesNotThrow(() => ajv.compile(schema));
   }
 });
@@ -378,4 +381,37 @@ test("legacy ApprovedRules import is preview-only and refuses ambiguous categori
   ]);
   const reordered = previewLegacyApprovedRules([rows[1], rows[0]], hostSha256);
   assert.equal(reordered.additions[1].candidateId, preview.additions[0].candidateId);
+});
+
+test("fixture assessment provider is deterministic and binds result to job and question set", () => {
+  const snapshot = withSnapshotFingerprint({
+    schemaVersion: "focuna.v2", accountRef: "acct-fixture", threadRef: "thread-fixture",
+    capturedAt: "2026-01-01T00:00:00Z", senderAddress: "parcel@example.test", subject: "Synthetic delivery",
+    labels: [], preservedLabels: [], evidence: [{ id: "fixture-msg", direction: "inbound", sentAt: "2026-01-01T00:00:00Z", text: "Synthetic parcel is delayed." }],
+  });
+  const job = {
+    schemaVersion: "focuna.v2", jobId: "fixture-job-1", snapshotFingerprint: snapshot.snapshotFingerprint,
+    configRevision: "cfg-fixture", task: "classification", questionSetVersion: "classify-v1",
+    createdAt: "2026-01-01T00:00:00Z", deadlineAt: "2026-01-01T00:01:00Z",
+  };
+  const questionSet = {
+    schemaVersion: "focuna.v2", version: "classify-v1", task: "classification",
+    questions: [{ id: "structural-category", alternatives: ["shipping", "services", "finance", "review"] }],
+  };
+  assert.equal(ajv.compile(choiceQuestionSetSchema)(questionSet), true);
+  assert.equal(ajv.compile(choiceQuestionSetSchema)({ ...questionSet, questions: [{ id: "q", alternatives: ["same", "same"] }] }), false);
+  const result = {
+    schemaVersion: "focuna.v2", jobId: job.jobId, snapshotFingerprint: job.snapshotFingerprint,
+    configRevision: job.configRevision, provider: "fixture", model: "synthetic-v1",
+    completedAt: "2026-01-01T00:00:15Z",
+    answers: { "structural-category": { type: "choice", choice: "shipping", confidence: 0.9, probabilities: { shipping: 0.9, services: 0.05, finance: 0.03, review: 0.02 } } },
+  };
+  const provider = new FixtureAssessmentProvider([result], hostSha256);
+  assert.deepEqual(provider.assess(job, snapshot, questionSet), result);
+  assert.doesNotThrow(() => assertAssessmentResultForQuestionSet(job, result, questionSet));
+  assert.throws(() => provider.assess(job, snapshot, { ...questionSet, version: "classify-v2" }), { code: "ASSESSMENT_INVALID" });
+  assert.throws(() => provider.assess({ ...job, jobId: "missing-fixture" }, snapshot, questionSet), { code: "ASSESSMENT_INVALID" });
+  const bad = { ...result, answers: { "structural-category": { ...result.answers["structural-category"], probabilities: { shipping: 0.9 } } } };
+  assert.throws(() => new FixtureAssessmentProvider([bad], hostSha256).assess(job, snapshot, questionSet), { code: "ASSESSMENT_INVALID" });
+  assert.throws(() => assertAssessmentResultForQuestionSet(job, result, { ...questionSet, questions: [...questionSet.questions, { id: "extra", alternatives: ["yes", "no"] }] }), { code: "ASSESSMENT_INVALID" });
 });

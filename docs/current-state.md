@@ -47,6 +47,10 @@ are now shared as a pure policy function for future JEV candidates, so model res
 cannot bypass preservation, no-reply, or structural/workflow consistency checks.
 Thread snapshots now use SHA-256 fingerprints over canonical content and validate
 preserved-label membership and unique evidence IDs before rule evaluation.
+V2-P3 mock-only groundwork now includes versioned choice question sets, exact
+question/alternative result validation, and a deterministic fixture provider that
+fails closed when a matching fixture is absent. It uses synthetic snapshots only;
+no JEV requests are made.
 Config imports now have a pure diff preview: exact duplicate revisions are
 idempotent, successor revisions must name the current parent, reused revision IDs
 with changed content conflict, and rule additions/removals/modifications are listed

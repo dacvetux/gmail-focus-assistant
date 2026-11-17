@@ -96,6 +96,18 @@ export interface AssessmentJob {
   deadlineAt: string;
 }
 
+export interface ChoiceQuestionDefinition {
+  id: string;
+  alternatives: string[];
+}
+
+export interface ChoiceQuestionSet {
+  schemaVersion: typeof CONTRACT_VERSION;
+  version: string;
+  task: AssessmentJob["task"];
+  questions: ChoiceQuestionDefinition[];
+}
+
 export interface RuleResult {
   category: StructuralCategory;
   workflow: WorkflowIntent;
