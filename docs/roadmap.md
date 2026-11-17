@@ -81,6 +81,8 @@ config conflict rules, signature/key management, and durable approval history re
 - Implemented conservative evaluator slice: verified config digest, preserved-label
   abstention, approved sender-rule application, visible-review fallback, and no-reply
   response downgrade. Legacy pattern rule coverage remains to be ported.
+- Shared `guardThreadDecision` is implemented for deterministic and future JEV
+  candidates to enforce preservation, no-reply downgrade, and category/workflow rules.
 - Implement normalized thread snapshots, minimal meaningful-message context,
   bounded pagination/cursors, account identity, and change fingerprints.
 - Import an exported copy of Preferences, DigestSettings, NewsSources and

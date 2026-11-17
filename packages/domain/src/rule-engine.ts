@@ -1,7 +1,7 @@
 import { ConfigRevision, RuleResult, ThreadSnapshot } from "./contracts";
 import { assertConfigRevisionDigest } from "./revision-validation";
 import { assertRuleSetValid, selectApprovedRule } from "./rule-matching";
-import { labelsForDecision } from "./labels";
+import { guardThreadDecision } from "./thread-policy";
 
 /** Conservative deterministic classifier using only a verified approved-rule revision. */
 export function evaluateThreadRules(
@@ -12,9 +12,8 @@ export function evaluateThreadRules(
   assertConfigRevisionDigest(config, sha256Hex);
   assertRuleSetValid(config.rules);
 
-  if (snapshot.preservedLabels.length > 0) {
-    return result("none", "none", [], [], true, false, "preserve-label");
-  }
+  const preserveGuard = guardThreadDecision(snapshot, { category: "none", workflow: "none" });
+  if (preserveGuard.reasonCode === "preserve-label") return result("none", "none", [], [], true, false, preserveGuard.reasonCode);
 
   const selection = selectApprovedRule(snapshot.senderAddress, config.rules);
   if (selection.conflict) {
@@ -22,21 +21,15 @@ export function evaluateThreadRules(
   }
   if (!selection.rule) return result("review", "none", [], [], true, false, "no-approved-rule");
 
-  let workflow = selection.rule.workflow;
-  let reasonCode = "approved-sender-rule";
-  if (workflow === "to-respond" && isNoReplyAddress(snapshot.senderAddress)) {
-    workflow = "notification";
-    reasonCode = "no-reply-downgrade";
-  }
-  labelsForDecision(selection.rule.category, workflow);
+  const guarded = guardThreadDecision(snapshot, { category: selection.rule.category, workflow: selection.rule.workflow });
   return result(
-    selection.rule.category,
-    workflow,
+    guarded.category,
+    guarded.workflow,
     [selection.rule.id],
     latestInboundEvidenceId(snapshot),
+    guarded.abstained,
     false,
-    false,
-    reasonCode,
+    guarded.reasonCode === "accepted" ? "approved-sender-rule" : guarded.reasonCode,
   );
 }
 
@@ -45,10 +38,6 @@ function latestInboundEvidenceId(snapshot: ThreadSnapshot): string[] {
     .filter(item => item.direction === "inbound")
     .sort((left, right) => Date.parse(right.sentAt) - Date.parse(left.sentAt));
   return inbound.length > 0 ? [inbound[0].id] : [];
-}
-
-function isNoReplyAddress(address: string): boolean {
-  return /(no[\s._-]*reply|do[\s._-]*not[\s._-]*reply|donotreply)/i.test(address);
 }
 
 function result(

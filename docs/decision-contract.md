@@ -75,6 +75,9 @@ revision. It abstains when preserved labels are present, returns visible review 
 unmatched senders, and prevents no-reply-like senders from receiving `to-respond`.
 This is the initial sender-rule subset, not a port of the full legacy pattern
 classifier; until parity is demonstrated, unknown mail stays in review.
+`guardThreadDecision` is the shared safety policy for rule and future model
+candidates; it enforces preservation, no-reply downgrade, and category/workflow
+compatibility independent of the decision source.
 
 ## JEV tasks and output adaptation
 

@@ -40,7 +40,9 @@ precedence are implemented with synthetic coverage; full v1 rules parity remains
 future work. A first deterministic evaluator now verifies config digests, blocks
 threads with preserved labels, uses approved sender rules, defaults unmatched mail
 to visible review, and downgrades no-reply `to-respond` to notification. Pattern-rule
-coverage and source-by-source parity have not yet been ported.
+coverage and source-by-source parity have not yet been ported. Those safety guards
+are now shared as a pure policy function for future JEV candidates, so model results
+cannot bypass preservation, no-reply, or structural/workflow consistency checks.
 OAuth-independent P0 evidence is documented; live Gmail/Sheets inventory is
 explicitly deferred.
 

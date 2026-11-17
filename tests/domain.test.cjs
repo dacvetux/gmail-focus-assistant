@@ -22,6 +22,7 @@ const {
   computeConfigRevisionDigest,
   createApprovalAuditEventFromApproval,
   evaluateThreadRules,
+  guardThreadDecision,
   configRevisionSchema,
   decisionProposalSchema,
   labelsForDecision,
@@ -237,4 +238,21 @@ test("rules-first evaluation preserves manual state, abstains safely, and guards
   assert.equal(noReply.reasonCode, "no-reply-downgrade");
   assert.throws(() => evaluateThreadRules(snapshot, { ...config, revision: "mutated" }, sha256), { code: "CONFIG_CONFLICT" });
   assert.throws(() => assertRuleSetValid([makeRule("invalid", "shop@example.test", "commercial-ad", "fyi")]), { code: "POLICY_REJECTED" });
+});
+
+test("shared thread policy guards model-style decisions the same as rule decisions", () => {
+  const snapshot = {
+    schemaVersion: "focuna.v2", accountRef: "acct-test", threadRef: "thread-2",
+    snapshotFingerprint: "sha256:test-2", capturedAt: "2026-01-01T00:00:00Z",
+    senderAddress: "do-not-reply@example.test", subject: "Synthetic alert", labels: [], preservedLabels: [], evidence: [],
+  };
+  assert.deepEqual(guardThreadDecision(snapshot, { category: "services", workflow: "to-respond" }), {
+    category: "services", workflow: "notification", abstained: false, reasonCode: "no-reply-downgrade",
+  });
+  assert.deepEqual(guardThreadDecision({ ...snapshot, preservedLabels: ["1: to respond"] }, { category: "finance", workflow: "notification" }), {
+    category: "none", workflow: "none", abstained: true, reasonCode: "preserve-label",
+  });
+  assert.deepEqual(guardThreadDecision(snapshot, { category: "commercial-ad", workflow: "fyi" }), {
+    category: "review", workflow: "none", abstained: true, reasonCode: "invalid-category-workflow",
+  });
 });

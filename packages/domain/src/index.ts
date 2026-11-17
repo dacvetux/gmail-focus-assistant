@@ -7,3 +7,4 @@ export * from "./rule-matching";
 export * from "./rule-engine";
 export * from "./revision-validation";
 export * from "./schemas";
+export * from "./thread-policy";
