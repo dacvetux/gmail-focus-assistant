@@ -2,8 +2,10 @@
 
 This replaces the legacy phase roadmap, preserved under `archive/v1/docs/`.
 Phase numbers below are **V2-P0 through V2-P8**, not continuations of v1 Phases 1–12.
-Only repository/documentation preparation is complete. Every runtime deliverable
-below is planned. Gates are sequential; no schedule or production readiness is implied.
+Repository/documentation preparation is complete. OAuth-independent V2-P0 discovery
+is recorded and V2-P1 offline contracts/tooling are in progress; live Google inventory
+remains blocked. Other runtime deliverables remain planned. Gates are sequential; no
+schedule or production readiness is implied.
 
 ## V2-P0 — Discovery and baseline
 

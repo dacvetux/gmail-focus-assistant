@@ -1,29 +1,8 @@
-# macOS / Linux
-.DS_Store
-Thumbs.db
-
-# Editors
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Logs
-*.log
-
-# Local secrets and overrides
+node_modules/
+dist/
+*.tsbuildinfo
 .env
 .env.*
-*.local
-secrets/
-credentials/
-
-# Apps Script local tooling
-.clasp.json
-.clasprc.json
 client_secret*.json
-node_modules/
-
-# Temporary files
-tmp/
-.tmp/
+.clasprc.json
+.clasp.json

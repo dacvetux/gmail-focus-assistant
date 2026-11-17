@@ -19,6 +19,13 @@ JEV API authentication/reachability has been smoke-checked with synthetic state;
 decision quality, retention, pricing and budget are not yet verified. No production
 migration has occurred.
 
+V2-P1 offline contract/tooling slice is underway: initial ThreadSnapshot and
+ConfigRevision schemas, core types, legacy label mapping, typed errors, canonical
+JSON, and offline test/CI setup have been added. Remaining record schemas,
+cryptographic adapters, complete tooling verification, and cross-runtime bundle
+checks are not yet done. OAuth-independent P0 evidence is documented; live
+Gmail/Sheets inventory is explicitly deferred.
+
 ## External state
 
 No Gmail, workbook, Apps Script, trigger, credential, or production infrastructure
@@ -26,12 +33,14 @@ changes are part of this preparation. Archived claims of live behavior reflect t
 May 2026 documentation, not a current production inspection.
 
 The live Apps Script manifest uses `Europe/Belgrade`; archived source says
-`Europe/Ljubljana`. Read-only Gmail/Sheets inventory remains pending owner OAuth
-consent for Gmail and Sheets read-only scopes; none of that data has been accessed.
+`Europe/Ljubljana`. Read-only Gmail/Sheets inventory remains unavailable because
+Google blocked clasp's shared OAuth client for the additional sensitive scopes.
+No Gmail or workbook data has been accessed; continue with synthetic fixtures.
 
 ## Next work
 
-Start V2-P0 in the [roadmap](roadmap.md). API access/key availability and accepted
+Finish remaining V2-P0 evidence when an approved read-only Google access path is
+available; meanwhile proceed with mock/offline V2-P1 and V2-P2 work. API access/key availability and accepted
 usage charges are confirmed; a protected gateway secret for `api.typesafe.ai` exists.
 Jev is identified as TypeSafe's System One model, and one synthetic API choice call
 succeeded. Finish P0 by confirming operating price/budget and performing the
