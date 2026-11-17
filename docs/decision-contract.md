@@ -55,8 +55,10 @@ Idempotency key for assessment: account + thread snapshot fingerprint + config,
 rules, task, and question-set versions. Plan key also binds approved proposal and
 policy revision. Canonical JSON sorts object keys and rejects ambiguous values;
 `canonicalSha256` passes that exact text to a host SHA-256 adapter. The adapter must
-UTF-8 encode it and return 64 lowercase hexadecimal characters. Runtime-specific
-digest adapters and signature/key management remain to be implemented.
+UTF-8 encode it and return 64 lowercase hexadecimal characters. An Apps Script
+`Utilities.computeDigest` adapter is implemented; a worker adapter and signature/key
+management remain to be implemented. The isolated test uses a fake Utilities port,
+not a live Apps Script execution.
 A new incoming message, changed manual label, or revised rule makes an old plan
 stale, not something to silently re-approve.
 

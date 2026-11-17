@@ -6,9 +6,9 @@
   "type": "commonjs",
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --project tsconfig.google.json",
     "build": "tsc",
-    "build:apps-script": "esbuild packages/domain/src/index.ts --bundle --format=iife --global-name=FocunaDomain --target=es2020 --platform=browser --outfile=dist/apps-script/focuna-domain.gs",
+    "build:apps-script": "esbuild packages/domain/src/index.ts --bundle --format=iife --global-name=FocunaDomain --target=es2020 --platform=browser --outfile=dist/apps-script/focuna-domain.gs && esbuild apps/google/src/sha256.ts --bundle --format=iife --global-name=FocunaGoogleSha256 --target=es2020 --platform=browser --outfile=dist/apps-script/google-sha256.gs",
     "test": "npm run clean && npm run typecheck && npm run build && npm run build:apps-script && node --test tests/*.test.cjs"
   },
   "devDependencies": {

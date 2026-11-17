@@ -35,7 +35,8 @@ chains and idempotent approval IDs; host identity authentication and a durable
 append-only adapter remain unimplemented.
 Canonical JSON and the SHA-256 adapter seam reject ambiguous input values; the pure
 domain now builds and smoke-loads as a Google V8-compatible `.gs` bundle. Production
-runtime digest adapters, signatures, and key management are still to be supplied.
+Apps Script `Utilities.computeDigest` SHA-256 adapter is implemented and fake-runtime
+tested; worker-runtime digest adapter, signatures, and key management remain open.
 Sender normalization, duplicate-selector rejection, and exact/specific-domain rule
 precedence are implemented with synthetic coverage; full v1 rules parity remains
 future work. A first deterministic evaluator now verifies config digests, blocks

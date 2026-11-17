@@ -222,6 +222,24 @@ test("Apps Script bundle loads in an isolated JavaScript context without Node gl
   assert.equal(sandbox.FocunaDomain.labelsForDecision("news", "none")[0], "News/Digest");
 });
 
+test("Apps Script Utilities adapter hashes exact UTF-8 and normalizes signed bytes", () => {
+  const bundle = fs.readFileSync("dist/apps-script/google-sha256.gs", "utf8");
+  const utilities = {
+    DigestAlgorithm: { SHA_256: "sha-256" },
+    Charset: { UTF_8: "utf-8" },
+    computeDigest(algorithm, text, charset) {
+      assert.equal(algorithm, "sha-256");
+      assert.equal(charset, "utf-8");
+      return [...createHash("sha256").update(text, "utf8").digest()].map(byte => byte > 127 ? byte - 256 : byte);
+    },
+  };
+  const sandbox = { Utilities: utilities };
+  vm.runInNewContext(bundle, sandbox);
+  const actual = sandbox.FocunaGoogleSha256.createAppsScriptSha256Hex(utilities)("Focuna π 🍌");
+  assert.equal(actual, hostSha256("Focuna π 🍌"));
+  assert.match(actual, /^[a-f0-9]{64}$/);
+});
+
 test("sender rules normalize safely, reject duplicates, and use deterministic specificity", () => {
   const rule = (id, kind, value, category) => ({
     id, match: { kind, value }, category, workflow: "notification",

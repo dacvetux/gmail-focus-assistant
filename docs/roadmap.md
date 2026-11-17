@@ -61,8 +61,8 @@ the real adapter, not rules/core development using a mock. No production changes
   the execution gate permits human approvals only. Identity authentication and
   broader config-publication permissions remain host-policy work.
 - Canonical JSON and a strict host-supplied SHA-256 adapter seam are implemented;
-  the host must hash the exact canonical text as UTF-8. Runtime adapters, signatures,
-  and key management remain outstanding.
+  the Apps Script Utilities adapter hashes exact UTF-8 and normalizes signed bytes.
+  Worker adapter, signatures, and key management remain outstanding.
 - Establish package/lockfile, lint/typecheck, schema/fixture checks, automated unit
   checks, and a GitHub Actions workflow that uses no production credentials.
 - Define operator identity, approval scopes, append-only audit, access controls,
