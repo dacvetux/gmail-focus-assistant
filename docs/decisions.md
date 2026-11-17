@@ -64,3 +64,28 @@ for parity. No new interface may bypass approval or action contracts.
 | Production cohort, soak window and rollback owner | Before cutover | No production activation |
 
 Update this file with dated evidence and decisions as facts become available.
+
+## V2-P0 evidence — 2026-11-17
+
+- TypeSafe public OpenAPI identifies a bearer-authenticated `POST /v1/systemone`
+  supporting `noul`, `choice`, `score` (plus image-oriented `box`) questions, and
+  `GET /v1/models`. `jev-latest` and `jev-preview` were listed for this account.
+- Using the gateway-injected protected `TYPESAFE_API_KEY`, one deliberately
+  synthetic shipping classification succeeded. Requested alias `jev-latest`
+  resolved to `jev-1.14.0`; returned the expected `shipping` choice with a full
+  probability distribution and usage of 382 input / 52 output tokens. This proves
+  API reachability/authentication and a basic choice contract only—not accuracy,
+  calibration, pricing, retention, or permission to send real email.
+- D.C. confirmed API charges are expected/accepted. Exact price/rate limits and
+  an operational budget remain open P0 facts. The smoke request was a billable
+  provider call; no private mailbox content was sent.
+- `clasp deployments` succeeded after reauthentication and showed five deployment
+  records, including one `@HEAD`. `clasp clone` read 15 live project files. All 14
+  `.gs` source files match the Git-archived source byte-for-byte after clasp's
+  `.js` extension mapping. No live source changes were made.
+- Live Apps Script manifest timezone is `Europe/Belgrade`, while the archived
+  manifest and `CONFIG` specify `Europe/Ljubljana`. Both are similar in the current
+  region, but the mismatch must be reconciled deliberately before v2 window logic;
+  this check did not inspect triggers or actual digest output.
+- OAuth for Gmail and Sheets read-only scopes was initiated but is still pending.
+  No Gmail messages, spreadsheet data, or runtime settings were read.

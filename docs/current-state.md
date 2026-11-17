@@ -6,12 +6,18 @@
 - Original baseline identified by commit and recovery tag.
 - V2 architecture, decision contract, phased roadmap, migration and acceptance plans.
 - Builder instructions separating planned work from implemented behavior.
+- V2-P0 discovery started: TypeSafe Jev API key/model endpoint verified using one
+  synthetic billable choice request; all 14 live Apps Script source files match v1.
+- Live deployment inventory read-only: five deployment records (one `@HEAD`); no
+  code, deployment, trigger, Gmail or Sheets changes made.
 
 ## Not implemented
 
 All v2 runtime components, JEV adapters, persistence schemas, fixtures, build tooling,
 automated checks, operator integration, and deployment pipelines remain future work.
-No v2 feature, benchmark, production migration, or JEV connectivity is verified.
+JEV API authentication/reachability has been smoke-checked with synthetic state;
+decision quality, retention, pricing and budget are not yet verified. No production
+migration has occurred.
 
 ## External state
 
@@ -19,11 +25,17 @@ No Gmail, workbook, Apps Script, trigger, credential, or production infrastructu
 changes are part of this preparation. Archived claims of live behavior reflect the
 May 2026 documentation, not a current production inspection.
 
+The live Apps Script manifest uses `Europe/Belgrade`; archived source says
+`Europe/Ljubljana`. Read-only Gmail/Sheets inventory remains pending owner OAuth
+consent for Gmail and Sheets read-only scopes; none of that data has been accessed.
+
 ## Next work
 
 Start V2-P0 in the [roadmap](roadmap.md). API access/key availability and accepted
 usage charges are confirmed; a protected gateway secret for `api.typesafe.ai` exists.
-Confirm it is the JEV credential/service and inventory the existing deployment
-read-only before writing an adapter.
+Jev is identified as TypeSafe's System One model, and one synthetic API choice call
+succeeded. Finish P0 by confirming operating price/budget and performing the
+owner-consented read-only Gmail/Sheets inventory. Review the timezone discrepancy
+before designing digest-window parity.
 Record evidence here as implementation proceeds; do not mark a whole phase complete
 because one file or UI exists.
