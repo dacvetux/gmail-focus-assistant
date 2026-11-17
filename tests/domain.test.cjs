@@ -1,8 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createHash } = require("node:crypto");
+const fs = require("node:fs");
 const Ajv2020 = require("ajv/dist/2020").default;
 const addFormats = require("ajv-formats").default;
+const vm = require("node:vm");
 const {
   canonicalJson,
   canonicalSha256,
@@ -143,4 +145,13 @@ test("execution approval is bound to exact proposal digest and current revisions
   assert.throws(() => assertApprovalForExecution({ ...approval, proposalDigest: "0".repeat(64) }, proposal, current, sha256), { code: "POLICY_REJECTED" });
   assert.throws(() => assertApprovalForExecution(approval, proposal, { ...current, configRevision: "cfg-2" }, sha256), { code: "STALE_SNAPSHOT" });
   assert.throws(() => assertApprovalForExecution(approval, proposal, { ...current, now: "2026-01-01T01:00:01Z" }, sha256), { code: "STALE_SNAPSHOT" });
+});
+
+test("Apps Script bundle loads in an isolated JavaScript context without Node globals", () => {
+  const bundle = fs.readFileSync("dist/apps-script/focuna-domain.gs", "utf8");
+  const sandbox = {};
+  vm.runInNewContext(bundle, sandbox);
+  assert.equal(typeof sandbox.require, "undefined");
+  assert.equal(vm.runInNewContext('FocunaDomain.canonicalJson({ z: 2, a: 1 })', sandbox), '{"a":1,"z":2}');
+  assert.equal(sandbox.FocunaDomain.labelsForDecision("news", "none")[0], "News/Digest");
 });

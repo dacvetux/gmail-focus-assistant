@@ -8,11 +8,13 @@
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "typecheck": "tsc --noEmit",
     "build": "tsc",
-    "test": "npm run clean && npm run typecheck && npm run build && node --test tests/*.test.cjs"
+    "build:apps-script": "esbuild packages/domain/src/index.ts --bundle --format=iife --global-name=FocunaDomain --target=es2020 --platform=browser --outfile=dist/apps-script/focuna-domain.gs",
+    "test": "npm run clean && npm run typecheck && npm run build && npm run build:apps-script && node --test tests/*.test.cjs"
   },
   "devDependencies": {
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
+    "esbuild": "^0.28.2",
     "typescript": "^5.9.3"
   }
 }

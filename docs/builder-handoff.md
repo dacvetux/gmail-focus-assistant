@@ -11,10 +11,12 @@
    JEV documentation and credentials supplied through an approved secret path.
 5. Progress through phase gates; update current-state.md with evidence each time.
 
-The first offline P1 slice currently lives under `packages/domain/src/` with
-runtime JSON schemas, stable label mapping, typed domain errors and canonical JSON.
-`npm test` runs schema/policy/canonicalization checks without connecting to Google
-or TypeSafe. Expand remaining record schemas before declaring P1 complete.
+The offline P1 slice currently lives under `packages/domain/src/` with runtime JSON
+schemas, stable label mapping, typed domain errors, canonical JSON, and decision
+invariants. `npm test` runs the schema/policy checks and builds/loads the shared
+domain as an Apps Script-compatible `.gs` bundle without connecting to Google or
+TypeSafe. Runtime services, signatures/key management, durable approval history,
+and integration verification remain future work.
 
 ## Proposed layout to create in V2-P1
 

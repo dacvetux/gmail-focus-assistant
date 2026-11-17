@@ -38,7 +38,8 @@ the real adapter, not rules/core development using a mock. No production changes
 **Depends on:** P0 facts or explicit documented mock-only boundary.
 
 - Create the module layout in builder-handoff.md; use TypeScript for pure domain
-  code and build a Google V8-compatible bundle without Node runtime imports.
+  code and build a Google V8-compatible bundle without Node runtime imports
+  (implemented: CommonJS build plus isolated Apps Script-style `.gs` bundle smoke test).
 - Implement schemas for all records in decision-contract.md, exact hashing/signing
   canonicalization, stable label mappings, versioned config, typed error taxonomy.
 - Validate JEV choice alternatives, finite probability/confidence bounds, and
@@ -59,6 +60,8 @@ the real adapter, not rules/core development using a mock. No production changes
 
 **Exit:** offline fixture checks reject invalid schemas, stale revisions, coercion
 traps, unknown operations and bad signatures. Domain bundle builds for both targets.
+Schema/policy checks and the dual-target domain bundle are implemented; stale
+config conflict rules, signature/key management, and durable approval history remain.
 
 ## V2-P2 — Deterministic parity and read-only Google adapter
 
