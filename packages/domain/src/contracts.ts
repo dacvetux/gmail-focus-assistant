@@ -124,6 +124,8 @@ export interface Approval {
   proposalId: string;
   proposalDigest: string;
   actor: string;
+  actorType: "human" | "service";
+  scope: "proposal-execution";
   outcome: "approved" | "rejected" | "corrected";
   occurredAt: string;
 }

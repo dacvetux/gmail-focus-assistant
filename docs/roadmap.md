@@ -54,6 +54,9 @@ the real adapter, not rules/core development using a mock. No production changes
   a sequence-linked digest chain and verifier; durable append-only storage, actor
   authentication, external chain checkpoints, retention and scoped authorization
   remain outstanding.
+- Approval contracts identify actor type and narrow `proposal-execution` scope;
+  the execution gate permits human approvals only. Identity authentication and
+  broader config-publication permissions remain host-policy work.
 - Canonical JSON and a strict host-supplied SHA-256 adapter seam are implemented;
   the host must hash the exact canonical text as UTF-8. Runtime adapters, signatures,
   and key management remain outstanding.

@@ -150,10 +150,12 @@ test("execution approval is bound to exact proposal digest and current revisions
     expiresAt: "2026-01-01T01:00:00Z",
   };
   const sha256 = text => createHash("sha256").update(text, "utf8").digest("hex");
-  const approval = { proposalId: proposal.proposalId, proposalDigest: canonicalSha256(proposal, sha256), outcome: "approved", occurredAt: "2026-01-01T00:30:00Z" };
+  const approval = { proposalId: proposal.proposalId, proposalDigest: canonicalSha256(proposal, sha256), actorType: "human", scope: "proposal-execution", outcome: "approved", occurredAt: "2026-01-01T00:30:00Z" };
   const current = { snapshotFingerprint: "sha256:s1", configRevision: "cfg-1", now: "2026-01-01T00:45:00Z" };
   assert.doesNotThrow(() => assertApprovalForExecution(approval, proposal, current, sha256));
   assert.throws(() => assertApprovalForExecution({ ...approval, outcome: "rejected" }, proposal, current, sha256), { code: "POLICY_REJECTED" });
+  assert.throws(() => assertApprovalForExecution({ ...approval, actorType: "service" }, proposal, current, sha256), { code: "POLICY_REJECTED" });
+  assert.throws(() => assertApprovalForExecution({ ...approval, scope: "config-publication" }, proposal, current, sha256), { code: "POLICY_REJECTED" });
   assert.throws(() => assertApprovalForExecution({ ...approval, proposalDigest: "0".repeat(64) }, proposal, current, sha256), { code: "POLICY_REJECTED" });
   assert.throws(() => assertApprovalForExecution(approval, proposal, { ...current, configRevision: "cfg-2" }, sha256), { code: "STALE_SNAPSHOT" });
   assert.throws(() => assertApprovalForExecution(approval, proposal, { ...current, now: "2026-01-01T01:00:01Z" }, sha256), { code: "STALE_SNAPSHOT" });
@@ -191,7 +193,7 @@ test("approval audit events form a verifiable ordered hash chain", () => {
   const sha256 = text => createHash("sha256").update(text, "utf8").digest("hex");
   const firstApproval = {
     schemaVersion: "focuna.v2", approvalId: "approval-1", proposalId: "proposal-1",
-    proposalDigest: "a".repeat(64), actor: "operator-1", outcome: "approved", occurredAt: "2026-01-01T00:00:00Z",
+    proposalDigest: "a".repeat(64), actor: "operator-1", actorType: "human", scope: "proposal-execution", outcome: "approved", occurredAt: "2026-01-01T00:00:00Z",
   };
   const first = createApprovalAuditEventFromApproval("event-1", 1, null, firstApproval, sha256);
   const secondApproval = { ...firstApproval, approvalId: "approval-2", outcome: "rejected", occurredAt: "2026-01-01T00:01:00Z" };

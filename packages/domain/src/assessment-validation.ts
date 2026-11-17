@@ -36,12 +36,18 @@ export function assertAssessmentResultMatchesJob(
 
 /** Ensure an approval authorizes only its exact, still-current proposal. */
 export function assertApprovalForExecution(
-  approval: Pick<Approval, "proposalId" | "proposalDigest" | "outcome" | "occurredAt">,
+  approval: Pick<Approval, "proposalId" | "proposalDigest" | "actorType" | "scope" | "outcome" | "occurredAt">,
   proposal: DecisionProposal,
   current: { snapshotFingerprint: string; configRevision: string; now: string },
   sha256Hex: (canonicalText: string) => string,
 ): void {
   if (approval.proposalId !== proposal.proposalId) invalid("Approval proposal ID does not match the proposal");
+  if (approval.scope !== "proposal-execution") {
+    throw new DomainError("POLICY_REJECTED", "Approval scope does not authorize proposal execution");
+  }
+  if (approval.actorType !== "human") {
+    throw new DomainError("POLICY_REJECTED", "A service identity cannot approve proposal execution");
+  }
   if (approval.outcome !== "approved") {
     throw new DomainError("POLICY_REJECTED", "Only an approved proposal can authorize execution");
   }
