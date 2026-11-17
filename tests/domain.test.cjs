@@ -18,6 +18,7 @@ const {
   assertAssessmentResultMatchesJob,
   assertApprovalForExecution,
   assertApprovalAuditChain,
+  appendApprovalAuditEvent,
   assertConfigRevisionDigest,
   assertThreadSnapshotIntegrity,
   computeConfigRevisionDigest,
@@ -253,6 +254,35 @@ test("approval audit events form a verifiable ordered hash chain", () => {
   assert.throws(() => assertApprovalAuditChain([second, first], sha256), { code: "POLICY_REJECTED" });
   assert.throws(() => assertApprovalAuditChain([{ ...first, approval: { ...first.approval, outcome: "rejected" } }], sha256), { code: "POLICY_REJECTED" });
   assert.throws(() => assertApprovalAuditChain([first, { ...second, previousDigest: "0".repeat(64) }], sha256), { code: "POLICY_REJECTED" });
+});
+
+test("approval audit repository port appends with compare-and-swap and deduplicates IDs", () => {
+  const sha256 = text => createHash("sha256").update(text, "utf8").digest("hex");
+  const events = [];
+  const repository = {
+    readEvents: () => events.slice(),
+    appendEvent(event, expectedHead) {
+      const last = events[events.length - 1];
+      if (expectedHead.sequence !== events.length || expectedHead.digest !== (last?.eventDigest ?? null)) {
+        const error = new Error("stale audit head");
+        error.code = "STALE_SNAPSHOT";
+        throw error;
+      }
+      events.push(event);
+    },
+  };
+  const approval = {
+    schemaVersion: "focuna.v2", approvalId: "approval-store-1", proposalId: "proposal-1",
+    proposalDigest: "b".repeat(64), actor: "operator-1", actorType: "human", scope: "proposal-execution",
+    outcome: "approved", occurredAt: "2026-01-01T00:00:00Z",
+  };
+  const first = appendApprovalAuditEvent(repository, approval, "store-event-1", sha256);
+  assert.equal(events.length, 1);
+  assert.equal(appendApprovalAuditEvent(repository, approval, "ignored-duplicate-event", sha256).eventId, first.eventId);
+  assert.equal(events.length, 1);
+  assert.throws(() => appendApprovalAuditEvent(repository, { ...approval, outcome: "rejected" }, "store-event-2", sha256), { code: "CONFIG_CONFLICT" });
+  assert.throws(() => appendApprovalAuditEvent(repository, { ...approval, approvalId: "approval-other" }, "store-event-1", sha256), { code: "CONFIG_CONFLICT" });
+  assert.throws(() => repository.appendEvent(first, { sequence: 0, digest: null }), { code: "STALE_SNAPSHOT" });
 });
 
 test("rules-first evaluation preserves manual state, abstains safely, and guards no-reply", () => {

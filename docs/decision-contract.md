@@ -45,6 +45,11 @@ Current approvals carry a stable actor subject, actor type (`human` or `service`
 and the narrow `proposal-execution` scope. The pure execution gate rejects service
 actors and any other scope. Host authentication must establish that the subject is a
 real authorized operator; a caller-supplied actor string is not proof of identity.
+The domain exposes an `ApprovalAuditRepository` port that only reads and appends;
+append is guarded by an expected sequence/digest head and must be atomic in the
+adapter. `appendApprovalAuditEvent` validates the chain, treats an exact duplicate
+approval ID/content as idempotent, rejects conflicting reuse, and checks that the
+append is observable. No concrete repository is implemented yet.
 
 Idempotency key for assessment: account + thread snapshot fingerprint + config,
 rules, task, and question-set versions. Plan key also binds approved proposal and

@@ -30,8 +30,9 @@ includes durable approval workflow persistence, signatures/key management, and
 complete tooling verification. The offline execution gate binds an approved record
 to the exact proposal digest and current snapshot/config revisions.
 Approval records now carry a scope and actor type; only a human proposal-execution
-approval passes the pure gate. Host identity authentication and durable append-only
-storage remain unimplemented.
+approval passes the pure gate. A storage-neutral append/CAS interface verifies
+chains and idempotent approval IDs; host identity authentication and a durable
+append-only adapter remain unimplemented.
 Canonical JSON and the SHA-256 adapter seam reject ambiguous input values; the pure
 domain now builds and smoke-loads as a Google V8-compatible `.gs` bundle. Production
 runtime digest adapters, signatures, and key management are still to be supplied.
