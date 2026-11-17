@@ -1,8 +1,33 @@
-import { Approval, ApprovalAuditEvent, ConfigRevision } from "./contracts";
+import { Approval, ApprovalAuditEvent, ConfigRevision, ThreadSnapshot } from "./contracts";
 import { canonicalSha256 } from "./canonical-json";
 import { DomainError } from "./errors";
 
 type ConfigRevisionContent = Omit<ConfigRevision, "digest">;
+type ThreadSnapshotContent = Omit<ThreadSnapshot, "snapshotFingerprint">;
+
+export function computeThreadSnapshotFingerprint(
+  snapshot: ThreadSnapshotContent,
+  sha256Hex: (canonicalText: string) => string,
+): string {
+  return `sha256:${canonicalSha256(snapshot, sha256Hex)}`;
+}
+
+export function assertThreadSnapshotIntegrity(
+  snapshot: ThreadSnapshot,
+  sha256Hex: (canonicalText: string) => string,
+): void {
+  if (snapshot.snapshotFingerprint !== computeThreadSnapshotFingerprint(stripSnapshotFingerprint(snapshot), sha256Hex)) {
+    throw new DomainError("INVALID_RECORD", "Thread snapshot fingerprint does not match its content");
+  }
+  const evidenceIds = snapshot.evidence.map(evidence => evidence.id);
+  if (new Set(evidenceIds).size !== evidenceIds.length) {
+    throw new DomainError("INVALID_RECORD", "Thread snapshot evidence IDs must be unique");
+  }
+  const labelSet = new Set(snapshot.labels);
+  if (snapshot.preservedLabels.some(label => !labelSet.has(label))) {
+    throw new DomainError("INVALID_RECORD", "Preserved labels must also be present on the snapshot");
+  }
+}
 
 /** Compute a revision digest over all config content except its digest field. */
 export function computeConfigRevisionDigest(
@@ -69,4 +94,9 @@ export function createApprovalAuditEventFromApproval(
 
 function tampered(message: string): never {
   throw new DomainError("POLICY_REJECTED", message);
+}
+
+function stripSnapshotFingerprint(snapshot: ThreadSnapshot): ThreadSnapshotContent {
+  const { snapshotFingerprint: _snapshotFingerprint, ...content } = snapshot;
+  return content;
 }

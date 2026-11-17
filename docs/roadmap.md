@@ -83,6 +83,8 @@ config conflict rules, signature/key management, and durable approval history re
   response downgrade. Legacy pattern rule coverage remains to be ported.
 - Shared `guardThreadDecision` is implemented for deterministic and future JEV
   candidates to enforce preservation, no-reply downgrade, and category/workflow rules.
+- Snapshot fingerprints are computed and verified over canonical content; evaluator
+  rejects duplicate evidence IDs and invalid preserved-label membership.
 - Implement normalized thread snapshots, minimal meaningful-message context,
   bounded pagination/cursors, account identity, and change fingerprints.
 - Import an exported copy of Preferences, DigestSettings, NewsSources and

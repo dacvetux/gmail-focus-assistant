@@ -19,7 +19,9 @@ const {
   assertApprovalForExecution,
   assertApprovalAuditChain,
   assertConfigRevisionDigest,
+  assertThreadSnapshotIntegrity,
   computeConfigRevisionDigest,
+  computeThreadSnapshotFingerprint,
   createApprovalAuditEventFromApproval,
   evaluateThreadRules,
   guardThreadDecision,
@@ -36,14 +38,18 @@ const {
 
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 addFormats(ajv);
+const hostSha256 = text => createHash("sha256").update(text, "utf8").digest("hex");
+const withSnapshotFingerprint = content => {
+  const { snapshotFingerprint: _oldFingerprint, ...snapshotContent } = content;
+  return { ...snapshotContent, snapshotFingerprint: computeThreadSnapshotFingerprint(snapshotContent, hostSha256) };
+};
 
 test("schemas accept the synthetic v2 snapshot and reject unknown fields", () => {
   const validate = ajv.compile(threadSnapshotSchema);
-  const snapshot = {
+  const snapshotContent = {
     schemaVersion: "focuna.v2",
     accountRef: "acct-test",
     threadRef: "thread-1",
-    snapshotFingerprint: "sha256:test",
     capturedAt: "2026-01-01T00:00:00.000Z",
     senderAddress: "alerts@example.test",
     subject: "Synthetic delivery update",
@@ -51,9 +57,16 @@ test("schemas accept the synthetic v2 snapshot and reject unknown fields", () =>
     preservedLabels: [],
     evidence: [{ id: "msg-1", direction: "inbound", sentAt: "2026-01-01T00:00:00.000Z", text: "Parcel delayed." }],
   };
+  const snapshot = withSnapshotFingerprint(snapshotContent);
   assert.equal(validate(snapshot), true);
+  assert.equal(validate({ ...snapshot, snapshotFingerprint: "sha256:bad" }), false);
+  assert.doesNotThrow(() => assertThreadSnapshotIntegrity(snapshot, hostSha256));
   assert.equal(validate({ ...snapshot, executable: "archive" }), false);
   assert.equal(validate({ ...snapshot, capturedAt: "yesterday" }), false);
+  assert.throws(() => assertThreadSnapshotIntegrity({ ...snapshot, subject: "modified" }, hostSha256), { code: "INVALID_RECORD" });
+  assert.throws(() => assertThreadSnapshotIntegrity({ ...snapshot, preservedLabels: ["missing"] }, hostSha256), { code: "INVALID_RECORD" });
+  const duplicateEvidence = withSnapshotFingerprint({ ...snapshot, evidence: [snapshot.evidence[0], snapshot.evidence[0]] });
+  assert.throws(() => assertThreadSnapshotIntegrity(duplicateEvidence, hostSha256), { code: "INVALID_RECORD" });
 });
 
 test("config schema only accepts explicit supported policy values", () => {
@@ -115,7 +128,7 @@ test("all v2 record schemas compile under JSON Schema 2020-12", () => {
 test("action plans reject send and archive operations by schema", () => {
   const validate = ajv.compile(actionPlanSchema);
   const common = {
-    schemaVersion: "focuna.v2", planId: "plan-1", snapshotFingerprint: "sha256:x",
+    schemaVersion: "focuna.v2", planId: "plan-1", snapshotFingerprint: `sha256:${"a".repeat(64)}`,
     configRevision: "cfg-1", policyRevision: "policy-1", expiresAt: "2026-01-01T00:01:00Z",
   };
   assert.equal(validate({ ...common, operations: [{ kind: "add-label", label: "News/Digest" }] }), true);
@@ -135,10 +148,11 @@ test("choice assessments enforce alternatives, bounds, and normalized distributi
 });
 
 test("assessment results are bound to job inputs and deadlines", () => {
-  const job = { jobId: "job-1", snapshotFingerprint: "sha256:s1", configRevision: "cfg-1", createdAt: "2026-01-01T00:00:00Z", deadlineAt: "2026-01-01T00:01:00Z" };
-  const result = { jobId: "job-1", snapshotFingerprint: "sha256:s1", configRevision: "cfg-1", completedAt: "2026-01-01T00:00:30Z" };
+  const fingerprint = `sha256:${"1".repeat(64)}`;
+  const job = { jobId: "job-1", snapshotFingerprint: fingerprint, configRevision: "cfg-1", createdAt: "2026-01-01T00:00:00Z", deadlineAt: "2026-01-01T00:01:00Z" };
+  const result = { jobId: "job-1", snapshotFingerprint: fingerprint, configRevision: "cfg-1", completedAt: "2026-01-01T00:00:30Z" };
   assert.doesNotThrow(() => assertAssessmentResultMatchesJob(job, result));
-  assert.throws(() => assertAssessmentResultMatchesJob(job, { ...result, snapshotFingerprint: "sha256:changed" }), { code: "STALE_SNAPSHOT" });
+  assert.throws(() => assertAssessmentResultMatchesJob(job, { ...result, snapshotFingerprint: `sha256:${"2".repeat(64)}` }), { code: "STALE_SNAPSHOT" });
   assert.throws(() => assertAssessmentResultMatchesJob(job, { ...result, configRevision: "cfg-2" }), { code: "STALE_SNAPSHOT" });
   assert.throws(() => assertAssessmentResultMatchesJob(job, { ...result, completedAt: "2026-01-01T00:02:00Z" }), { code: "ASSESSMENT_INVALID" });
   assert.throws(() => assertAssessmentResultMatchesJob(job, { ...result, jobId: "job-other" }), { code: "ASSESSMENT_INVALID" });
@@ -147,13 +161,13 @@ test("assessment results are bound to job inputs and deadlines", () => {
 test("execution approval is bound to exact proposal digest and current revisions", () => {
   const proposal = {
     schemaVersion: "focuna.v2", proposalId: "proposal-1", jobId: "job-1",
-    snapshotFingerprint: "sha256:s1", configRevision: "cfg-1", category: "shipping",
+    snapshotFingerprint: `sha256:${"1".repeat(64)}`, configRevision: "cfg-1", category: "shipping",
     workflow: "notification", evidenceIds: ["msg-1"], abstained: false,
     expiresAt: "2026-01-01T01:00:00Z",
   };
   const sha256 = text => createHash("sha256").update(text, "utf8").digest("hex");
   const approval = { proposalId: proposal.proposalId, proposalDigest: canonicalSha256(proposal, sha256), actorType: "human", scope: "proposal-execution", outcome: "approved", occurredAt: "2026-01-01T00:30:00Z" };
-  const current = { snapshotFingerprint: "sha256:s1", configRevision: "cfg-1", now: "2026-01-01T00:45:00Z" };
+  const current = { snapshotFingerprint: proposal.snapshotFingerprint, configRevision: "cfg-1", now: "2026-01-01T00:45:00Z" };
   assert.doesNotThrow(() => assertApprovalForExecution(approval, proposal, current, sha256));
   assert.throws(() => assertApprovalForExecution({ ...approval, outcome: "rejected" }, proposal, current, sha256), { code: "POLICY_REJECTED" });
   assert.throws(() => assertApprovalForExecution({ ...approval, actorType: "service" }, proposal, current, sha256), { code: "POLICY_REJECTED" });
@@ -221,19 +235,20 @@ test("rules-first evaluation preserves manual state, abstains safely, and guards
     ],
   };
   const config = { ...content, digest: computeConfigRevisionDigest(content, sha256) };
-  const snapshot = {
+  const snapshot = withSnapshotFingerprint({
     schemaVersion: "focuna.v2", accountRef: "acct-test", threadRef: "thread-1",
-    snapshotFingerprint: "sha256:test", capturedAt: "2026-01-01T00:00:00Z",
+    capturedAt: "2026-01-01T00:00:00Z",
     senderAddress: "person@example.test", subject: "Question", labels: [], preservedLabels: [],
     evidence: [{ id: "msg-in", direction: "inbound", sentAt: "2026-01-01T00:00:00Z", text: "Can you help?" }],
-  };
+  });
   assert.deepEqual(evaluateThreadRules(snapshot, config, sha256), {
     category: "services", workflow: "to-respond", matchedRuleIds: ["reply-rule"], evidenceIds: ["msg-in"],
     abstained: false, conflict: false, reasonCode: "approved-sender-rule",
   });
-  assert.equal(evaluateThreadRules({ ...snapshot, preservedLabels: ["2: FYI"] }, config, sha256).reasonCode, "preserve-label");
-  assert.equal(evaluateThreadRules({ ...snapshot, senderAddress: "unknown@example.test" }, config, sha256).category, "review");
-  const noReply = evaluateThreadRules({ ...snapshot, senderAddress: "no-reply@example.test" }, config, sha256);
+  const preserved = withSnapshotFingerprint({ ...snapshot, labels: ["2: FYI"], preservedLabels: ["2: FYI"] });
+  assert.equal(evaluateThreadRules(preserved, config, sha256).reasonCode, "preserve-label");
+  assert.equal(evaluateThreadRules(withSnapshotFingerprint({ ...snapshot, senderAddress: "unknown@example.test" }), config, sha256).category, "review");
+  const noReply = evaluateThreadRules(withSnapshotFingerprint({ ...snapshot, senderAddress: "no-reply@example.test" }), config, sha256);
   assert.equal(noReply.workflow, "notification");
   assert.equal(noReply.reasonCode, "no-reply-downgrade");
   assert.throws(() => evaluateThreadRules(snapshot, { ...config, revision: "mutated" }, sha256), { code: "CONFIG_CONFLICT" });

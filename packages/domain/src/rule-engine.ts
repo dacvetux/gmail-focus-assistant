@@ -1,5 +1,5 @@
 import { ConfigRevision, RuleResult, ThreadSnapshot } from "./contracts";
-import { assertConfigRevisionDigest } from "./revision-validation";
+import { assertConfigRevisionDigest, assertThreadSnapshotIntegrity } from "./revision-validation";
 import { assertRuleSetValid, selectApprovedRule } from "./rule-matching";
 import { guardThreadDecision } from "./thread-policy";
 
@@ -9,6 +9,7 @@ export function evaluateThreadRules(
   config: ConfigRevision,
   sha256Hex: (canonicalText: string) => string,
 ): RuleResult {
+  assertThreadSnapshotIntegrity(snapshot, sha256Hex);
   assertConfigRevisionDigest(config, sha256Hex);
   assertRuleSetValid(config.rules);
 

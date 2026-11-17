@@ -78,6 +78,10 @@ classifier; until parity is demonstrated, unknown mail stays in review.
 `guardThreadDecision` is the shared safety policy for rule and future model
 candidates; it enforces preservation, no-reply downgrade, and category/workflow
 compatibility independent of the decision source.
+`snapshotFingerprint` is `sha256:<lowercase-hex>` over canonical snapshot content
+excluding only the fingerprint field. The pure integrity check rejects changed
+content, duplicate evidence IDs, and preserved labels absent from the current label
+set before the evaluator acts on the snapshot.
 
 ## JEV tasks and output adaptation
 

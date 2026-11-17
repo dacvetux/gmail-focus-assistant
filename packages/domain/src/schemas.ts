@@ -8,7 +8,7 @@ export const threadSnapshotSchema = {
     schemaVersion: { const: "focuna.v2" },
     accountRef: { type: "string", minLength: 1 },
     threadRef: { type: "string", minLength: 1 },
-    snapshotFingerprint: { type: "string", minLength: 1 },
+    snapshotFingerprint: { type: "string", pattern: "^sha256:[a-f0-9]{64}$" },
     capturedAt: { type: "string", format: "date-time" },
     senderAddress: { type: "string", minLength: 1 },
     subject: { type: "string" },
@@ -74,7 +74,7 @@ export const assessmentJobSchema = {
   properties: {
     schemaVersion: { const: "focuna.v2" },
     jobId: { type: "string", minLength: 1 },
-    snapshotFingerprint: { type: "string", minLength: 1 },
+    snapshotFingerprint: { type: "string", pattern: "^sha256:[a-f0-9]{64}$" },
     configRevision: { type: "string", minLength: 1 },
     task: { enum: ["classification", "workflow", "rule-suggestion"] },
     questionSetVersion: { type: "string", minLength: 1 },
@@ -91,7 +91,7 @@ export const assessmentResultSchema = {
   properties: {
     schemaVersion: { const: "focuna.v2" },
     jobId: { type: "string", minLength: 1 },
-    snapshotFingerprint: { type: "string", minLength: 1 },
+    snapshotFingerprint: { type: "string", pattern: "^sha256:[a-f0-9]{64}$" },
     configRevision: { type: "string", minLength: 1 },
     provider: { type: "string", minLength: 1 },
     model: { type: "string", minLength: 1 },
@@ -138,7 +138,7 @@ export const decisionProposalSchema = {
     schemaVersion: { const: "focuna.v2" },
     proposalId: { type: "string", minLength: 1 },
     jobId: { type: "string", minLength: 1 },
-    snapshotFingerprint: { type: "string", minLength: 1 },
+    snapshotFingerprint: { type: "string", pattern: "^sha256:[a-f0-9]{64}$" },
     configRevision: { type: "string", minLength: 1 },
     category: { enum: ["review", "services", "finance", "shipping", "calendar", "opportunities", "news", "commercial-newsletter", "commercial-ad", "commercial-campaign", "none"] },
     workflow: { enum: ["to-respond", "fyi", "notification", "none"] },
@@ -203,7 +203,7 @@ export const actionPlanSchema = {
   properties: {
     schemaVersion: { const: "focuna.v2" },
     planId: { type: "string", minLength: 1 },
-    snapshotFingerprint: { type: "string", minLength: 1 },
+    snapshotFingerprint: { type: "string", pattern: "^sha256:[a-f0-9]{64}$" },
     configRevision: { type: "string", minLength: 1 },
     policyRevision: { type: "string", minLength: 1 },
     operations: { type: "array", items: { oneOf: [
