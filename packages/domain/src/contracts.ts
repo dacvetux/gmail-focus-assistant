@@ -59,6 +59,7 @@ export interface ApprovedRule {
 export interface ConfigRevision {
   schemaVersion: typeof CONTRACT_VERSION;
   revision: string;
+  digest: string;
   rules: ApprovedRule[];
   publishedAt: string;
   publishedBy: string;
@@ -125,6 +126,15 @@ export interface Approval {
   actor: string;
   outcome: "approved" | "rejected" | "corrected";
   occurredAt: string;
+}
+
+export interface ApprovalAuditEvent {
+  schemaVersion: typeof CONTRACT_VERSION;
+  eventId: string;
+  sequence: number;
+  previousDigest: string | null;
+  approval: Approval;
+  eventDigest: string;
 }
 
 export type ActionOperation =

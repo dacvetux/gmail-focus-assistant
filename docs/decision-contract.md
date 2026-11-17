@@ -20,6 +20,24 @@ invalid enums must be rejected, not coerced into plausible decisions.
 | ActionPlan | plan ID, proposal/approval references where required, expected snapshot, config/policy revisions, allowlisted operations, preconditions, expiry |
 | ActionEvent | plan/operation/run IDs, observed before/after state, attempt, status, timestamps and redacted error; append-only |
 
+## Config publication and approval audit
+
+Every `ConfigRevision` includes a lowercase SHA-256 digest over the canonical JSON
+of the complete revision content excluding only the `digest` field. The publisher
+must validate the record and its rules before accepting that digest. A digest
+mismatch rejects publication; changing any rule or publication metadata requires a
+new revision and digest.
+
+An `ApprovalAuditEvent` records one immutable approval decision, sequence number,
+previous event digest, and digest of the event content. A valid chain begins at
+sequence 1 with `previousDigest: null`; every later event increments sequence and
+links to the preceding digest. The domain verifier detects mutation, reordering,
+duplicate IDs, and broken links. This is tamper-evidence, not storage immutability:
+the future repository must deny update/delete, authenticate actors, and anchor the
+latest chain digest outside the mutable event store to detect truncation/rewrite.
+Retention period and permitted actor/approval scopes remain deployment policy; the
+current records do not imply a durable audit store or access-control implementation.
+
 Idempotency key for assessment: account + thread snapshot fingerprint + config,
 rules, task, and question-set versions. Plan key also binds approved proposal and
 policy revision. Canonical JSON sorts object keys and rejects ambiguous values;

@@ -12,10 +12,15 @@ const {
   actionEventSchema,
   actionPlanSchema,
   approvalSchema,
+  approvalAuditEventSchema,
   assessmentJobSchema,
   assessmentResultSchema,
   assertAssessmentResultMatchesJob,
   assertApprovalForExecution,
+  assertApprovalAuditChain,
+  assertConfigRevisionDigest,
+  computeConfigRevisionDigest,
+  createApprovalAuditEventFromApproval,
   configRevisionSchema,
   decisionProposalSchema,
   labelsForDecision,
@@ -51,7 +56,7 @@ test("schemas accept the synthetic v2 snapshot and reject unknown fields", () =>
 
 test("config schema only accepts explicit supported policy values", () => {
   const validate = ajv.compile(configRevisionSchema);
-  const config = {
+  const content = {
     schemaVersion: "focuna.v2",
     revision: "cfg-1",
     publishedAt: "2026-01-01T00:00:00.000Z",
@@ -65,8 +70,12 @@ test("config schema only accepts explicit supported policy values", () => {
       approvedBy: "operator-test",
     }],
   };
+  const sha256 = text => createHash("sha256").update(text, "utf8").digest("hex");
+  const config = { ...content, digest: computeConfigRevisionDigest(content, sha256) };
   assert.equal(validate(config), true);
+  assert.doesNotThrow(() => assertConfigRevisionDigest(config, sha256));
   assert.equal(validate({ ...config, rules: [{ ...config.rules[0], category: "delete" }] }), false);
+  assert.throws(() => assertConfigRevisionDigest({ ...config, publishedBy: "changed" }, sha256), { code: "CONFIG_CONFLICT" });
 });
 
 test("canonical JSON is key-order independent and rejects ambiguous values", () => {
@@ -96,7 +105,7 @@ test("label mapping preserves review and commercial workflow invariants", () => 
 
 test("all v2 record schemas compile under JSON Schema 2020-12", () => {
   for (const schema of [assessmentJobSchema, assessmentResultSchema, ruleResultSchema,
-    decisionProposalSchema, approvalSchema, actionPlanSchema, actionEventSchema]) {
+    decisionProposalSchema, approvalSchema, approvalAuditEventSchema, actionPlanSchema, actionEventSchema]) {
     assert.doesNotThrow(() => ajv.compile(schema));
   }
 });
@@ -176,4 +185,20 @@ test("sender rules normalize safely, reject duplicates, and use deterministic sp
   assert.throws(() => assertRuleSetValid([broad, rule("duplicate", "sender-domain", "example.com", "news")]), { code: "CONFIG_CONFLICT" });
   assert.throws(() => normalizeEmailAddress("bad@@example.com"), { code: "INVALID_RECORD" });
   assert.throws(() => normalizeEmailAddress("name@exa mple.com"), { code: "INVALID_RECORD" });
+});
+
+test("approval audit events form a verifiable ordered hash chain", () => {
+  const sha256 = text => createHash("sha256").update(text, "utf8").digest("hex");
+  const firstApproval = {
+    schemaVersion: "focuna.v2", approvalId: "approval-1", proposalId: "proposal-1",
+    proposalDigest: "a".repeat(64), actor: "operator-1", outcome: "approved", occurredAt: "2026-01-01T00:00:00Z",
+  };
+  const first = createApprovalAuditEventFromApproval("event-1", 1, null, firstApproval, sha256);
+  const secondApproval = { ...firstApproval, approvalId: "approval-2", outcome: "rejected", occurredAt: "2026-01-01T00:01:00Z" };
+  const second = createApprovalAuditEventFromApproval("event-2", 2, first.eventDigest, secondApproval, sha256);
+  assert.doesNotThrow(() => assertApprovalAuditChain([first, second], sha256));
+  assert.equal(ajv.compile(approvalAuditEventSchema)(first), true);
+  assert.throws(() => assertApprovalAuditChain([second, first], sha256), { code: "POLICY_REJECTED" });
+  assert.throws(() => assertApprovalAuditChain([{ ...first, approval: { ...first.approval, outcome: "rejected" } }], sha256), { code: "POLICY_REJECTED" });
+  assert.throws(() => assertApprovalAuditChain([first, { ...second, previousDigest: "0".repeat(64) }], sha256), { code: "POLICY_REJECTED" });
 });

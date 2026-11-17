@@ -35,10 +35,11 @@ export const configRevisionSchema = {
   $id: "focuna://schemas/config-revision-v2.json",
   type: "object",
   additionalProperties: false,
-  required: ["schemaVersion", "revision", "rules", "publishedAt", "publishedBy"],
+  required: ["schemaVersion", "revision", "digest", "rules", "publishedAt", "publishedBy"],
   properties: {
     schemaVersion: { const: "focuna.v2" },
     revision: { type: "string", minLength: 1 },
+    digest: { type: "string", pattern: "^[a-f0-9]{64}$" },
     publishedAt: { type: "string", format: "date-time" },
     publishedBy: { type: "string", minLength: 1 },
     rules: {
@@ -160,6 +161,33 @@ export const approvalSchema = {
     actor: { type: "string", minLength: 1 },
     outcome: { enum: ["approved", "rejected", "corrected"] },
     occurredAt: { type: "string", format: "date-time" },
+  },
+} as const;
+
+export const approvalAuditEventSchema = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  $id: "focuna://schemas/approval-audit-event-v2.json",
+  type: "object", additionalProperties: false,
+  required: ["schemaVersion", "eventId", "sequence", "previousDigest", "approval", "eventDigest"],
+  properties: {
+    schemaVersion: { const: "focuna.v2" },
+    eventId: { type: "string", minLength: 1 },
+    sequence: { type: "integer", minimum: 1 },
+    previousDigest: { anyOf: [{ type: "null" }, { type: "string", pattern: "^[a-f0-9]{64}$" }] },
+    approval: {
+      type: "object", additionalProperties: false,
+      required: ["schemaVersion", "approvalId", "proposalId", "proposalDigest", "actor", "outcome", "occurredAt"],
+      properties: {
+        schemaVersion: { const: "focuna.v2" },
+        approvalId: { type: "string", minLength: 1 },
+        proposalId: { type: "string", minLength: 1 },
+        proposalDigest: { type: "string", pattern: "^[a-f0-9]{64}$" },
+        actor: { type: "string", minLength: 1 },
+        outcome: { enum: ["approved", "rejected", "corrected"] },
+        occurredAt: { type: "string", format: "date-time" },
+      },
+    },
+    eventDigest: { type: "string", pattern: "^[a-f0-9]{64}$" },
   },
 } as const;
 
