@@ -1,9 +1,11 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { createHash } = require("node:crypto");
 const Ajv2020 = require("ajv/dist/2020").default;
 const addFormats = require("ajv-formats").default;
 const {
   canonicalJson,
+  canonicalSha256,
   CHOICE_DISTRIBUTION_TOLERANCE,
   actionEventSchema,
   actionPlanSchema,
@@ -66,6 +68,17 @@ test("canonical JSON is key-order independent and rejects ambiguous values", () 
   assert.equal(canonicalJson({ a: 0, b: -0 }), '{"a":0,"b":0}');
   assert.throws(() => canonicalJson({ bad: Number.NaN }));
   assert.throws(() => canonicalJson({ bad: undefined }));
+  const sparse = [];
+  sparse.length = 1;
+  assert.throws(() => canonicalJson(sparse), { code: "INVALID_RECORD" });
+  assert.throws(() => canonicalJson({ get x() { return 1; } }), { code: "INVALID_RECORD" });
+});
+
+test("canonical SHA-256 uses the host adapter and binds canonical bytes", () => {
+  const digest = text => createHash("sha256").update(text, "utf8").digest("hex");
+  assert.equal(canonicalSha256({ z: 2, a: 1 }, digest), canonicalSha256({ a: 1, z: 2 }, digest));
+  assert.equal(canonicalSha256({ a: 1 }, digest), "015abd7f5cc57a2dd94b7590f04ad8084273905ee33ec5cebeae62276a97f862");
+  assert.throws(() => canonicalSha256({ a: 1 }, () => "not-a-digest"), { code: "INVALID_RECORD" });
 });
 
 test("label mapping preserves review and commercial workflow invariants", () => {

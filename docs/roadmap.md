@@ -46,6 +46,9 @@ the real adapter, not rules/core development using a mock. No production changes
   check supplements boundary JSON Schema validation.
 - Bind provider results to the exact job, snapshot, config revision, and deadline
   (implemented by the offline domain validator).
+- Canonical JSON and a strict host-supplied SHA-256 adapter seam are implemented;
+  the host must hash the exact canonical text as UTF-8. Runtime adapters, signatures,
+  and key management remain outstanding.
 - Establish package/lockfile, lint/typecheck, schema/fixture checks, automated unit
   checks, and a GitHub Actions workflow that uses no production credentials.
 - Define operator identity, approval scopes, append-only audit, access controls,
