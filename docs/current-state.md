@@ -200,3 +200,17 @@ Decision required before real email/provider calls: accept standard terms with
 retention described only as “reasonably necessary,” or require provider-confirmed
 ZDR/a fixed maximum retention period. Keep provider execution disabled pending that
 choice and confirmation of which plan/terms apply to this API account.
+
+## Offline budget gate — 2026-11-19
+
+Implemented migration `004_provider_budget_reservations.sql` and
+`SqliteProviderBudget`: atomic reservations use integer microdollars, pin the
+worst-case `jev-1.14.0` request cost at 252 microdollars, and enforce the accepted
+$2/day and $25/month limits. Crash-ambiguous reservations remain held; release is
+allowed only with explicit proof that dispatch did not happen. Settlement rejects
+charges above the reserved amount and leaves the reservation held. This is a
+storage primitive only: no worker dispatcher or live TypeSafe call path is wired.
+The token-cost helper rounds TypeSafe input usage upward to microdollars and enforces
+the accepted 6,000-token call limit. `node --check`, typecheck, build, and
+`git diff --check` passed; tests were not run. The next
+blocker before real email is still provider-confirmed retention/ZDR for this account.

@@ -91,6 +91,16 @@ Public privacy terms state no model training but do not specify a fixed API-inpu
 retention period; confirm account-specific terms or enterprise ZDR before enabling
 real-email provider calls.
 
+The SQLite budget repository reserves $0.000252 (252 microdollars) atomically
+against the accepted $2/day and $25/month limits before dispatch. Outstanding
+reservations continue counting after a process crash; they are not automatically
+released because the worker may have crashed after sending a paid request. A
+reservation may be released only when dispatch is proven not to have occurred.
+Settlement uses provider-reported usage or the reserved maximum when usage is
+unavailable. The repository is implemented offline but is not connected to a
+dispatcher; live execution remains disabled, and the provider-retention decision
+remains unresolved.
+
 ## Request authentication: Focuna HMAC v1
 
 HTTPS is mandatory but not the application authentication mechanism. Each caller

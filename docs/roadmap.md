@@ -134,6 +134,11 @@ decisions without Gmail changes. No JEV dependency, drafts, send, or archive act
   assessment where supported. Keep distributions and rubric semantics intact.
 - Add schema/evidence validation, abstention, input boundaries, shared daily budget
   reservation, bounded retries/backoff, deadlines, caching and circuit breaker.
+- Implemented offline: `SqliteProviderBudget` atomically reserves the pinned model's
+  worst-case $0.000252 call cost against the accepted $2/day and $25/month limits;
+  unresolved reservations continue counting after crashes, and release requires
+  explicit proof the request was never sent. This policy is not yet wired to a
+  provider dispatcher; no retries are permitted by the current decision.
 - Store both rule and JEV outputs for comparison. Add latency/cost/failure metrics.
 - Run shadow only: model output cannot alter Gmail, active rules, or live approvals.
 
