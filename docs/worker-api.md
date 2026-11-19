@@ -1,0 +1,150 @@
+# Focuna worker API
+
+Status: implementation contract for the claw01-hosted worker. It is not deployed.
+The API is the only interface between Apps Script and worker-owned SQL/JEV state;
+neither Apps Script nor browser code receives database credentials.
+
+## Trust and deployment boundary
+
+- Apps Script is the sole Gmail reader/writer and scheduled caller. The worker has
+  no Gmail OAuth credentials and does not call Gmail.
+- The HTML Service browser calls Apps Script server handlers only. Those handlers
+  authenticate as the Focuna Apps Script integration to the worker and pass a
+  human actor only when Apps Script has independently verified that identity.
+- Worker runtime: one Node.js service on claw01, one SQLite database on a verified
+  persistent local volume, one active writer. Caddy terminates public TLS and
+  forwards only the approved API hostname/path to a loopback-bound worker.
+- Apps Script cannot use claw01's private OpenVPN address as its API route. A DNS
+  hostname and Caddy route must be chosen and validated before deployment. Never
+  expose the worker's loopback port directly or publish PostgreSQL/SQLite ports.
+
+## Version 1 endpoints
+
+All paths are rooted at `/v1`. JSON is UTF-8, content type is exactly
+`application/json`, bodies are limited to 256 KiB, and unknown properties are
+rejected. No request data or identifiers containing mailbox content go in URLs.
+
+| Method and path | Purpose | Access |
+| --- | --- | --- |
+| `GET /v1/health` | Minimal liveness/readiness (`ok`, API version, schema version); no host/process details | Caddy health check only; not public |
+| `POST /v1/assessment-jobs` | Submit a minimized, schema-checked job; unique idempotency key returns the existing receipt | Apps Script integration |
+| `GET /v1/assessment-jobs/{jobId}` | Poll a job/result; verify account ownership before lookup response | Apps Script integration |
+| `GET /v1/config/revisions/{revision}` | Read an immutable config revision by opaque revision ID | Apps Script integration |
+| `POST /v1/config/revision-previews` | Validate/diff a candidate revision without publishing | Apps Script integration; operator identity required |
+| `POST /v1/config/revisions` | Publish a validated successor revision | Apps Script integration; independently verified human actor and explicit scope required |
+| `GET /v1/operator/queue` | Read bounded recommendations and operational summaries | Apps Script integration; authorized operator required |
+| `POST /v1/recommendations/{recommendationId}/decisions` | Append approve/reject/correct event bound to proposal digest, snapshot and config revision | Apps Script integration; independently verified human actor required |
+
+Approval endpoints fail closed if Apps Script cannot establish the active human
+identity or allowlist membership. A valid HMAC proves the calling integration,
+not the identity of the person using the UI. Web-app execution identity and
+allowlisted operator policy remain a deployment gate. Request/response schemas
+must be versioned in `packages/domain/src/schemas.ts` before endpoint implementation.
+
+Job status is `queued | running | completed | failed | expired`. Submission
+returns `202` with `{jobId, idempotencyKey, status, createdAt, deadlineAt}`; a
+duplicate idempotency key returns the original job receipt. Poll returns a
+versioned envelope and only returns result content for the owning account. A
+terminal provider failure is categorized and redacted; raw provider error bodies
+are never returned. Rate limits, maximum polling frequency, and retention limits
+are configured centrally and recorded in operational metrics.
+
+## Request authentication: Focuna HMAC v1
+
+HTTPS is mandatory but not the application authentication mechanism. Each caller
+has a key ID and 32-byte random HMAC-SHA-256 secret. Apps Script stores the secret
+in Script Properties; the worker reads it from a root-owned, mode-0600 secret file
+or approved systemd credential. Neither value belongs in source, logs, URLs,
+SQLite, or browser JavaScript.
+
+Required headers:
+
+```text
+X-Focuna-Key-Id: <key id>
+X-Focuna-Timestamp: <Unix seconds, decimal>
+X-Focuna-Nonce: <base64url encoding of at least 16 random bytes>
+X-Focuna-Content-SHA256: <lowercase hex SHA-256 of exact raw body bytes>
+X-Focuna-Signature: <lowercase hex HMAC-SHA-256>
+```
+
+The signature input is UTF-8 with literal LF separators and no trailing LF:
+
+```text
+FOCUNA-HMAC-SHA256-V1\n<METHOD>\n<PATH>\n<TIMESTAMP>\n<NONCE>\n<BODY_SHA256>
+```
+
+`METHOD` is uppercase. `PATH` is the exact origin-form path, beginning with `/`;
+query strings, fragments, dot segments, repeated slashes, backslashes and percent-
+encoded path separators are rejected. The body digest is checked against the exact
+received bytes before JSON parsing. No content compression is accepted. Hex input
+is lowercase and length checked; signature comparison is constant-time.
+
+The accepted timestamp window is 300 seconds in either direction. After signature
+verification, atomically insert `(keyId, nonce)` into a unique replay table before
+dispatching the handler. A reused nonce is rejected, including after a handler
+error. Nonce rows expire after 15 minutes; cleanup is bounded and cannot remove
+rows still within the timestamp acceptance window. The database transaction must
+make replay checking and reservation atomic across concurrent requests. Replays
+and bad signatures receive generic `401` responses without revealing whether a
+key ID exists. Authentication happens before job lookup or any billable provider
+call.
+
+Apps Script retries use the same idempotency key but a fresh timestamp, nonce and
+signature. The worker's unique job key prevents a second paid request.
+
+## Signed responses
+
+Responses are returned only over TLS and include:
+
+```text
+X-Focuna-Key-Id: <response signing key id>
+X-Focuna-Timestamp: <Unix seconds>
+X-Focuna-Request-Nonce: <request nonce>
+X-Focuna-Content-SHA256: <lowercase hex SHA-256 of exact response bytes>
+X-Focuna-Signature: <lowercase hex HMAC-SHA-256>
+```
+
+Response signature input uses LF-separated fields and no trailing LF:
+
+```text
+FOCUNA-RESPONSE-HMAC-SHA256-V1\n<STATUS>\n<REQUEST_NONCE>\n<TIMESTAMP>\n<BODY_SHA256>
+```
+
+The client checks timestamp skew, expected request nonce, body digest, key ID and
+constant-time signature before parsing/using a response. Error bodies are bounded,
+typed and contain no secrets, raw email excerpts, stack traces or provider payloads.
+
+## Key lifecycle and operational controls
+
+- Provision distinct random keys for each environment. Initial staging and
+  production are not the same credential or database.
+- Rotate with a short overlap: install a new key ID on the worker, update Script
+  Properties, verify a signed health call, then revoke the old key. Never reuse a
+  key ID for different secret bytes.
+- Maintain key metadata (ID, creation/expiry/revocation time, allowed scopes) but
+  never store key material in SQLite. Support immediate revocation.
+- Limit caller scope by deployment/account; do not treat possession of a shared
+  integration key as permission to approve a human decision.
+- Apply Caddy request-size/time limits and an application rate limit by key ID.
+  Do not log authorization/signature headers, bodies, message excerpts or secrets.
+- Audit key ID, route, result category, request ID and latency only. Redact raw
+  errors. Enforce retention for non-content audit records separately from excerpts.
+- Stop-start/backups must not permit duplicate jobs: nonce uniqueness and
+  idempotency constraints live in durable SQLite, not in memory.
+
+## Implementation gates
+
+1. Implement crypto adapters using Node `crypto` (worker) and Web Crypto-compatible
+   Apps Script helpers; test against fixed public signing vectors.
+2. Implement strict raw-body handling, path validation, constant-time comparisons,
+   replay/idempotency repository contracts, and bounded typed errors.
+3. Implement only job submit/poll first. Keep config publication and human approval
+   endpoints disabled until identity and authorization gates are implemented.
+4. Run the service on loopback in a local/staging environment with synthetic data;
+   verify signed request and response, replay rejection, skew rejection, bad body
+   digest, rotation overlap/revocation, duplicate job behavior and restart recovery.
+5. Deploy to claw01 only after privileged read-only host inventory, DNS/TLS route,
+   capacity/storage/backup, service isolation and rollback are verified.
+
+No live mailbox payload is used in protocol tests. No JEV call occurs as a side
+effect of health checks, authentication tests, or duplicate submissions.

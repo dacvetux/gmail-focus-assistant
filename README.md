@@ -11,6 +11,8 @@ separate from deterministic policy and Gmail execution.
 
 - [New roadmap](docs/roadmap.md): implementation order, deliverables, and exit gates.
 - [Architecture](docs/architecture.md): responsibilities, runtime, and trust boundaries.
+- [Worker API](docs/worker-api.md): authenticated HTTPS endpoint and wire contract.
+- [claw01 deployment](docs/claw01-deployment.md): staging deployment design and rollback.
 - [Builder handoff](docs/builder-handoff.md): first tasks and module layout.
 - [Decision contracts](docs/decision-contract.md): inputs, outputs, and validation.
 - [Migration and rollback](docs/migration.md): preserve v1 and prevent dual writers.

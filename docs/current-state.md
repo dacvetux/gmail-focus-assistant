@@ -127,3 +127,13 @@ firewall rules, databases, or deployments were changed. Before selecting ingress
 installing anything, complete authorized read-only privileged inspection and map
 existing Caddy routes and workload ownership. Host reachability from Apps Script
 is also unverified.
+
+ADR-007 (2026-11-19): D.C. accepted a project-owned authenticated HTTPS API behind
+Caddy for Apps Script-to-worker traffic. `docs/worker-api.md` specifies Focuna HMAC
+v1 request/response signing, canonical bytes, timestamp and atomic nonce replay
+protection, key IDs/rotation, initial endpoints, and fail-closed human-identity
+requirements. `docs/claw01-deployment.md` specifies isolated service/storage,
+preflight, staging deployment, and rollback. These are design documents only: no
+API implementation, signing adapter, key, hostname, Caddy route, DNS, or VPS service
+exists. ClawNet records the integration as planned, not deployed; privileged host
+preflight remains incomplete.

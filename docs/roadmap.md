@@ -64,6 +64,10 @@ the real adapter, not rules/core development using a mock. No production changes
 - Storage-neutral approval audit port now specifies atomic expected-head append,
   idempotent duplicate handling and read-after-append verification. Concrete storage
   and access-control adapters remain deferred pending deployment choice.
+- Focuna HMAC v1 API wire contract and claw01 staging deployment/rollback design
+  are documented in `docs/worker-api.md` and `docs/claw01-deployment.md` (ADR-007).
+  No API server, signing adapters, nonce repository, keys, DNS route, or VPS service
+  exist yet; first implementation is health plus job submit/poll only.
 - Approval contracts identify actor type and narrow `proposal-execution` scope;
   the execution gate permits human approvals only. Identity authentication and
   broader config-publication permissions remain host-policy work.
@@ -148,6 +152,12 @@ not reported as empirical accuracy. Real-provider evaluation uses approved data 
   secret handling, monitoring, verified backups/restore, and documented install,
   upgrade, and rollback steps. Keep the service inactive until authentication and
   ingress are validated; do not interfere with existing VPS workloads.
+- Implement the Focuna HMAC v1 protocol from the shared contract: strict raw-body
+  digest verification, path/header validation, constant-time HMAC checks, bounded
+  timestamps, atomic nonce replay store, signed request-bound responses, key
+  rotation, and integration-specific rate limits. Use shared golden vectors across
+  Apps Script and Node. Ship only health and assessment job submit/poll initially;
+  keep config/approval mutations disabled until human identity is proven.
 - Add an Apps Script HTML Service management page backed by server handlers and the
   worker API. It must use existing identity, approval, and action policy gates; the
   UI itself grants no authority. Resolve web-app execution identity before exposing
@@ -163,8 +173,10 @@ not reported as empirical accuracy. Real-provider evaluation uses approved data 
 
 **Exit:** approved/rejected/stale/duplicate flows are demonstrated in staging on
 the prepared claw01 service;
-no unreviewed suggestion changes configuration or Gmail. Approval audit identifies
-the actor and exact proposal, not just a mutable row number.
+no unreviewed suggestion changes configuration or Gmail. Human approval endpoints
+remain disabled until Apps Script operator identity and allowlist checks are
+verified. Approval audit identifies the actor and exact proposal, not just a
+mutable row number.
 
 ## V2-P5 — Controlled executor and classification cutover readiness
 

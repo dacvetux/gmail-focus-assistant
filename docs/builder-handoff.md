@@ -79,3 +79,14 @@ services, isolation boundaries, persistent SQLite path, backups/restoration, ing
 firewall scope, monitoring, and rollback. Apps Script must reach the worker through
 an authenticated HTTPS endpoint; do not assume its Google runtime can reach VPN IP
 `10.8.0.1`. Keep SQLite single-writer and do not disturb FlyAwayz or other services.
+
+## Authenticated worker API implementation
+
+Implement the protocol in `docs/worker-api.md` and deployment workflow in
+`docs/claw01-deployment.md`. Keep the first network slice to authenticated health
+and assessment submit/poll; add config/recommendation endpoints only after their
+schemas, storage invariants, and human authorization exist. Use shared golden HMAC
+vectors across Apps Script and Node, exact raw-body hashing, constant-time checks,
+and SQLite-atomic nonce/idempotency constraints. Build and exercise the service
+locally with synthetic requests before any host deployment. Approval endpoints must
+fail closed until the Apps Script active-user/allowlist policy is proven.

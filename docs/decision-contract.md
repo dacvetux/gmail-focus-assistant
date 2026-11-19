@@ -159,15 +159,19 @@ and cannot introduce actions, facts, or evidence IDs outside the request.
 
 ## Transport and storage
 
-Worker endpoints are proposed as `POST /v1/assessments` and
-`GET /v1/assessments/{jobId}`; these are Focuna endpoints to build, not existing
-JEV endpoints. Submission returns an idempotent job receipt; status returns
-`queued | running | completed | failed | expired` and a versioned result envelope.
-Authenticate/authorize account ownership on both operations. Duplicate submission
-must return the original job rather than create another paid assessment.
+Worker endpoints are specified in [`worker-api.md`](worker-api.md) as
+`POST /v1/assessment-jobs` and `GET /v1/assessment-jobs/{jobId}`; these are Focuna
+endpoints to build, not existing JEV endpoints. Submission returns an idempotent
+job receipt; status returns `queued | running | completed | failed | expired` and
+a versioned result envelope. Authenticate/authorize account ownership on both
+operations. Duplicate submission must return the original job rather than create
+another paid assessment.
 
-No raw email or credentials in URLs. Sign responses bound to request/job and expiry.
-Use durable job state across restarts; expire evidence/results according to the
-P0 retention agreement, while keeping non-content audit identifiers as needed.
-Never fall back to another provider without explicitly configured consent and
-recorded provenance. Mock adapter must support deterministic offline replay.
+No raw email or credentials in URLs. Focuna HMAC v1 signs exact raw-body digests,
+method/path/timestamp/nonce and binds signed responses to the request nonce;
+timestamps are bounded and nonce replay is reserved atomically in durable SQLite.
+See the API spec for canonicalization and rotation. Use durable job state across
+restarts; expire evidence/results according to the P0 retention agreement, while
+keeping non-content audit identifiers as needed. Never fall back to another
+provider without explicitly configured consent and recorded provenance. Mock
+adapter must support deterministic offline replay.

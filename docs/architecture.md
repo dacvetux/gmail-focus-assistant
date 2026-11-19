@@ -88,13 +88,12 @@ do not expose an unauthenticated bridge or assume an agent-session tool is an AP
 Apps Script must reach the API over an approved HTTPS ingress; the private
 `10.8.0.1` VPN address is not assumed reachable from Google Apps Script. Before
 deployment, validate host capacity, firewall and ingress scope, persistent storage,
-backup/restore, monitoring, and rollback. Requests use a key ID, timestamp, nonce,
-body digest, and HMAC signature over a
-canonical method/path/timestamp/nonce/body-digest string; verify before job lookup.
-Reject expired/replayed submissions; retries use a fresh nonce and the same job key.
-TLS and signed, request-bound responses protect result integrity. Specify exact
-canonicalization and rotation in V2-P1 before wiring a real network adapter.
-Keys live in Script Properties / worker secret storage, never Sheets or Git.
+backup/restore, monitoring, and rollback. Wire-level request/response signing,
+canonicalization, replay-store semantics, key rotation, and endpoint definitions
+are specified in [`worker-api.md`](worker-api.md) (ADR-007). Keys live in Script
+Properties / worker secret storage, never Sheets, browser code, SQLite, or Git.
+Human approval identity is distinct from integration-key authentication; approval
+routes remain disabled until that identity gate is implemented.
 
 JEV is the primary AI assessor, not an authority. TypeSafe System One identity,
 bearer API access, and a basic choice response were verified with synthetic state.

@@ -76,7 +76,9 @@ host for the v2 decision worker and its SQL store, rather than provisioning Clou
 Run and Cloud SQL. Keep SQLite and a single active worker initially; SQLite must
 live on verified persistent storage with a documented backup/restore procedure.
 Apps Script remains the Gmail reader/writer, scheduler, and HTML Service UI; it
-communicates with the worker through an authenticated, HTTPS-reachable API. No
+communicates with the worker through an authenticated HTTPS API implemented in
+this project and reverse-proxied by the existing Caddy service after host review.
+The hostname and DNS zone are still to be selected. No
 Gmail credentials or database credentials go to the browser or JEV provider.
 
 The ClawNet architecture inventory identifies `claw01` as `10.8.0.1` on the
@@ -100,6 +102,37 @@ but D.C. assumes VPS patching, monitoring, backup/restore, capacity, and availab
 responsibility. Cloud Run/Cloud SQL remain possible future options only through a
 new decision based on measured operational needs and costs.
 
+## ADR-007 — Build the authenticated worker API in Focuna
+
+Accepted direction (2026-11-19, D.C.): implement the Apps Script-to-worker API as
+part of the Focuna v2 project, rather than depending on an OpenClaw/Gateway agent
+tool as an implicit service endpoint. Serve it from claw01 behind authenticated
+HTTPS through Caddy, after host/config/hostname preflight. Define strict versioned
+JSON endpoints, HMAC-SHA-256 request authentication, signed request-bound responses,
+timestamp and atomic nonce replay protection, key IDs/rotation, rate limits, and
+database-backed idempotency. Full wire details and rollout checks are in
+[`worker-api.md`](worker-api.md) and [`claw01-deployment.md`](claw01-deployment.md).
+
+The shared HMAC key authenticates the Apps Script integration only. It does not
+establish the human operator identity. Config publication and approval endpoints
+must remain disabled until Apps Script independently verifies the active user and
+authorization policy. Initial service implementation should ship health plus
+assessment submit/poll only; later endpoints are gated by their corresponding
+domain/policy implementation. HTTPS is required even with HMAC. Do not expose
+worker or database ports directly.
+
+The choice of Caddy as the reverse-proxy path is accepted at design level because
+it already serves claw01, but no existing route/config has been inspected with
+privileged access and no new public hostname is selected. Do not change Caddy,
+firewall, DNS, or services until preflight passes. If a safe dedicated hostname
+cannot be provided, return for a separate ingress decision rather than opening a
+raw port or using the private VPN address from Apps Script.
+
+Tradeoff: a project-owned protocol gives explicit compatibility, replay/idempotency
+and key-rotation behavior, but requires implementation and independent security
+verification in both Apps Script and Node. Keep protocol test vectors shared across
+both runtimes; do not substitute TLS alone for caller authentication.
+
 ## ADR-004 — Delay broad autonomy
 
 Accepted planning direction: keep model-origin actions review-first. Narrow AI
@@ -113,7 +146,8 @@ earlier Sheets-first and delayed-HTML UI direction for v2.
 | --- | --- | --- |
 | OpenClaw `decision_evaluate` mapping to standalone TypeSafe API | P0 | Keep the verified standalone adapter; do not assume tool/API equivalence |
 | claw01 host capacity, isolation, durable volume, backup/restore, and reachable authenticated ingress | P0/pre-deployment | Keep runtime inactive; no hidden alternate deployment |
-| Worker API authentication/key rotation and Apps Script network reachability | Before runtime integration | Keep API adapter offline; do not expose unauthenticated service |
+| Dedicated API hostname/DNS, privileged Caddy and Docker preflight, Apps Script reachability | P0/pre-deployment | Keep service inactive; do not expose worker or database ports |
+| Apps Script web-app execution identity and allowlisted human operators | Before approval/config endpoints | Keep operator mutations disabled |
 | Apps Script HTML web-app execution identity and allowlisted operators | Before UI deployment | Keep UI local/unpublished; no owner-privileged web endpoint |
 | Actual deployed v1 version and feature ownership | P0 | Migration/cutover cannot proceed |
 | Data minimization, retention and external processing policy | P0 | No real email submitted to JEV |
