@@ -232,3 +232,12 @@ results/jobs are pruned 30 days after terminal time (not submit time), and expir
 payloads are scheduled for deletion within 24 hours after terminal. No cleanup
 scheduler has been wired yet. `node --check`, typecheck, build, and `git diff --check`
 passed; tests were not run.
+
+## Protected API-key registry — 2026-11-19
+
+Added a strict JSON key registry loader. It opens without following symlinks,
+requires a regular <=64 KiB file with no group/other permissions, rejects unknown
+fields and duplicate IDs, and validates every secret is exactly 32 bytes. Multiple
+IDs allow staged rotation overlap; no credentials were generated or installed.
+Provisioning, revocation/reload procedure, and host secret-file setup remain
+deployment work.

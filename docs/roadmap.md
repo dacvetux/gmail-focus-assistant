@@ -170,6 +170,10 @@ not reported as empirical accuracy. Real-provider evaluation uses approved data 
   rotation, and integration-specific rate limits. Use shared golden vectors across
   Apps Script and Node. Ship only health and assessment job submit/poll initially;
   keep config/approval mutations disabled until human identity is proven.
+- Implemented offline: a strict protected-file key registry validates 32-byte
+  secrets and allows multiple key IDs concurrently for rotation overlap. Secret
+  provisioning, restart/reload procedure, revocation workflow, and host key storage
+  remain deployment work.
 - Add an Apps Script HTML Service management page backed by server handlers and the
   worker API. It must use existing identity, approval, and action policy gates; the
   UI itself grants no authority. Resolve web-app execution identity before exposing

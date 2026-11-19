@@ -20,10 +20,11 @@ injectable HTTP shell enforces request bounds, exact JSON content type, raw-body
 authentication, loopback health, route dispatch, typed/redacted errors and signed
 responses. SQLite fixed-window rate limiting and provider budget reservations are
 implemented offline, but require deployment policy and are not connected to an
-active dispatcher. The server does not listen or call JEV. Production key
-provisioning/rotation, worker orchestration/provider execution, result retention
-cleanup scheduling, startup/health supervision, and config/operator routes remain
-unimplemented. The SQLite repository records terminal timestamps and exposes
+active dispatcher. The server does not listen or call JEV. A strict protected-file
+key registry loader supports overlapping IDs, but provisioning/rotation workflow,
+worker orchestration/provider execution, result retention cleanup scheduling,
+startup/health supervision, and config/operator routes remain unimplemented. The
+SQLite repository records terminal timestamps and exposes
 bounded cleanup operations for the 24-hour payload and 30-day metadata policy, but
 no scheduler invokes them yet. Do not deploy or activate the worker based on this
 partial slice.
@@ -174,6 +175,11 @@ typed and contain no secrets, raw email excerpts, stack traces or provider paylo
 
 - Provision distinct random keys for each environment. Initial staging and
   production are not the same credential or database.
+- The Node loader accepts a JSON `keys` array with `keyId`, base64-encoded 32-byte
+  `secretBase64`, `principal`, `scopes`, and `accountRefs`, with optional ISO
+  `revokedAt`. Keep the file owner-readable only (mode 0600 or stricter); multiple
+  entries permit a short rotation overlap. Restart/reload must be a controlled
+  deployment step, not a runtime file watcher.
 - Rotate with a short overlap: install a new key ID on the worker, update Script
   Properties, verify a signed health call, then revoke the old key. Never reuse a
   key ID for different secret bytes.
