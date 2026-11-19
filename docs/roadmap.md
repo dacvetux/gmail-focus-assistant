@@ -4,8 +4,9 @@ This replaces the legacy phase roadmap, preserved under `archive/v1/docs/`.
 Phase numbers below are **V2-P0 through V2-P8**, not continuations of v1 Phases 1–12.
 Repository/documentation preparation is complete. OAuth-independent V2-P0 discovery
 is recorded and V2-P1 offline contracts/tooling are in progress; live Google inventory
-remains blocked. Other runtime deliverables remain planned. Gates are sequential; no
-schedule or production readiness is implied.
+remains blocked. Hosting direction is claw01 VPS (ADR-006), but the host is not yet
+inspected and no v2 service is deployed. Other runtime deliverables remain planned.
+Gates are sequential; no schedule or production readiness is implied.
 
 ## V2-P0 — Discovery and baseline
 
@@ -26,13 +27,17 @@ schedule or production readiness is implied.
   workbook schemas, config/rules, logs, digest recipients/windows, and live settings
   read-only. Compare actual deployment with archived source; report drift.
 - Define minimized data allowed to leave Google, retention, and worker ingress.
+- Preflight claw01 for capacity, workload isolation, durable storage, backup/restore,
+  monitoring, firewall/ingress, and an HTTPS route Apps Script can reach. VPN SSH
+  management connectivity alone does not establish application reachability.
 - Capture synthetic/anonymized examples for existing edge cases: FYI vs review,
   news vs commercial, no-reply, manual labels, sender aliases, and reply direction.
 - Agree numerical rollout targets and sample coverage before comparing providers.
 
 **Exit:** JEV capability/transport matrix, confirmed credential-to-provider mapping,
-cost limit/operating budget, deployment inventory, baseline behavior
-matrix, and concrete acceptance targets are recorded. Unavailable JEV access blocks
+cost limit/operating budget, deployment inventory, baseline behavior matrix,
+claw01 hosting/ingress/storage preflight, and concrete acceptance targets are
+recorded. Unavailable JEV access blocks
 the real adapter, not rules/core development using a mock. No production changes.
 
 ## V2-P1 — Contracts, domain foundation, and build tooling
@@ -139,6 +144,10 @@ not reported as empirical accuracy. Real-provider evaluation uses approved data 
   Keep Apps Script out of direct database connections; it uses the authenticated
   worker API. SQLite requires a single worker and verified durable-volume/backup
   hosting before deployment; PostgreSQL migration is a measured future option.
+- Prepare an isolated claw01 runtime with persistent SQLite storage, HTTPS ingress,
+  secret handling, monitoring, verified backups/restore, and documented install,
+  upgrade, and rollback steps. Keep the service inactive until authentication and
+  ingress are validated; do not interfere with existing VPS workloads.
 - Add an Apps Script HTML Service management page backed by server handlers and the
   worker API. It must use existing identity, approval, and action policy gates; the
   UI itself grants no authority. Resolve web-app execution identity before exposing
@@ -152,7 +161,8 @@ not reported as empirical accuracy. Real-provider evaluation uses approved data 
 - Add one clear operator view: what changed, why, expected effect, approve/reject,
   and what remains manual. Do not create a parallel decision engine in the UI.
 
-**Exit:** approved/rejected/stale/duplicate flows are demonstrated in staging;
+**Exit:** approved/rejected/stale/duplicate flows are demonstrated in staging on
+the prepared claw01 service;
 no unreviewed suggestion changes configuration or Gmail. Approval audit identifies
 the actor and exact proposal, not just a mutable row number.
 
@@ -217,7 +227,8 @@ rule activation.
 
 ## Dependency and delivery order
 
-`P0 -> P1 -> P2 -> P3 -> P4 -> P5 -> P6 -> P7`; P8 is optional.
+`P0 (claw01 preflight) -> P1 -> P2 -> P3 -> P4 (claw01 staging runtime)
+-> P5 -> P6 -> P7`; P8 is optional.
 P2 can proceed mock-only if JEV access is unresolved. P3 cannot pass its real-provider
 gate using mocks. Deploy feature ownership separately during P5/P6; do not run two
 writers or two digest senders against the same mailbox/window.

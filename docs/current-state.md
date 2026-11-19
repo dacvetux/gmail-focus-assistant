@@ -99,3 +99,12 @@ inventory; those remain deferred until an approved read-only access path exists.
 Review the timezone discrepancy before designing digest-window parity.
 Record evidence here as implementation proceeds; do not mark a whole phase complete
 because one file or UI exists.
+
+ADR-006 (2026-11-19): D.C. selected the existing claw01 VPS as the v2 worker/SQL
+host instead of adding Cloud Run and Cloud SQL costs. The ClawNet architecture repo
+records claw01 at VPN IP 10.8.0.1 and d-c-system at 10.8.0.2. Read-only SSH from
+this development environment reached the host and returned hostname `Claw01`.
+This confirms only management connectivity. Host capacity, isolation, persistent
+storage, backups, HTTPS ingress reachable from Apps Script, service identity,
+monitoring, and rollback remain unverified. No VPS or Google resources were changed;
+the v2 runtime is still not implemented or deployed.

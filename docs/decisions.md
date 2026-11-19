@@ -69,6 +69,37 @@ building an API and operating persistent storage. SQLite is appropriate only whi
 there is one worker and a verified durable volume/backup path; do not run replicas
 against independent SQLite files. Sheets is no longer the v2 system of record.
 
+## ADR-006 — Host the single-worker v2 service on claw01
+
+Accepted direction (2026-11-19, D.C.): use the existing VPS `claw01` as the initial
+host for the v2 decision worker and its SQL store, rather than provisioning Cloud
+Run and Cloud SQL. Keep SQLite and a single active worker initially; SQLite must
+live on verified persistent storage with a documented backup/restore procedure.
+Apps Script remains the Gmail reader/writer, scheduler, and HTML Service UI; it
+communicates with the worker through an authenticated, HTTPS-reachable API. No
+Gmail credentials or database credentials go to the browser or JEV provider.
+
+The ClawNet architecture inventory identifies `claw01` as `10.8.0.1` on the
+OpenVPN mesh, with `d-c-system` at `10.8.0.2`. Read-only SSH connectivity from
+`d-c-system` to `claw01` was verified by hostname query on 2026-11-19. This is
+evidence of management connectivity only: it does not establish that Apps Script
+can reach a worker endpoint, that any port/route is approved, or that the VPS has
+capacity, durable storage, backup coverage, or an appropriate public ingress.
+
+Before deployment, inspect the host and existing services read-only; identify disk
+capacity, service ownership, existing FlyAwayz resources, firewall/ingress and
+backup constraints. Select an isolated application path, service account, SQLite
+volume, and backup/restore approach without interfering with existing workloads.
+Do not assume Apps Script can route to the private VPN address. Choose and secure
+an ingress that Apps Script can reach, define API authentication/key rotation and
+TLS, and confirm web-app execution identity/operator access. No service, database,
+firewall, DNS, or production state was changed by this ADR.
+
+Tradeoff: avoids new managed-cloud service costs and reuses existing infrastructure,
+but D.C. assumes VPS patching, monitoring, backup/restore, capacity, and availability
+responsibility. Cloud Run/Cloud SQL remain possible future options only through a
+new decision based on measured operational needs and costs.
+
 ## ADR-004 — Delay broad autonomy
 
 Accepted planning direction: keep model-origin actions review-first. Narrow AI
@@ -81,8 +112,8 @@ earlier Sheets-first and delayed-HTML UI direction for v2.
 | Unresolved item | Resolve by | Effect if unavailable |
 | --- | --- | --- |
 | OpenClaw `decision_evaluate` mapping to standalone TypeSafe API | P0 | Keep the verified standalone adapter; do not assume tool/API equivalence |
-| Approved worker hosting, reachable authenticated ingress, durable volume | P0 | Revise ADR-003; no hidden alternate deployment |
-| SQLite hosting, durable-volume guarantee, backup/restore and worker API identity | Before SQL runtime deployment | Keep schema offline; do not deploy stateful services |
+| claw01 host capacity, isolation, durable volume, backup/restore, and reachable authenticated ingress | P0/pre-deployment | Keep runtime inactive; no hidden alternate deployment |
+| Worker API authentication/key rotation and Apps Script network reachability | Before runtime integration | Keep API adapter offline; do not expose unauthenticated service |
 | Apps Script HTML web-app execution identity and allowlisted operators | Before UI deployment | Keep UI local/unpublished; no owner-privileged web endpoint |
 | Actual deployed v1 version and feature ownership | P0 | Migration/cutover cannot proceed |
 | Data minimization, retention and external processing policy | P0 | No real email submitted to JEV |

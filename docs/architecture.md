@@ -69,20 +69,27 @@ follow links for decisioning. Snapshot fingerprint changes invalidate stale prop
 ### 3. JEV decision worker
 
 Preferred topology: small TypeScript/Node worker with a JEV provider adapter,
-authenticated API, and durable SQL storage. Start with SQLite on a verified durable
-volume and one active instance; keep a repository boundary for possible PostgreSQL
-migration. The worker receives minimized snapshots, rule evidence, and policy
+authenticated API, and durable SQL storage, hosted initially on the existing
+`claw01` VPS (ADR-006). Start with SQLite on a verified persistent volume and one
+active instance; keep a repository boundary for possible PostgreSQL migration.
+Use an isolated service user/path and avoid interference with existing VPS
+workloads. The worker receives minimized snapshots, rule evidence, and policy
 definitions; it has no Gmail credentials. Use transactional job leases and unique
 job keys; do not scale replicas against separate SQLite files.
 
 Apps Script submits jobs, reads/writes operational records through the worker API,
 and polls results in later bounded runs rather than holding its execution open for
-model calls. The worker exposes authenticated HTTPS endpoints. Apps Script cannot reach a localhost or private
-Tailscale endpoint directly: V2-P0 must confirm an approved reachable ingress.
+model calls. The worker exposes authenticated HTTPS endpoints. Apps Script cannot
+reach a localhost or private VPN endpoint directly: V2-P0 must confirm an approved
+reachable ingress.
 If that topology cannot be provided, revise the ADR before implementation;
 do not expose an unauthenticated bridge or assume an agent-session tool is an API.
 
-Requests use a key ID, timestamp, nonce, body digest, and HMAC signature over a
+Apps Script must reach the API over an approved HTTPS ingress; the private
+`10.8.0.1` VPN address is not assumed reachable from Google Apps Script. Before
+deployment, validate host capacity, firewall and ingress scope, persistent storage,
+backup/restore, monitoring, and rollback. Requests use a key ID, timestamp, nonce,
+body digest, and HMAC signature over a
 canonical method/path/timestamp/nonce/body-digest string; verify before job lookup.
 Reject expired/replayed submissions; retries use a fresh nonce and the same job key.
 TLS and signed, request-bound responses protect result integrity. Specify exact

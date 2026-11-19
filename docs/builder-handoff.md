@@ -69,3 +69,13 @@ suggest runtime availability. Build only the modules needed for the current phas
 State delivered modules and contract versions, acceptance evidence, measured
 outcomes, deliberate v1 differences, outstanding dependencies, migration effect,
 and rollback procedure. Link the relevant GitHub commit/PR and update current-state.md.
+
+## Hosting decision — claw01 (ADR-006)
+
+The selected initial worker host is the existing `claw01` VPS, not Cloud Run/Cloud
+SQL. This is a hosting decision, not deployment authorization or proof of readiness.
+Before staging deployment, inspect claw01 read-only and document capacity, existing
+services, isolation boundaries, persistent SQLite path, backups/restoration, ingress,
+firewall scope, monitoring, and rollback. Apps Script must reach the worker through
+an authenticated HTTPS endpoint; do not assume its Google runtime can reach VPN IP
+`10.8.0.1`. Keep SQLite single-writer and do not disturb FlyAwayz or other services.
