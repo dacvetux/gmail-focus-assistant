@@ -139,6 +139,9 @@ decisions without Gmail changes. No JEV dependency, drafts, send, or archive act
   unresolved reservations continue counting after crashes, and release requires
   explicit proof the request was never sent. This policy is not yet wired to a
   provider dispatcher; no retries are permitted by the current decision.
+- Implemented offline: a SQLite fixed-window limiter counts requests per API key
+  across process restarts. Its request/window limit must be supplied by deployment
+  configuration; the API shell fails closed if rate-limiter storage fails.
 - Store both rule and JEV outputs for comparison. Add latency/cost/failure metrics.
 - Run shadow only: model output cannot alter Gmail, active rules, or live approvals.
 

@@ -18,11 +18,12 @@ idempotency. `sqlite.mjs` provides durable connection settings and an atomic
 numbered migration runner. Typecheck/build pass; Node syntax checks passed. The
 injectable HTTP shell enforces request bounds, exact JSON content type, raw-body
 authentication, loopback health, route dispatch, typed/redacted errors and signed
-responses. It does not listen or call JEV. Production key provisioning/rotation,
-rate limiting, worker orchestration/provider execution and budget reservations,
-result retention cleanup, startup/health supervision, and config/operator routes
-remain unimplemented. Do not deploy or activate the worker based on this partial
-slice.
+responses. SQLite fixed-window rate limiting and provider budget reservations are
+implemented offline, but require deployment policy and are not connected to an
+active dispatcher. The server does not listen or call JEV. Production key
+provisioning/rotation, worker orchestration/provider execution, result retention
+cleanup, startup/health supervision, and config/operator routes remain
+unimplemented. Do not deploy or activate the worker based on this partial slice.
 
 ## Trust and deployment boundary
 
@@ -177,7 +178,9 @@ typed and contain no secrets, raw email excerpts, stack traces or provider paylo
   never store key material in SQLite. Support immediate revocation.
 - Limit caller scope by deployment/account; do not treat possession of a shared
   integration key as permission to approve a human decision.
-- Apply Caddy request-size/time limits and an application rate limit by key ID.
+- Apply Caddy request-size/time limits and a configured application rate limit by
+  key ID. The durable fixed-window limiter runs after authentication; set its count
+  and window based on measured Apps Script submit/poll behavior before staging.
   Do not log authorization/signature headers, bodies, message excerpts or secrets.
 - Audit key ID, route, result category, request ID and latency only. Redact raw
   errors. Enforce retention for non-content audit records separately from excerpts.

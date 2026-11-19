@@ -214,3 +214,12 @@ The token-cost helper rounds TypeSafe input usage upward to microdollars and enf
 the accepted 6,000-token call limit. `node --check`, typecheck, build, and
 `git diff --check` passed; tests were not run. The next
 blocker before real email is still provider-confirmed retention/ZDR for this account.
+
+## Durable API rate limiting — 2026-11-19
+
+Added migration `005_api_rate_limits.sql` and `SqliteFixedWindowRateLimiter`, a
+per-key fixed-window counter that survives restarts and runs after successful
+authentication in the HTTP shell. Limits are injected as deployment policy rather
+than guessed; cleanup is bounded to one old window per request. `node --check`,
+typecheck, build, and `git diff --check` passed. No request listener or provider
+dispatcher was started.
