@@ -10,3 +10,4 @@ export * from "./rule-engine";
 export * from "./revision-validation";
 export * from "./schemas";
 export * from "./thread-policy";
+export * from "./worker-api-auth";

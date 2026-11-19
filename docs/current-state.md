@@ -137,3 +137,16 @@ preflight, staging deployment, and rollback. These are design documents only: no
 API implementation, signing adapter, key, hostname, Caddy route, DNS, or VPS service
 exists. ClawNet records the integration as planned, not deployed; privileged host
 preflight remains incomplete.
+
+Authenticated API implementation slice (2026-11-19): shared Focuna HMAC v1
+canonicalization/timestamp primitives, Apps Script request signing, Node request
+verification/response signing, and the durable SQLite nonce-table migration are
+implemented offline. Typecheck and build passed. No nonce repository, HTTP server,
+route handler, Apps Script response verifier, rate limiter, key provisioning, or
+host deployment exists yet. The partial auth code is not deployable; synthetic
+protocol vectors/security tests are still needed before a listener is exposed.
+Auth primitives advanced: Apps Script now also verifies signed responses bound to
+its request nonce; the worker has a transactionally unique SQLite nonce repository
+that removes expired entries and reserves new nonces under `BEGIN IMMEDIATE`.
+Still absent: HTTP server/body parser and route handlers, API key loading/rotation,
+rate limiting, and an executable protocol/security test suite. No runtime listener.

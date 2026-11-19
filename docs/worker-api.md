@@ -4,6 +4,18 @@ Status: implementation contract for the claw01-hosted worker. It is not deployed
 The API is the only interface between Apps Script and worker-owned SQL/JEV state;
 neither Apps Script nor browser code receives database credentials.
 
+## Implementation status
+
+Implemented offline so far: shared canonical path/signature-input/timestamp
+primitives in `packages/domain/src/worker-api-auth.ts`, Apps Script request signing
+and response verification in `apps/google/src/worker-api-auth.ts`, Node request
+verification and response signing in `apps/decision-worker/src/auth.mjs`, a
+transactional SQLite nonce repository in `sqlite-nonce-store.mjs`, and its table
+migration in `migrations/002_api_auth_nonces.sql`. TypeScript typecheck and build
+pass. These are primitives, not a running API: server/body parsing, endpoint
+handlers, rate limiting, and key provisioning/rotation are still unimplemented.
+Do not deploy or activate the worker based on this partial slice.
+
 ## Trust and deployment boundary
 
 - Apps Script is the sole Gmail reader/writer and scheduled caller. The worker has
