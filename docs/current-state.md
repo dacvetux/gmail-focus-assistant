@@ -256,3 +256,11 @@ Reads validate stored schema, digest and rule-set integrity; previews compute
 rule diffs, and publication atomically checks the current parent before insertion.
 No caller-facing publication route is wired, and authorization remains a human
 identity gate.
+
+## Durable approval audit — 2026-11-19
+
+Added `SqliteApprovalAuditRepository` with atomic expected-head append, human-only
+scope enforcement at the repository boundary, idempotent duplicate handling, and
+full-chain verification on reads. Existing SQL triggers prevent event updates and
+deletes. Authentication is deliberately external; no human-facing approval route
+is enabled.

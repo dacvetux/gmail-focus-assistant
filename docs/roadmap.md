@@ -187,6 +187,10 @@ not reported as empirical accuracy. Real-provider evaluation uses approved data 
   digests and rule sets, previews immutable parent-linked changes, and atomically
   publishes only a successor of the current single head. Operator authorization for
   publication remains disabled until identity is verified.
+- Implemented offline: SQLite approval audit appends human-only, schema-checked
+  events under an expected-head compare-and-append transaction; reads verify the
+  full hash chain, and matching approval IDs are idempotent while conflicts fail.
+  The repository does not authenticate the human; no approval HTTP route is enabled.
 - Implement `new -> approved | rejected | corrected | superseded | expired`;
   an approved recommendation becomes applied only after verified follow-through.
 - Introduce dedicated news-source, routing, and workflow suggestion tasks using
