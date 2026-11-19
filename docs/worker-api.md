@@ -22,8 +22,11 @@ responses. SQLite fixed-window rate limiting and provider budget reservations ar
 implemented offline, but require deployment policy and are not connected to an
 active dispatcher. The server does not listen or call JEV. Production key
 provisioning/rotation, worker orchestration/provider execution, result retention
-cleanup, startup/health supervision, and config/operator routes remain
-unimplemented. Do not deploy or activate the worker based on this partial slice.
+cleanup scheduling, startup/health supervision, and config/operator routes remain
+unimplemented. The SQLite repository records terminal timestamps and exposes
+bounded cleanup operations for the 24-hour payload and 30-day metadata policy, but
+no scheduler invokes them yet. Do not deploy or activate the worker based on this
+partial slice.
 
 ## Trust and deployment boundary
 

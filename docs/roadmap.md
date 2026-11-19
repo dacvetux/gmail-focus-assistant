@@ -142,6 +142,9 @@ decisions without Gmail changes. No JEV dependency, drafts, send, or archive act
 - Implemented offline: a SQLite fixed-window limiter counts requests per API key
   across process restarts. Its request/window limit must be supplied by deployment
   configuration; the API shell fails closed if rate-limiter storage fails.
+- Implemented offline: terminal job timestamps now anchor 30-day content-free
+  metadata pruning. Overdue jobs become terminal and payload expiry remains capped
+  at 24 hours after that transition; a scheduled cleanup runner is still needed.
 - Store both rule and JEV outputs for comparison. Add latency/cost/failure metrics.
 - Run shadow only: model output cannot alter Gmail, active rules, or live approvals.
 

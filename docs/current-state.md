@@ -223,3 +223,12 @@ authentication in the HTTP shell. Limits are injected as deployment policy rathe
 than guessed; cleanup is bounded to one old window per request. `node --check`,
 typecheck, build, and `git diff --check` passed. No request listener or provider
 dispatcher was started.
+
+## Terminal-based retention — 2026-11-19
+
+Migration `006_assessment_terminal_retention.sql` and the SQLite assessment
+repository now record `terminal_at` when jobs finish or expire. Content-free
+results/jobs are pruned 30 days after terminal time (not submit time), and expired
+payloads are scheduled for deletion within 24 hours after terminal. No cleanup
+scheduler has been wired yet. `node --check`, typecheck, build, and `git diff --check`
+passed; tests were not run.

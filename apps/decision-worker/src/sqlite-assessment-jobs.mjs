@@ -24,11 +24,11 @@ export class SqliteAssessmentJobRepository {
       WHERE payload_json IS NOT NULL AND payload_expires_at <= ?
     `);
     this.expireQueuedJobs = database.prepare(`
-      UPDATE assessment_jobs SET status = 'expired', payload_expires_at = MIN(payload_expires_at, ?)
+      UPDATE assessment_jobs SET status = 'expired', payload_expires_at = MIN(payload_expires_at, ?), terminal_at = ?
       WHERE status IN ('queued', 'running') AND deadline_at <= ?
     `);
     this.markTerminal = database.prepare(`
-      UPDATE assessment_jobs SET status = ?, payload_expires_at = MIN(payload_expires_at, ?)
+      UPDATE assessment_jobs SET status = ?, payload_expires_at = MIN(payload_expires_at, ?), terminal_at = ?
       WHERE job_id = ? AND status IN ('queued', 'running')
     `);
     this.insertResult = database.prepare(`
@@ -37,12 +37,12 @@ export class SqliteAssessmentJobRepository {
     this.pruneResults = database.prepare(`
       DELETE FROM assessment_results WHERE job_id IN (
         SELECT job_id FROM assessment_jobs WHERE status IN ('completed', 'failed', 'expired')
-        AND payload_json IS NULL AND created_at <= ?
+        AND payload_json IS NULL AND terminal_at <= ?
       )
     `);
     this.pruneJobs = database.prepare(`
       DELETE FROM assessment_jobs WHERE status IN ('completed', 'failed', 'expired')
-      AND payload_json IS NULL AND created_at <= ?
+      AND payload_json IS NULL AND terminal_at <= ?
     `);
   }
 
@@ -89,7 +89,7 @@ export class SqliteAssessmentJobRepository {
 
   expireOverdueJobs(nowIso) {
     const deleteAfter = new Date(Date.parse(nowIso) + 24 * 60 * 60 * 1000).toISOString();
-    return this.expireQueuedJobs.run(deleteAfter, nowIso).changes;
+    return this.expireQueuedJobs.run(deleteAfter, nowIso, nowIso).changes;
   }
 
   finish(jobId, status, result, completedAt) {
@@ -97,7 +97,7 @@ export class SqliteAssessmentJobRepository {
     const deleteAfter = new Date(Date.parse(completedAt) + 24 * 60 * 60 * 1000).toISOString();
     const finish = this.database.transaction(() => {
       if (status === "completed") this.insertResult.run(jobId, completedAt, JSON.stringify(result));
-      const updated = this.markTerminal.run(status, deleteAfter, jobId).changes;
+      const updated = this.markTerminal.run(status, deleteAfter, completedAt, jobId).changes;
       if (updated !== 1) throw new Error("Assessment job is not active or does not exist");
       return true;
     });
