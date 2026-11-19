@@ -133,7 +133,8 @@ decisions without Gmail changes. No JEV dependency, drafts, send, or archive act
 - Use question-based structural assessment followed by dependent workflow
   assessment where supported. Keep distributions and rubric semantics intact.
 - Add schema/evidence validation, abstention, input boundaries, shared daily budget
-  reservation, bounded retries/backoff, deadlines, caching and circuit breaker.
+  reservation, deadlines, caching and circuit breaker. Provider calls must not be
+  retried automatically under the accepted Stage 1 policy.
 - Implemented offline: `SqliteProviderBudget` atomically reserves the pinned model's
   worst-case $0.000252 call cost against the accepted $2/day and $25/month limits;
   unresolved reservations continue counting after crashes, and release requires
