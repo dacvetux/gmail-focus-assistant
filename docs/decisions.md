@@ -183,7 +183,7 @@ earlier Sheets-first and delayed-HTML UI direction for v2.
 | Apps Script web-app execution identity and allowlisted human operators | Before approval/config endpoints | Keep operator mutations disabled |
 | Apps Script HTML web-app execution identity and allowlisted operators | Before UI deployment | Keep UI local/unpublished; no owner-privileged web endpoint |
 | Actual deployed v1 version and feature ownership | P0 | Migration/cutover cannot proceed |
-| Verify TypeSafe no-training/retention terms and exact current model pricing | Before any real-email/provider request | Keep provider execution disabled |
+| Decide whether TypeSafe standard retention is acceptable or require enterprise ZDR/fixed retention | Before any real-email/provider request | Keep provider execution disabled |
 | Measurable quality targets/sample coverage | Before shadow-to-review promotion | No promotion |
 | Canonical hashes/signatures, approval identity and persistence schemas | P1 | No trusted network adapter or live executor |
 | Draft text provider capability | P6 | Keep drafting disabled, not silently replaced |

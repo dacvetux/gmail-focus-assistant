@@ -84,8 +84,12 @@ personal labels. Apps Script strips quoted history/signatures where detectable
 before signing. Payload is retained only while active, with absolute queue expiry
 <=72 hours; on terminal state set deletion no later than 24 hours. Content-free
 result/audit metadata expires after 30 days. Cleanup and terminal transitions must
-maintain these deadlines. Provider calls stay disabled until pricing and actual
-retention/no-training terms are verified.
+maintain these deadlines. TypeSafe's public model page currently lists `jev-1.14.0`
+at $0.042 per million input tokens and free output, so 6,000 input tokens reserve
+at most $0.000252; pin this version and still enforce the $2/day, $25/month caps.
+Public privacy terms state no model training but do not specify a fixed API-input
+retention period; confirm account-specific terms or enterprise ZDR before enabling
+real-email provider calls.
 
 ## Request authentication: Focuna HMAC v1
 

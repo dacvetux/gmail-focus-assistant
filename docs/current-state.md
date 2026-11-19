@@ -174,3 +174,29 @@ tests were not run. The server has not been started and has no provider dispatch
 concrete rate limiter, budget reservation, terminal-retention cleanup, startup key
 loader/rotation, or integration-ready endpoint composition. This remains unready for
 VPS deployment.
+
+## TypeSafe terms and pricing review — 2026-11-19
+
+Read the public [Jev models/pricing documentation](https://docs.typesafe.ai/models),
+[TypeSafe privacy policy](https://typesafe.ai/privacy), and API docs. The models page
+lists Jev 1.14 (`jev-1.14.0`) at $42 per billion input tokens ($0.042/M); output
+is free. It states billing is per input token and organization rate limits are
+visible in the developer console. At the accepted 6,000-input-token maximum, the
+worst-case model charge is $0.000252 per assessment; require reservation of that
+maximum before each call, pin the versioned model ID, and keep the accepted $2/day
+and $25/month hard caps. Alias pricing/version can change, so do not price against
+an unpinned alias.
+
+The public privacy policy says TypeSafe will not train/fine-tune on API input and
+uses service providers; it retains personal data as long as reasonably necessary
+for service/business purposes, with deletion measures upon request when no longer
+needed. It does not state a fixed API-input retention period. The Jev docs point to
+zero-data-retention (ZDR) details for enterprise customers, and state the service is
+hosted in the United States. Thus the no-training requirement is publicly supported,
+but the accepted fixed/shortest-retention requirement is not yet verified for this
+account. No provider or mailbox request was made during this review.
+
+Decision required before real email/provider calls: accept standard terms with
+retention described only as “reasonably necessary,” or require provider-confirmed
+ZDR/a fixed maximum retention period. Keep provider execution disabled pending that
+choice and confirmation of which plan/terms apply to this API account.
