@@ -183,6 +183,10 @@ not reported as empirical accuracy. Real-provider evaluation uses approved data 
   it to users.
 - Add SQL-backed recommendation and approval records with stable IDs,
   snapshot/config binding, provenance, evidence links, expiry and correction capture.
+- Implemented offline: SQLite config-revision storage validates schemas, content
+  digests and rule sets, previews immutable parent-linked changes, and atomically
+  publishes only a successor of the current single head. Operator authorization for
+  publication remains disabled until identity is verified.
 - Implement `new -> approved | rejected | corrected | superseded | expired`;
   an approved recommendation becomes applied only after verified follow-through.
 - Introduce dedicated news-source, routing, and workflow suggestion tasks using

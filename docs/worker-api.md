@@ -14,7 +14,9 @@ signing in `apps/decision-worker/src/auth.mjs`, a transactional SQLite nonce
 repository, and migrations for nonce and payload retention. A SQLite job repository,
 Stage 1 validator and submit/poll handlers enforce caller scopes, account binding,
 registered question sets, deterministic-review eligibility, retention bounds and
-idempotency. `sqlite.mjs` provides durable connection settings and an atomic
+idempotency. `SqliteConfigRevisionRepository` validates and atomically publishes
+immutable single-head config successors offline; no HTTP publication route exists.
+`sqlite.mjs` provides durable connection settings and an atomic
 numbered migration runner. Typecheck/build pass; Node syntax checks passed. The
 injectable HTTP shell enforces request bounds, exact JSON content type, raw-body
 authentication, loopback health, route dispatch, typed/redacted errors and signed

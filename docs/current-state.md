@@ -249,3 +249,10 @@ their deadline, and prune terminal metadata after 30 days in a single bounded
 pass. It exposes a non-overlapping, unref'd interval runner and does not start
 itself; the future service entry point must run one pass at startup and own its
 lifecycle.
+## SQLite config revision repository — 2026-11-19
+
+Added `SqliteConfigRevisionRepository` for immutable single-head publication.
+Reads validate stored schema, digest and rule-set integrity; previews compute
+rule diffs, and publication atomically checks the current parent before insertion.
+No caller-facing publication route is wired, and authorization remains a human
+identity gate.
