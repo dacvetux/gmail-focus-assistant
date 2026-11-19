@@ -241,3 +241,11 @@ fields and duplicate IDs, and validates every secret is exactly 32 bytes. Multip
 IDs allow staged rotation overlap; no credentials were generated or installed.
 Provisioning, revocation/reload procedure, and host secret-file setup remain
 deployment work.
+
+## Assessment retention runner — 2026-11-19
+
+Added `assessment-maintenance.mjs` to expire overdue jobs, delete payloads past
+their deadline, and prune terminal metadata after 30 days in a single bounded
+pass. It exposes a non-overlapping, unref'd interval runner and does not start
+itself; the future service entry point must run one pass at startup and own its
+lifecycle.

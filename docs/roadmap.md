@@ -146,6 +146,9 @@ decisions without Gmail changes. No JEV dependency, drafts, send, or archive act
 - Implemented offline: terminal job timestamps now anchor 30-day content-free
   metadata pruning. Overdue jobs become terminal and payload expiry remains capped
   at 24 hours after that transition; a scheduled cleanup runner is still needed.
+- Implemented offline: `assessment-maintenance.mjs` runs expiry, payload deletion,
+  and metadata pruning as one bounded pass and exposes an unref'd non-overlapping
+  interval runner. It is not started by any service entry point yet.
 - Store both rule and JEV outputs for comparison. Add latency/cost/failure metrics.
 - Run shadow only: model output cannot alter Gmail, active rules, or live approvals.
 
