@@ -108,3 +108,22 @@ This confirms only management connectivity. Host capacity, isolation, persistent
 storage, backups, HTTPS ingress reachable from Apps Script, service identity,
 monitoring, and rollback remain unverified. No VPS or Google resources were changed;
 the v2 runtime is still not implemented or deployed.
+
+## claw01 read-only preflight — 2026-11-19
+
+SSH over the documented VPN reached `Claw01`. Unprivileged inspection found the
+root filesystem is 38 GiB with about 19 GiB free, uptime about 31 days, and active
+Caddy, Docker, OpenVPN, CrowdSec, Fail2Ban, and node-exporter services. Caddy listens
+on public HTTP/HTTPS ports; the existing PostgreSQL listener is bound to loopback
+and VPN address `10.8.0.1`. Several loopback/VPN listeners and Docker bridge
+interfaces are already present. `openclaw-node.service` is installed but inactive.
+Existing FlyAwayz backup timers are present.
+
+Preflight is incomplete: the SSH account's non-interactive sudo requires a password,
+so Docker Compose/container inventory, listener process ownership, protected service
+files, and root-owned application paths could not be inspected. Do not infer free
+capacity or a safe port/path from the partial inventory. No services, files,
+firewall rules, databases, or deployments were changed. Before selecting ingress or
+installing anything, complete authorized read-only privileged inspection and map
+existing Caddy routes and workload ownership. Host reachability from Apps Script
+is also unverified.
