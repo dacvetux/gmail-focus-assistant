@@ -7,17 +7,22 @@ neither Apps Script nor browser code receives database credentials.
 ## Implementation status
 
 Implemented offline so far: shared canonical path/signature-input/timestamp
-primitives in `packages/domain/src/worker-api-auth.ts`, Apps Script request signing
-and response verification in `apps/google/src/worker-api-auth.ts`, Node request
-verification and response signing in `apps/decision-worker/src/auth.mjs`, a
-transactional SQLite nonce repository in `sqlite-nonce-store.mjs`, and its table
-migration in `migrations/002_api_auth_nonces.sql`. TypeScript typecheck and build
-pass. An injectable Node HTTP shell now enforces request-size/time bounds, exact
-JSON content type, raw-body authentication, loopback-only health, handler
-dispatch, typed/redacted errors, and signed responses. It deliberately does not
-listen or define production handlers by itself. Assessment/config endpoint handlers,
-rate-limiter implementation, key provisioning/rotation and service startup remain
-unimplemented. Do not deploy or activate the worker based on this partial slice.
+primitives in `packages/domain/src/worker-api-auth.ts`, a Stage 1 assessment
+payload schema/policy gate, Apps Script request signing and response verification
+in `apps/google/src/worker-api-auth.ts`, Node request verification and response
+signing in `apps/decision-worker/src/auth.mjs`, a transactional SQLite nonce
+repository, and migrations for nonce and payload retention. A SQLite job repository,
+Stage 1 validator and submit/poll handlers enforce caller scopes, account binding,
+registered question sets, deterministic-review eligibility, retention bounds and
+idempotency. `sqlite.mjs` provides durable connection settings and an atomic
+numbered migration runner. Typecheck/build pass; Node syntax checks passed. The
+injectable HTTP shell enforces request bounds, exact JSON content type, raw-body
+authentication, loopback health, route dispatch, typed/redacted errors and signed
+responses. It does not listen or call JEV. Production key provisioning/rotation,
+rate limiting, worker orchestration/provider execution and budget reservations,
+result retention cleanup, startup/health supervision, and config/operator routes
+remain unimplemented. Do not deploy or activate the worker based on this partial
+slice.
 
 ## Trust and deployment boundary
 
@@ -63,6 +68,24 @@ versioned envelope and only returns result content for the owning account. A
 terminal provider failure is categorized and redacted; raw provider error bodies
 are never returned. Rate limits, maximum polling frequency, and retention limits
 are configured centrally and recorded in operational metrics.
+
+The submit body is `{schemaVersion, job, snapshot, questionSet, ruleEvidence}`.
+The question set must exactly equal its registered worker version. The server
+recomputes the idempotency key from verified config/snapshot inputs. A duplicate
+key with changed evidence/payload conflicts. Initial submission accepts
+classification only, and only where deterministic rules yield unresolved review.
+It never grants a Gmail action.
+
+Stage 1 payload bounds: opaque `acct_`/`thr_` references and `e_` evidence IDs;
+full parsed sender address; subject <=250 characters; exactly one latest inbound
+excerpt <=4,000 characters and at most one preceding message <=2,000 characters;
+total excerpts <=6,000 characters; Focuna-managed labels only and no preserved or
+personal labels. Apps Script strips quoted history/signatures where detectable
+before signing. Payload is retained only while active, with absolute queue expiry
+<=72 hours; on terminal state set deletion no later than 24 hours. Content-free
+result/audit metadata expires after 30 days. Cleanup and terminal transitions must
+maintain these deadlines. Provider calls stay disabled until pricing and actual
+retention/no-training terms are verified.
 
 ## Request authentication: Focuna HMAC v1
 

@@ -1,10 +1,70 @@
 import { DomainError } from "./errors";
-import { Approval, AssessmentJob, AssessmentResult, ChoiceQuestionSet, ConfigRevision, DecisionProposal, ThreadSnapshot } from "./contracts";
+import { Approval, AssessmentJob, AssessmentResult, AssessmentSubmission, ChoiceQuestionSet, ConfigRevision, DecisionProposal, ThreadSnapshot } from "./contracts";
 import { canonicalSha256 } from "./canonical-json";
 import { assertConfigRevisionDigest, assertThreadSnapshotIntegrity } from "./revision-validation";
+import { normalizeEmailAddress } from "./rule-matching";
 
 /** Maximum absolute error allowed when a provider's choice distribution sums to 1. */
 export const CHOICE_DISTRIBUTION_TOLERANCE = 0.01;
+
+const FOCUNA_MANAGED_LABELS = new Set([
+  "1: to respond", "2: FYI", "3: notification", "Review/Ambiguous",
+  "Important/Services", "Important/Finance", "Important/Shipping",
+  "Important/Calendar", "Important/Opportunities", "News/Digest",
+  "Commercial/Newsletters", "Commercial/Ads", "Commercial/Campaigns",
+]);
+
+/** Enforce accepted Stage 1 data minimization after JSON Schema validation. */
+export function assertAssessmentSubmissionPolicy(
+  submission: AssessmentSubmission,
+  sha256Hex: (canonicalText: string) => string,
+  nowIso: string,
+): void {
+  if (submission.schemaVersion !== "focuna.v2") invalid("Assessment submission schema version is unsupported");
+  const { job, snapshot, questionSet, ruleEvidence } = submission;
+  assertThreadSnapshotIntegrity(snapshot, sha256Hex);
+  assertQuestionSetMatchesJob(job, questionSet);
+  if (job.accountRef !== snapshot.accountRef || job.snapshotFingerprint !== snapshot.snapshotFingerprint) {
+    throw new DomainError("STALE_SNAPSHOT", "Assessment job is not bound to its submitted snapshot");
+  }
+  assertAssessmentJobRunnable(job, nowIso);
+
+  if (snapshot.accountRef.includes("@") || snapshot.threadRef.includes("@") ||
+      !/^acct_[A-Za-z0-9_-]{8,64}$/.test(snapshot.accountRef) || !/^thr_[A-Za-z0-9_-]{8,64}$/.test(snapshot.threadRef)) {
+    invalid("Assessment snapshot references must be opaque, non-mailbox identifiers");
+  }
+  try {
+    normalizeEmailAddress(snapshot.senderAddress);
+  } catch (_error) {
+    invalid("Assessment sender must be a parsed mailbox address");
+  }
+  if (snapshot.subject.length > 250) invalid("Assessment subject exceeds the Stage 1 limit");
+  if (snapshot.preservedLabels.length !== 0 || snapshot.labels.some(label => !FOCUNA_MANAGED_LABELS.has(label))) {
+    invalid("Only Focuna-managed labels may be submitted; preserved/personal labels are excluded");
+  }
+  if (snapshot.evidence.length < 1 || snapshot.evidence.length > 2) invalid("Assessment may contain at most two meaningful-message excerpts");
+  if (snapshot.evidence.some(item => !/^e_[A-Za-z0-9_-]{8,64}$/.test(item.id))) {
+    invalid("Evidence IDs must be opaque references, not Gmail message IDs");
+  }
+  const totalExcerptChars = snapshot.evidence.reduce((total, item) => total + item.text.length, 0);
+  const inbound = snapshot.evidence.filter(item => item.direction === "inbound");
+  if (inbound.length !== 1 || inbound[0].text.length > 4000 || totalExcerptChars > 6000) {
+    invalid("Stage 1 requires one inbound excerpt (at most 4,000 chars) and 6,000 total excerpt chars");
+  }
+  const preceding = snapshot.evidence.filter(item => item.id !== inbound[0].id);
+  if (preceding.length > 1 || preceding.some(item => item.text.length > 2000)) {
+    invalid("The preceding meaningful-message excerpt is limited to 2,000 chars");
+  }
+  if (preceding.some(item => Date.parse(item.sentAt) >= Date.parse(inbound[0].sentAt))) {
+    invalid("The contextual message must precede the latest inbound message");
+  }
+  if (!Array.isArray(ruleEvidence.matchedRuleIds) || ruleEvidence.matchedRuleIds.length > 50) {
+    invalid("Rule evidence exceeds its Stage 1 limit");
+  }
+  if (job.task !== "classification" || ruleEvidence.category !== "review" || ruleEvidence.workflow !== "none") {
+    throw new DomainError("POLICY_REJECTED", "Stage 1 JEV assessment is restricted to unresolved classification cases");
+  }
+}
 
 /** Stable idempotency key; the key itself contains no account or message content. */
 export function computeAssessmentIdempotencyKey(

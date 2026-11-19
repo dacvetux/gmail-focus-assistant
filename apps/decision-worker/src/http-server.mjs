@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { TextDecoder } from "node:util";
 import { authenticateWorkerRequest, MAX_BODY_BYTES, signWorkerResponse } from "./auth.mjs";
 
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -33,21 +34,24 @@ export function createWorkerHttpServer({ keyRegistry, nonceStore, responseKey, h
       if (request.headers["content-encoding"] || request.headers["content-type"] !== "application/json") {
         return writeSignedJson(response, 415, { error: "INVALID_RECORD" }, identity.nonce, responseKey);
       }
+      if (request.method === "GET" && body.length !== 0) {
+        return writeSignedJson(response, 400, { error: "INVALID_RECORD" }, identity.nonce, responseKey);
+      }
       if (!await rateLimiter.consume(identity.keyId)) {
         return writeSignedJson(response, 429, { error: "RATE_LIMITED" }, identity.nonce, responseKey);
       }
 
       let parsedBody;
       try {
-        parsedBody = body.length === 0 ? undefined : JSON.parse(body.toString("utf8"));
+        const text = body.length === 0 ? "" : new TextDecoder("utf-8", { fatal: true }).decode(body);
+        parsedBody = body.length === 0 ? undefined : JSON.parse(text);
       } catch (_error) {
         return writeSignedJson(response, 400, { error: "INVALID_RECORD" }, identity.nonce, responseKey);
       }
-      const key = `${request.method} ${request.url}`;
-      const handler = handlers.get(key);
-      if (!handler) return writeSignedJson(response, 404, { error: "NOT_FOUND" }, identity.nonce, responseKey);
+      const route = resolveHandler(handlers, request.method, request.url);
+      if (!route) return writeSignedJson(response, 404, { error: "NOT_FOUND" }, identity.nonce, responseKey);
 
-      const result = await handler({ request, body: parsedBody, identity });
+      const result = await route.handler({ request, body: parsedBody, identity, params: route.params });
       const status = Number.isInteger(result?.status) ? result.status : 200;
       return writeSignedJson(response, status, result?.body ?? {}, identity.nonce, responseKey);
     } catch (error) {
@@ -64,6 +68,30 @@ export function createWorkerHttpServer({ keyRegistry, nonceStore, responseKey, h
 
 function isHealthRequest(request) {
   return request.method === "GET" && request.url === "/v1/health";
+}
+
+function resolveHandler(handlers, method, path) {
+  for (const [pattern, handler] of handlers.entries()) {
+    const separator = pattern.indexOf(" ");
+    if (separator < 0 || pattern.slice(0, separator) !== method) continue;
+    const template = pattern.slice(separator + 1).split("/");
+    const actual = path.split("/");
+    if (template.length !== actual.length) continue;
+    const params = {};
+    let matches = true;
+    for (let index = 0; index < template.length; index += 1) {
+      const expected = template[index];
+      if (expected.startsWith(":")) {
+        if (!actual[index]) { matches = false; break; }
+        params[expected.slice(1)] = actual[index];
+      } else if (expected !== actual[index]) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) return { handler, params };
+  }
+  return undefined;
 }
 
 function isLoopback(address) {

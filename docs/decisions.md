@@ -133,6 +133,39 @@ and key-rotation behavior, but requires implementation and independent security
 verification in both Apps Script and Node. Keep protocol test vectors shared across
 both runtimes; do not substitute TLS alone for caller authentication.
 
+## ADR-008 — Progressive shadow-assessment data and spend limits
+
+Accepted direction (2026-11-19, D.C.): provide enough context for useful ambiguity
+assessment while keeping the model advisory and deterministic Gmail rules
+authoritative. For Stage 1 shadow assessment, Apps Script may send the full sender
+address, subject (maximum 250 characters), latest meaningful inbound excerpt
+(maximum 4,000 characters), and when required the immediately preceding meaningful
+message (maximum 2,000 characters). Include only current Focuna-managed labels and
+relevant approved-rule evidence. Strip quoted history and signatures where
+detectable. Do not send recipients, display names, attachments, full thread history,
+Gmail message/thread IDs, or personal labels. Use opaque account/thread/evidence
+references; keep any reference mapping in Apps Script.
+
+Focuna may retain minimized payload only while active; delete within 24 hours of
+terminal completion and expire queued payload no later than 72 hours after creation.
+Keep content-free results/audit metadata 30 days. Provider must not train on input;
+verify the actual provider retention terms and use the shortest available retention
+(prefer zero) before any real-mail request. If terms cannot be verified or violate
+policy, keep provider execution disabled.
+
+Stage 1 budget: hard cap $25/month and $2/day, with per-assessment limits of 6,000
+input and 500 output tokens, no automatic provider retries, and a maximum-cost
+reservation before each call. If current model pricing cannot support a reliable
+reservation, do not call the provider. Only synthetic/offline jobs may be used until
+provider pricing/retention checks pass. Stage 2 may be proposed up to $75/month and
+$5/day only after several weeks of reviewed shadow outcomes; it is not pre-approved.
+No model-origin Gmail write, archive, or send behavior is authorized by this ADR.
+
+Tradeoff: more sender/context detail improves exact-sender and conversational
+classification, at greater data exposure. Short-lived content retention and bounded
+scope reduce persistence risk; shadow mode preserves human review while quality is
+measured.
+
 ## ADR-004 — Delay broad autonomy
 
 Accepted planning direction: keep model-origin actions review-first. Narrow AI
@@ -150,8 +183,8 @@ earlier Sheets-first and delayed-HTML UI direction for v2.
 | Apps Script web-app execution identity and allowlisted human operators | Before approval/config endpoints | Keep operator mutations disabled |
 | Apps Script HTML web-app execution identity and allowlisted operators | Before UI deployment | Keep UI local/unpublished; no owner-privileged web endpoint |
 | Actual deployed v1 version and feature ownership | P0 | Migration/cutover cannot proceed |
-| Data minimization, retention and external processing policy | P0 | No real email submitted to JEV |
-| Measurable quality targets/sample coverage/cost budget | P0 | No shadow-to-live promotion |
+| Verify TypeSafe no-training/retention terms and exact current model pricing | Before any real-email/provider request | Keep provider execution disabled |
+| Measurable quality targets/sample coverage | Before shadow-to-review promotion | No promotion |
 | Canonical hashes/signatures, approval identity and persistence schemas | P1 | No trusted network adapter or live executor |
 | Draft text provider capability | P6 | Keep drafting disabled, not silently replaced |
 | Production cohort, soak window and rollback owner | Before cutover | No production activation |

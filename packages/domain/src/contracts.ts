@@ -100,6 +100,19 @@ export interface AssessmentJob {
   deadlineAt: string;
 }
 
+export interface AssessmentSubmission {
+  schemaVersion: typeof CONTRACT_VERSION;
+  job: AssessmentJob;
+  snapshot: ThreadSnapshot;
+  questionSet: ChoiceQuestionSet;
+  ruleEvidence: {
+    category: StructuralCategory;
+    workflow: WorkflowIntent;
+    matchedRuleIds: string[];
+    reasonCode: string;
+  };
+}
+
 export interface ChoiceQuestionDefinition {
   id: string;
   instructions: string;

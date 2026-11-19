@@ -112,6 +112,29 @@ export const choiceQuestionSetSchema = {
   },
 } as const;
 
+export const assessmentSubmissionSchema = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  $id: "focuna://schemas/assessment-submission-v2.json",
+  type: "object", additionalProperties: false,
+  required: ["schemaVersion", "job", "snapshot", "questionSet", "ruleEvidence"],
+  properties: {
+    schemaVersion: { const: "focuna.v2" },
+    job: assessmentJobSchema,
+    snapshot: threadSnapshotSchema,
+    questionSet: choiceQuestionSetSchema,
+    ruleEvidence: {
+      type: "object", additionalProperties: false,
+      required: ["category", "workflow", "matchedRuleIds", "reasonCode"],
+      properties: {
+        category: { enum: ["review", "services", "finance", "shipping", "calendar", "opportunities", "news", "commercial-newsletter", "commercial-ad", "commercial-campaign", "none"] },
+        workflow: { enum: ["to-respond", "fyi", "notification", "none"] },
+        matchedRuleIds: { type: "array", maxItems: 50, uniqueItems: true, items: { type: "string", minLength: 1, maxLength: 80, pattern: "^[A-Za-z0-9:_-]+$" } },
+        reasonCode: { type: "string", minLength: 1, maxLength: 80, pattern: "^[a-z0-9-]+$" },
+      },
+    },
+  },
+} as const;
+
 export const assessmentResultSchema = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
   $id: "focuna://schemas/assessment-result-v2.json",

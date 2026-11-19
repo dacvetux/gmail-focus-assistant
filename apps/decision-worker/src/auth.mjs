@@ -36,7 +36,13 @@ export async function authenticateWorkerRequest(request, rawBody, keyRegistry, n
   const expiresAt = Number(headers.timestamp) + NONCE_RETENTION_SECONDS;
   const reserved = await nonceStore.reserve(headers.keyId, headers.nonce, expiresAt);
   if (!reserved) throw authError();
-  return { keyId: headers.keyId, principal: key.principal, scopes: [...key.scopes], nonce: headers.nonce };
+  return {
+    keyId: headers.keyId,
+    principal: key.principal,
+    scopes: [...key.scopes],
+    accountRefs: [...(key.accountRefs ?? [])],
+    nonce: headers.nonce,
+  };
 }
 
 /** Sign exact response bytes and bind them to the originating request nonce. */

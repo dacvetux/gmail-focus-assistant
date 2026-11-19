@@ -157,3 +157,20 @@ loopback health, injected route dispatch/rate limiting, sanitized errors and sig
 responses. Syntax checks, TypeScript typecheck and build passed; tests were not run.
 The shell is not started, has no production route handlers, no concrete rate limiter,
 no key loader/rotation, and does not yet persist assessment jobs. It is not deployable.
+
+ADR-008 (2026-11-19): D.C. accepted progressive Stage 1 shadow payload/spend policy:
+full sender address, subject <=250 chars, latest inbound excerpt <=4,000 chars,
+optional preceding message <=2,000 chars, no recipients/display names/attachments/
+full history/Gmail IDs/personal labels; active payloads expire within 24h terminal
+or 72h queued; metadata 30 days; $25/month and $2/day with 6,000/500 token limits,
+pre-call cost reservation, and no retries. Provider no-training/retention terms and
+exact prices still need verification; real provider execution remains disabled.
+
+The first submit/poll logic is implemented offline: strict schema and payload policy,
+question-set/config/idempotency binding, ambiguous-review-only eligibility,
+account-scoped handlers, SQLite job persistence, 72-hour queued payload expiry, and
+numbered migration application. Node syntax checks, TypeScript typecheck/build passed;
+tests were not run. The server has not been started and has no provider dispatcher,
+concrete rate limiter, budget reservation, terminal-retention cleanup, startup key
+loader/rotation, or integration-ready endpoint composition. This remains unready for
+VPS deployment.
