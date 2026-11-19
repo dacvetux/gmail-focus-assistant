@@ -12,9 +12,12 @@ and response verification in `apps/google/src/worker-api-auth.ts`, Node request
 verification and response signing in `apps/decision-worker/src/auth.mjs`, a
 transactional SQLite nonce repository in `sqlite-nonce-store.mjs`, and its table
 migration in `migrations/002_api_auth_nonces.sql`. TypeScript typecheck and build
-pass. These are primitives, not a running API: server/body parsing, endpoint
-handlers, rate limiting, and key provisioning/rotation are still unimplemented.
-Do not deploy or activate the worker based on this partial slice.
+pass. An injectable Node HTTP shell now enforces request-size/time bounds, exact
+JSON content type, raw-body authentication, loopback-only health, handler
+dispatch, typed/redacted errors, and signed responses. It deliberately does not
+listen or define production handlers by itself. Assessment/config endpoint handlers,
+rate-limiter implementation, key provisioning/rotation and service startup remain
+unimplemented. Do not deploy or activate the worker based on this partial slice.
 
 ## Trust and deployment boundary
 

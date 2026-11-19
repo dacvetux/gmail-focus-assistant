@@ -150,3 +150,10 @@ its request nonce; the worker has a transactionally unique SQLite nonce reposito
 that removes expired entries and reserves new nonces under `BEGIN IMMEDIATE`.
 Still absent: HTTP server/body parser and route handlers, API key loading/rotation,
 rate limiting, and an executable protocol/security test suite. No runtime listener.
+
+The Node HTTP shell is now implemented in `apps/decision-worker/src/http-server.mjs`:
+request size/time bounds, exact JSON content type, authenticated request handling,
+loopback health, injected route dispatch/rate limiting, sanitized errors and signed
+responses. Syntax checks, TypeScript typecheck and build passed; tests were not run.
+The shell is not started, has no production route handlers, no concrete rate limiter,
+no key loader/rotation, and does not yet persist assessment jobs. It is not deployable.

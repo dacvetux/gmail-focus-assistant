@@ -90,3 +90,19 @@ vectors across Apps Script and Node, exact raw-body hashing, constant-time check
 and SQLite-atomic nonce/idempotency constraints. Build and exercise the service
 locally with synthetic requests before any host deployment. Approval endpoints must
 fail closed until the Apps Script active-user/allowlist policy is proven.
+
+The first auth primitive slice now exists in `packages/domain/src/worker-api-auth.ts`,
+`apps/google/src/worker-api-auth.ts`, and `apps/decision-worker/src/auth.mjs`; migration
+`002_api_auth_nonces.sql` defines durable replay state. The server adapter must
+implement atomic nonce reservation against that table and validate content type,
+body limits, canonical paths, and HTTPS proxy trust before dispatch. Do not accept
+forwarded headers from arbitrary peers. Apps Script still needs signed-response
+verification and the authenticated HTTP transport. No API listener exists yet.
+
+`apps/decision-worker/src/http-server.mjs` is an unstarted HTTP shell with injected
+handlers, nonce store, key registry and rate limiter. Add endpoint handlers only
+behind validated schemas and durable repositories. The server must bind to
+`127.0.0.1` in the eventual launcher; do not add a public listener. Keep health
+minimal and ensure Caddy exposes no administrative diagnostics. Before running,
+provide durable key loading, a concrete bounded rate limiter, migration startup
+policy, and shared protocol vectors.
