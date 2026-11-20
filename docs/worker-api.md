@@ -32,8 +32,11 @@ startup/health supervision, and config/operator routes remain unimplemented. The
 SQLite repository records terminal timestamps and exposes
 bounded cleanup operations for the 24-hour payload and 30-day metadata policy, but
 an explicit maintenance runner now sequences them and offers a bounded interval
-loop. No service entry point starts that loop yet. Do not deploy or activate the
-worker based on this partial slice.
+loop. `createWorkerRuntime` composes these pieces but is a library factory, not an
+executable service: callers must supply a versioned question-set repository and
+rate policy, and explicitly invoke its loopback-only `listen()`. It does not apply
+migrations or start on import. Do not deploy or activate the worker based on this
+partial slice.
 
 ## Trust and deployment boundary
 

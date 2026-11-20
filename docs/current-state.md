@@ -264,3 +264,12 @@ scope enforcement at the repository boundary, idempotent duplicate handling, and
 full-chain verification on reads. Existing SQL triggers prevent event updates and
 deletes. Authentication is deliberately external; no human-facing approval route
 is enabled.
+
+## Inert worker composition — 2026-11-20
+
+Added `createWorkerRuntime` to assemble the existing SQLite repositories,
+assessment submit/poll handlers, HMAC auth, configured rate limiter, and retention
+maintenance. It checks the expected migration version, requires caller-supplied
+question-set and rate-limit policy, and only listens when explicitly invoked with
+127.0.0.1 or ::1. It contains no provider dispatcher, does not migrate on startup,
+and does not expose config/approval mutation routes.

@@ -177,6 +177,11 @@ not reported as empirical accuracy. Real-provider evaluation uses approved data 
   secrets and allows multiple key IDs concurrently for rotation overlap. Secret
   provisioning, restart/reload procedure, revocation workflow, and host key storage
   remain deployment work.
+- Implemented offline: `createWorkerRuntime` composes the migrated SQLite stores,
+  protected key registry, submit/poll handlers, rate limiter and maintenance loop.
+  Construction is inert; explicit `listen()` only accepts a loopback address. It
+  requires a versioned question-set repository and configured rate policy, and has
+  no provider dispatcher or config/approval HTTP mutation routes.
 - Add an Apps Script HTML Service management page backed by server handlers and the
   worker API. It must use existing identity, approval, and action policy gates; the
   UI itself grants no authority. Resolve web-app execution identity before exposing
