@@ -119,14 +119,24 @@ and VPN address `10.8.0.1`. Several loopback/VPN listeners and Docker bridge
 interfaces are already present. `openclaw-node.service` is installed but inactive.
 Existing FlyAwayz backup timers are present.
 
-Preflight is incomplete: the SSH account's non-interactive sudo requires a password,
-so Docker Compose/container inventory, listener process ownership, protected service
-files, and root-owned application paths could not be inspected. Do not infer free
-capacity or a safe port/path from the partial inventory. No services, files,
-firewall rules, databases, or deployments were changed. Before selecting ingress or
-installing anything, complete authorized read-only privileged inspection and map
-existing Caddy routes and workload ownership. Host reachability from Apps Script
-is also unverified.
+Read-only refresh (2026-11-20): SSH as `cvetko` succeeds. Non-privileged inspection
+confirms 19 GiB free on `/`, Docker/containerd and Caddy running, and existing
+listeners on 80/443, 5432 (loopback and VPN), 8000, 8080, 9095, 9100, and several
+loopback ports. The readable Caddyfile maps `claw01.melionet.net` to
+`127.0.0.1:3000`; port 3000 is not in the observed listener list. The host has no
+visible `/var/lib/focuna*` directory. Existing PostgreSQL backup timers are present.
+These observations do not establish container ownership, PostgreSQL data layout,
+backup restore health, or that any apparently unused port/path is safe to claim.
+
+The preflight remains blocked on privileged read-only inventory: `sudo -n` reports
+that a password is required, and `docker ps` is denied for this SSH user. Therefore
+container/Compose ownership, process-to-listener mapping, protected service files,
+root-owned storage, firewall policy, and actual backup configuration/restore status
+remain unverified. Do not infer free capacity or choose a port/path from partial
+inventory. The current Caddy route is an existing application route and must not be
+reused or altered for Focuna without a separate reviewed plan. Apps Script reachability
+for a dedicated authenticated HTTPS hostname also remains unverified. No services,
+files, firewall rules, databases, or deployments were changed.
 
 ADR-007 (2026-11-19): D.C. accepted a project-owned authenticated HTTPS API behind
 Caddy for Apps Script-to-worker traffic. `docs/worker-api.md` specifies Focuna HMAC
