@@ -1,6 +1,6 @@
 # Focuna v2 — Gmail decision assistant
 
-**Status: architecture and builder preparation; v2 is not implemented or deployed.**
+**Status: substantial offline v2 foundations are implemented; the service is not deployed or production-ready.**
 
 Focuna keeps important email visible, reduces commercial noise, separates news,
 produces useful digests, offers draft-only reply help, and tracks follow-ups.
@@ -39,5 +39,10 @@ Its live state has not been verified in this preparation change.
 - Digests may be sent only through explicitly configured digest delivery.
 - Production cutover is separate work requiring D.C.'s explicit confirmation.
 
-No v2 runtime directories or deployable placeholder implementation are included yet.
-Builders create them in the phases below; do not deploy from the archive.
+The repository includes the TypeScript domain core, an Apps Script-compatible build,
+and an offline Node/SQLite worker foundation (signed HTTP shell, assessment
+submit/poll storage, budget/rate controls, retention maintenance, config revisions,
+and approval audit). The worker is not wired to a complete startup/deployment path;
+provider dispatch, Apps Script Gmail/Sheets integration, operator UI, executor,
+and later roadmap phases remain incomplete. Do not deploy from the archive or treat
+the current worker slice as production-ready.

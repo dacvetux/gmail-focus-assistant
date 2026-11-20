@@ -2,11 +2,11 @@
 
 This replaces the legacy phase roadmap, preserved under `archive/v1/docs/`.
 Phase numbers below are **V2-P0 through V2-P8**, not continuations of v1 Phases 1–12.
-Repository/documentation preparation is complete. OAuth-independent V2-P0 discovery
-is recorded and V2-P1 offline contracts/tooling are in progress; live Google inventory
-remains blocked. Hosting direction is claw01 VPS (ADR-006), but the host is not yet
-inspected and no v2 service is deployed. Other runtime deliverables remain planned.
-Gates are sequential; no schedule or production readiness is implied.
+Offline work now includes domain contracts, a partial authenticated worker/SQLite
+implementation, and portions of V2-P3/P4 foundations. The sequence below records
+both implemented slices and incomplete phase work. Live Google inventory and full
+privileged claw01 preflight remain incomplete; no v2 service is deployed. Gates are
+sequential; no schedule or production readiness is implied.
 
 ## V2-P0 — Discovery and baseline
 
