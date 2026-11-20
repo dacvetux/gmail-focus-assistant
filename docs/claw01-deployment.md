@@ -41,9 +41,10 @@ services. Do not create files/units or alter firewall/Caddy before that check.
    location/mode, and document exact rollback commands before applying one change.
 4. **Build offline:** install locked dependencies, build the worker and validate
    migrations in an isolated disposable SQLite file. No live secrets or mailbox
-   data are needed for build/contract tests.
+   data are needed for build/contract checks.
 5. **Provision isolated foundations:** service identity, data path, secret file,
-   migrations and disabled systemd unit. Use a dedicated DB migration command; the
+   migrations and disabled systemd unit. Apply schema using
+   `npm run db:migrate -- <persistent-sqlite-path>` as the service owner; the
    application runtime must not modify schema.
 6. **Verify locally:** service remains loopback-bound; run synthetic signed health,
    auth, nonce replay, request/response signature, restart, and SQLite backup/restore

@@ -20,7 +20,11 @@ immutable single-head config successors offline; no HTTP publication route exist
 expected-head concurrency control, idempotent duplicates, and chain verification;
 it trusts its caller to supply an independently authenticated human identity.
 `sqlite.mjs` provides durable connection settings and an atomic
-numbered migration runner. Typecheck/build pass; Node syntax checks passed. The
+numbered migration runner, with a dedicated `npm run db:migrate -- <path>` command;
+the application itself refuses to start against anything except schema version 7.
+The immutable question-set repository is present, but there is no HTTP mutation
+route and initial approved sets still must be provisioned locally. Typecheck/build
+pass; Node syntax checks passed. The
 injectable HTTP shell enforces request bounds, exact JSON content type, raw-body
 authentication, loopback health, route dispatch, typed/redacted errors and signed
 responses. SQLite fixed-window rate limiting and provider budget reservations are

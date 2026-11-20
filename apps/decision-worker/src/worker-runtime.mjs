@@ -6,10 +6,11 @@ import { SqliteApprovalAuditRepository } from "./sqlite-approval-audit.mjs";
 import { SqliteConfigRevisionRepository } from "./sqlite-config-revisions.mjs";
 import { SqliteNonceStore } from "./sqlite-nonce-store.mjs";
 import { SqliteProviderBudget } from "./sqlite-provider-budget.mjs";
+import { SqliteQuestionSetRepository } from "./sqlite-question-sets.mjs";
 import { SqliteFixedWindowRateLimiter } from "./sqlite-rate-limiter.mjs";
 import { createAssessmentSubmissionValidator } from "./validate-assessment-submission.mjs";
 
-const REQUIRED_MIGRATION_VERSION = 6;
+const REQUIRED_MIGRATION_VERSION = 7;
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "::1"]);
 
 /** Compose the offline worker; construction is inert and never listens/calls JEV. */
@@ -18,7 +19,7 @@ export function createWorkerRuntime({
   keyRegistry,
   responseKeyId,
   configRepository = database && new SqliteConfigRevisionRepository(database),
-  questionSetRepository,
+  questionSetRepository = database && new SqliteQuestionSetRepository(database),
   provider = "typesafe-systemone",
   model = "jev-1.14.0",
   rateLimit,
@@ -54,7 +55,7 @@ export function createWorkerRuntime({
 
   return {
     server,
-    repositories: { jobs, config: configRepository, audit, budget },
+    repositories: { jobs, config: configRepository, questionSets: questionSetRepository, audit, budget },
     runMaintenance: () => runAssessmentMaintenanceOnce(jobs, clock),
     /** Only bind loopback; public TLS must terminate at the separately managed proxy. */
     async listen({ host = "127.0.0.1", port }) {

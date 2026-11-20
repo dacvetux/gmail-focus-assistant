@@ -182,6 +182,10 @@ not reported as empirical accuracy. Real-provider evaluation uses approved data 
   Construction is inert; explicit `listen()` only accepts a loopback address. It
   requires a versioned question-set repository and configured rate policy, and has
   no provider dispatcher or config/approval HTTP mutation routes.
+- Implemented offline: `SqliteQuestionSetRepository` stores immutable, validated,
+  content-digested question sets, and `npm run db:migrate -- <path>` applies the
+  numbered schema separately from runtime startup. No production database is
+  migrated and no approved question-set content is seeded yet.
 - Add an Apps Script HTML Service management page backed by server handlers and the
   worker API. It must use existing identity, approval, and action policy gates; the
   UI itself grants no authority. Resolve web-app execution identity before exposing
