@@ -1,7 +1,7 @@
 # claw01 worker deployment design and runbook
 
-Status: preparation only. The v2 worker is not implemented, and nothing has been
-installed or exposed on claw01. This runbook is for a future isolated staging
+Status: preparation only. An offline worker implementation exists, but it has not
+been installed or exposed on claw01. This runbook is for a future isolated staging
 deployment; it does not authorize production Gmail cutover or VPS mutations.
 
 ## Target layout

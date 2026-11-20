@@ -13,10 +13,10 @@
 
 ## Not implemented
 
-Google adapters/executors, JEV adapter integration, runtime SQL repositories/API,
-approval workflow, HTML management UI, digests, drafts, follow-ups, and deployment
-pipelines remain future work. An initial SQLite schema migration is now defined and
-tested in-memory; no database or worker has been deployed. Initial offline schemas,
+Google adapters/executors, live JEV dispatch, approval HTTP workflow, HTML management
+UI, digests, drafts, follow-ups, and deployment pipelines remain future work. The
+offline worker has SQLite repositories/API composition and migrations, but no
+database or worker has been deployed. Initial offline schemas,
 tooling and checks are described below. JEV API
 authentication/reachability has been smoke-checked with synthetic state; decision
 quality, retention, pricing and budget are not yet verified. No production migration

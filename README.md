@@ -42,7 +42,8 @@ Its live state has not been verified in this preparation change.
 The repository includes the TypeScript domain core, an Apps Script-compatible build,
 and an offline Node/SQLite worker foundation (signed HTTP shell, assessment
 submit/poll storage, budget/rate controls, retention maintenance, config revisions,
-and approval audit). The worker is not wired to a complete startup/deployment path;
-provider dispatch, Apps Script Gmail/Sheets integration, operator UI, executor,
-and later roadmap phases remain incomplete. Do not deploy from the archive or treat
+question-set registry, and approval audit). The worker composition is intentionally
+inert and loopback-only; provider dispatch, Apps Script Gmail/Sheets integration,
+operator UI, executor, and later roadmap phases remain incomplete. Do not deploy
+from the archive or treat
 the current worker slice as production-ready.
